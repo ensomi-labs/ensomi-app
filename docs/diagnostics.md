@@ -45,7 +45,9 @@ Each JSON line has `v:1`, `t` (wall milliseconds), `up` (elapsed realtime millis
 wall/elapsed times, version name/code, SDK integer and full SDK integer (API 36+), incremental
 build, security patch, fingerprint and primary ABI. `uncaught_exception/crash` has exception class,
 a suppressed message, up to five causes (class and suppressed message), and bounded class/method/line
-frames without source filenames. Dotted class names are preserved.
+frames without source filenames. Dotted class names are preserved. `input_device/added` and `removed`, not durable, one
+per keyboard connected or removed, have `kind=keyboard`, `vendor` and `product` (hexadecimal), `external` and `in_game`
+(a play screen was open), never a name ([keyboard.md](keyboard.md#diagnostics)).
 
 Event/phase names must be fixed technical literals. Context must contain technical stage facts,
 operation IDs, counts, outcomes or error classes; **never supply a song title, document name or
@@ -80,6 +82,9 @@ Additions:
   not a load failure). A `GeneratorException.Model` refusal produces `refused/true`. Unexpected
   acceptance gives `accepted/false`; an unexpected failure gives `error/false`. Unexpected failures remain in `runtime.error`. The expected
   refusal is labelled explicitly and is never displayed as an installed-model error.
+- `input.keyboards`: every input device with keys that is not virtual, as the input system lists them when the summary
+  is collected: `vendorId` and `productId` (four hexadecimal digits), `external`, and `keyboardType` (`alphabetic` or
+  `non_alphabetic`). Never a device name or descriptor.
 - `exits`: up to 32 persisted previous-process records. `journal`: last three retained runs plus retained runs referenced by exits.
 - `exitCollection`: `complete`, or `unavailable: <exception class>`. An empty list with a collection
   failure does not claim that no crashes occurred. `collectionErrors` maps failed device-fact sections

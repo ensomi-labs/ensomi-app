@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import io.ensomi.android.audio.AudioPlayClock
 import io.ensomi.android.audio.DecodedSong
 import io.ensomi.android.audio.GameAudio
+import io.ensomi.android.keyboard.GameScreens
 import io.ensomi.android.keyboard.HardwareKeyHandler
 import io.ensomi.android.keyboard.KeepInputMethodAway
 import io.ensomi.android.keyboard.Keyboards
@@ -195,6 +196,10 @@ fun PlayScreen(
     GameTheme {
         Immersive()
         KeepInputMethodAway()
+        DisposableEffect(Unit) {
+            GameScreens.open++
+            onDispose { GameScreens.open-- }
+        }
         val context = LocalContext.current
         val density = LocalDensity.current
         val cutoutTop = WindowInsets.displayCutout.getTop(density).toFloat()

@@ -8,6 +8,7 @@ import android.util.Log
 import android.view.InputDevice
 import android.view.KeyEvent
 import io.ensomi.android.R
+import io.ensomi.android.diagnostics.Journal
 import io.ensomi.android.prototype.DebugTools
 import io.ensomi.android.settings.BindableKey
 import io.ensomi.android.settings.KeyMap
@@ -162,10 +163,18 @@ object KeyLabels {
 }
 
 /**
+ * The play screens open, for the journal's `in_game` (keyboard.md, Diagnostics): counted, on the main thread, since a
+ * screen can open before the one it replaces closes.
+ */
+object GameScreens {
+    var open = 0
+}
+
+/**
  * The keyboards connected to the device, one for the process in `AppStores`: an `InputManager.InputDeviceListener` on
  * the main looper keeps a [KeyboardRoster] of every non-virtual device with letter keys, resolved with the key map that
- * [maps] gives (Settings' map). It needs no permission; pairing is Android's. Debug builds log each keyboard by vendor
- * and product id under `EnsomiKeys`, never by name.
+ * [maps] gives (Settings' map). It needs no permission; pairing is Android's. Each keyboard added or removed is a
+ * journal record, and in debug builds a line under `EnsomiKeys`, by vendor and product id, never by name.
  */
 class ConnectedKeyboards(context: Context, maps: Flow<KeyMap>, scope: CoroutineScope) : Keyboards {
     private val appContext = context.applicationContext
@@ -198,12 +207,27 @@ class ConnectedKeyboards(context: Context, maps: Flow<KeyMap>, scope: CoroutineS
         if (logs) Log.i(TAG, "Keyboards: ${keyboards.value.joinToString { "${it.ids} (device ${it.deviceId})" }.ifEmpty { "none" }}")
     }
 
-    /** [change], logged in debug builds when it changed the keyboards: by vendor and product id only. */
+    /**
+     * [change], journalled when it changed the keyboards, as `input_device` added or removed, once per connection and
+     * not durable (keyboard.md, Diagnostics), and logged in debug builds: by vendor and product id only.
+     */
     private fun logged(what: String, deviceId: Int, change: () -> Unit) {
         val before = keyboards.value.firstOrNull { it.deviceId == deviceId }
         change()
         val after = keyboards.value.firstOrNull { it.deviceId == deviceId }
         val keyboard = after ?: before ?: return
+        Journal.record(
+            "input_device",
+            if (what == "connected") "added" else "removed",
+            linkedMapOf(
+                "kind" to "keyboard",
+                "vendor" to String.format(Locale.ROOT, "%04x", keyboard.vendorId),
+                "product" to String.format(Locale.ROOT, "%04x", keyboard.productId),
+                "external" to keyboard.external.toString(),
+                "in_game" to (GameScreens.open > 0).toString(),
+            ),
+            durable = false,
+        )
         if (logs) Log.i(TAG, "Keyboard $what: ${keyboard.ids}, device ${keyboard.deviceId}, external ${keyboard.external}")
     }
 

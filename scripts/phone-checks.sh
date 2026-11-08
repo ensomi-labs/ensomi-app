@@ -394,7 +394,7 @@ fi
 if wanted manual; then
   step "The app's logs and its last game"
   mkdir -p "$OUT/manual"
-  for file in clock-log.csv frame-log.csv touch-log.csv settings.json library.json; do
+  for file in clock-log.csv frame-log.csv touch-log.csv key-log.csv settings.json library.json; do
     ash run-as $PKG cat files/$file >"$OUT/manual/$file"
     # A file the app has not written (no game yet) is left out rather than kept as an error message.
     if grep -q -E 'No such file|run-as:' "$OUT/manual/$file"; then rm -f "$OUT/manual/$file"; fi
@@ -403,7 +403,7 @@ if wanted manual; then
   adb logcat -d -v threadtime -s Ensomi:I EnsomiPlay:I EnsomiAudio:I EnsomiPlayfield:I EnsomiCalibration:I \
     EnsomiCharts:I EnsomiModel:I EnsomiModelInstall:I EnsomiDiagnostics:I EnsomiDecodeCheck:I \
     BufferQueueProducer:I .ensomi.android:I >"$OUT/manual/logcat.txt" 2>&1
-  say "  collected the logs, the last game's clock, frame and touch logs, settings.json and library.json"
+  say "  collected the logs, the last game's clock, frame, touch and key logs, settings.json and library.json"
 fi
 
 wait_device

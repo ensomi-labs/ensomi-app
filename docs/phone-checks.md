@@ -139,8 +139,10 @@ The Settings toggle for the same thing is believed to be 后台弹出界面 in t
 
 What the script cannot do. Use the app normally (it is the debug build the script installed): add a song from the
 kit (copy `songs/` to the phone first), make a chart, play. Before you start, run `adb logcat -G 16M` so the phone keeps
-enough log; afterwards run `sh phone-checks.sh -n -g manual` to collect the app's logs and its last game's clock and
-frame files, and send that archive too. Write the answers in a text file named `checklist.txt`, one line per item.
+enough log; afterwards run `sh phone-checks.sh -n -g manual` to collect the app's logs and its last game's clock,
+frame, touch and key files, and send that archive too. Write the answers in a text file named `checklist.txt`, one line
+per item. Rows 14 to 21 need a hardware keyboard, a Bluetooth one on the Redmi K Pad first, then on the Redmi K80
+([keyboard.md](keyboard.md#on-a-phone-or-tablet)); a second keyboard, where one is at hand, goes in the notes of 17.
 
 | # | Check | What to do | What to record |
 | --- | --- | --- | --- |
@@ -157,6 +159,14 @@ frame files, and send that archive too. Write the answers in a text file named `
 | 11 | Heat (gameplay.md) | Play for 10 minutes (the playfield preview loops), then at once run `sh phone-checks.sh -n -g frames -l hot` (it still installs two builds: answer the prompts) | Nothing more: the frames results hold the thermal state before and after |
 | 12 | Refresh rate (gameplay.md) | Note the phone's display refresh setting (HyperOS: Settings › Display › Refresh rate) and whether battery saver was on | The setting's name and value |
 | 13 | Smooth motion by hand (plan 9) | `adb install -r -t app-checks.apk`, play one whole song without touching the volume keys, leave the results open, `adb install -r -t app-debug.apk` (its data stays, and only a debuggable build can hand the files over), then run the `manual` collection | Whether the notes ever stuttered or jumped, and when in the song; the `manual` archive holds the rest |
+| 14 | Keyboard and labels | Pair the keyboard; open Settings › Keyboard; look at a game's tray; then Settings › About › Diagnostics › Copy JSON with the keyboard connected | The name shown; whether the labels match the keycaps (Z X . / by default); the layout Android chose; whether the JSON's `input.keyboards` lists the keyboard by vendor and product id, and whether its name appears anywhere in the JSON (it must not) |
+| 15 | Rollover | Settings › Keyboard › Test keys: hold Z X . / together; then pairs and threes; then your own keys | "Most lane keys held together"; any lane that stayed dark, or lit without its key |
+| 16 | Connect in a game | Keyboard off; start a game; turn it on mid-song | Whether the song went on without restarting, and whether the labels appeared |
+| 17 | A full game with keys | Play one whole song with the keyboard, then run the `manual` collection | The results screenshot; anything late or missed (the archive holds the key log and late inputs by source) |
+| 18 | Keys against touch | On one output and audio slot: Settings › Calibrate three times by touch for touch's slot, then three times with lane keys for the keyboard's | Each touch value and each keyboard value |
+| 19 | Key to light | Film a lane key press with the lane light in frame at 240 fps or more; then a finger tap on the glass the same way | Both videos |
+| 20 | What stands before the app | Play with the phone's usual input method, and with a Chinese input method that supports physical keyboards (the phone's own, Sogou or Baidu) where one is installed; try Meta shortcuts and Game Turbo if present; with TalkBack on, press lane keys in the preview | Each input method's name; any lost key, composing text or candidate bar; any key the system took; whether lane keys played with TalkBack on |
+| 21 | Keys around the game | Without touching: Library → song → Play → Escape → Escape → finish → Play again → Escape back to the song, with Tab, the arrows and Enter; Tab through Settings and the Keyboard screen; give lane 1 Space, then in a game tap the screen once and press Space; then give Pause another key and press Escape in a game and on its pause panel | Anything unreachable, or focused without a visible focus state (Resume when the panel opens after Escape, Play again when the results open after a key); whether the Space after the tap played lane 1; what Escape did with Pause elsewhere |
 
 ## What to send back
 

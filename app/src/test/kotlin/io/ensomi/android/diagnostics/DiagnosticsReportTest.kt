@@ -1,5 +1,6 @@
 package io.ensomi.android.diagnostics
 
+import android.view.InputDevice
 import io.ensomi.android.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -64,6 +65,22 @@ class DiagnosticsReportTest {
         assertEquals("checkPackage(\"{}\")", selfTest["call"])
         assertEquals("unavailable", runtime["identity"])
         assertEquals(null, RuntimeFacts(false, null, null, null, null).pass)
+    }
+
+    @Test
+    fun keyboardsAreListedByIdsAndTypeWithNoName() {
+        assertTrue(""""input":{"keyboards":[]}""" in report.toJson())
+        val json = report.copy(
+            keyboards = listOf(
+                KeyboardFacts(0x046d, 0xb342, external = true, keyboardType = InputDevice.KEYBOARD_TYPE_ALPHABETIC),
+                KeyboardFacts(0x0001, 0x0001, external = false, keyboardType = InputDevice.KEYBOARD_TYPE_NON_ALPHABETIC),
+            ),
+        ).toJson()
+        assertTrue(
+            json,
+            """"input":{"keyboards":[{"vendorId":"046d","productId":"b342","external":true,"keyboardType":"alphabetic"},""" +
+                """{"vendorId":"0001","productId":"0001","external":false,"keyboardType":"non_alphabetic"}]}""" in json,
+        )
     }
 
     @Test

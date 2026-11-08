@@ -1,6 +1,8 @@
 package io.ensomi.android.diagnostics
 
+import android.view.InputDevice
 import io.ensomi.android.json.Json
+import java.util.Locale
 
 /** What the Diagnostics screen reads at launch. Null means the device did not say. */
 data class DiagnosticsReport(
@@ -13,6 +15,7 @@ data class DiagnosticsReport(
     val audio: AudioFacts,
     val thermal: ThermalFacts,
     val runtime: RuntimeFacts,
+    val keyboards: List<KeyboardFacts> = emptyList(),
     val exits: List<Map<String, Any?>> = emptyList(),
     val journal: List<Map<String, Any?>> = emptyList(),
     val exitCollection: String = "unavailable",
@@ -76,6 +79,7 @@ data class DiagnosticsReport(
                     "observed" to runtime.observed, "pass" to runtime.pass,
                 ),
             ),
+            "input" to linkedMapOf("keyboards" to keyboards.map { it.toJsonMap() }),
             "exits" to exits,
             "journal" to journal,
             "exitCollection" to exitCollection,
@@ -131,6 +135,26 @@ data class AudioFacts(
     val outputFramesPerBuffer: Int?,
     val unprocessedCapture: Boolean,
 )
+
+/**
+ * An input device with keys that is not virtual (keyboard.md, Diagnostics): its ids, whether it is external (USB or
+ * Bluetooth) and its `InputDevice.KEYBOARD_TYPE_*`. Never its name or descriptor, which are free text and a stable id.
+ */
+data class KeyboardFacts(val vendorId: Int, val productId: Int, val external: Boolean, val keyboardType: Int) {
+    fun toJsonMap() = linkedMapOf(
+        "vendorId" to hex(vendorId),
+        "productId" to hex(productId),
+        "external" to external,
+        "keyboardType" to when (keyboardType) {
+            InputDevice.KEYBOARD_TYPE_ALPHABETIC -> "alphabetic"
+            InputDevice.KEYBOARD_TYPE_NON_ALPHABETIC -> "non_alphabetic"
+            InputDevice.KEYBOARD_TYPE_NONE -> "none"
+            else -> "type $keyboardType"
+        },
+    )
+
+    private fun hex(id: Int) = String.format(Locale.ROOT, "%04x", id)
+}
 
 /** [status] is the lower-case name of `PowerManager.THERMAL_STATUS_*`; [headroom10s] is null when unsupported. */
 data class ThermalFacts(val status: String, val headroom10s: Float?)

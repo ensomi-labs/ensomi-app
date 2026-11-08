@@ -4,12 +4,14 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.hardware.display.DisplayManager
+import android.hardware.input.InputManager
 import android.media.AudioManager
 import android.os.Build
 import android.os.PowerManager
 import android.system.Os
 import android.system.OsConstants
 import android.view.Display
+import android.view.InputDevice
 import java.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -33,6 +35,7 @@ class DiagnosticsCollector(context: Context, private val runtimeIdentity: String
                 audio = fact(failures, "audio", AudioFacts(false, false, null, null, false), ::audio),
                 thermal = fact(failures, "thermal", ThermalFacts("unknown", null), ::thermal),
                 runtime = runtime.copy(identity = runtimeIdentity),
+                keyboards = fact(failures, "input", emptyList(), ::keyboards),
                 exits = exits, journal = Journal.snapshot(3, exits.mapNotNull { it["run"] as? String }.toSet()),
                 exitCollection = ExitRecords.collection, collectionErrors = failures,
             )
@@ -98,6 +101,14 @@ class DiagnosticsCollector(context: Context, private val runtimeIdentity: String
             unprocessedCapture =
                 audioManager.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED) == "true",
         )
+    }
+
+    /** Every input device with keys that is not virtual, as the input system lists them now; no app store. */
+    private fun keyboards(): List<KeyboardFacts> {
+        val input = context.getSystemService(InputManager::class.java)
+        return input.inputDeviceIds.toList().mapNotNull(input::getInputDevice)
+            .filter { !it.isVirtual && it.keyboardType != InputDevice.KEYBOARD_TYPE_NONE }
+            .map { KeyboardFacts(it.vendorId, it.productId, it.isExternal, it.keyboardType) }
     }
 
     private fun thermal(): ThermalFacts {

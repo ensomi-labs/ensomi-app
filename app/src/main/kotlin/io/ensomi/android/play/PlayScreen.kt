@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioAttributes
+import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -273,7 +274,10 @@ fun PlayScreen(
             }
         }
 
-        /** The track's route, on the main thread: the first is the game's output; a change after it pauses. */
+        /**
+         * The track's route, or Android's for the game's sound after devices came or went, on the main thread: the
+         * track's first is the game's output; a change after it pauses.
+         */
         fun routed(device: AudioDeviceInfo?) {
             val outputs = game?.outputs ?: return
             if (device == null) return
@@ -287,6 +291,19 @@ fun PlayScreen(
             running.clock?.outputChanged(System.nanoTime())
             movedTo = outputs.routeOf(device).name
             pause("the output changed")
+        }
+
+        // A paused track names a new output only once it plays again, so headphones going during a pause (the pause
+        // their going brings) would bring a second pause after Resume. Android names it as devices come or go: the
+        // change is named on the pause it comes with, and the track naming it later is nothing new.
+        if (game != null) {
+            OutputDevices { device ->
+                val id = running.deviceId
+                if (id != null && device != null && device.id != id) {
+                    Log.i(TAG, "Devices changed: Android plays the sound on ${device.type}/${device.productName} now")
+                    routed(device)
+                }
+            }
         }
 
         /** Debug builds: the game's clock and input logs, written when it closes. */
@@ -571,6 +588,30 @@ private fun BecomingNoisy(onNoisy: () -> Unit) {
         }
         context.registerReceiver(receiver, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY), Context.RECEIVER_NOT_EXPORTED)
         onDispose { context.unregisterReceiver(receiver) }
+    }
+}
+
+/**
+ * Devices came or went: [onChange] hears the device Android would play the game's sound on now, on the main thread
+ * (`getAudioDevicesForAttributes`), null if it says none. It also hears it once as it starts listening.
+ */
+@Composable
+private fun OutputDevices(onChange: (AudioDeviceInfo?) -> Unit) {
+    val context = LocalContext.current
+    val change by rememberUpdatedState(onChange)
+    DisposableEffect(context) {
+        val audioManager = context.getSystemService(AudioManager::class.java)
+        val callback = object : AudioDeviceCallback() {
+            override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) = changed()
+
+            override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) = changed()
+
+            private fun changed() {
+                change(audioManager.getAudioDevicesForAttributes(GameAudio.ATTRIBUTES).firstOrNull())
+            }
+        }
+        audioManager.registerAudioDeviceCallback(callback, Handler(Looper.getMainLooper()))
+        onDispose { audioManager.unregisterAudioDeviceCallback(callback) }
     }
 }
 

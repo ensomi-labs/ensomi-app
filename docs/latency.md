@@ -302,10 +302,13 @@ release ([gameplay.md, Judgements through the runtime](gameplay.md#judgements-th
 
 ### Pause after a change of output
 
-The game still pauses when its sound moves. The panel says: **"Sound moved to Pixel Buds. This game keeps audio
-latency 0 · Speaker."**, or "This game keeps audio latency 0." for a slot without a name (O4). The game cannot take
-another slot: Settings is not reachable during a game, and a new A would move the session's time back, which it never
-does, or forward past notes. The next game, or Restart, uses the active slot then.
+The game still pauses when its sound moves. The panel says: **"Sound moved to Pixel Buds. This game keeps audio latency
+0 · Speaker."**, or "This game keeps audio latency 0." for a slot without a name (O4). It says so on the pause the
+change brings: headphones going pause the game as they go (`ACTION_AUDIO_BECOMING_NOISY`), and a paused track names its
+new output only once it plays again, so as devices come or go the game also asks where Android plays its sound now
+(`getAudioDevicesForAttributes`); the track's own word after Resume is then nothing new, and Resume resumes. The game
+cannot take another slot: Settings is not reachable during a game, and a new A would move the session's time back, which
+it never does, or forward past notes. The next game, or Restart, uses the active slot then.
 
 ### Haptics
 

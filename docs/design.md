@@ -281,7 +281,7 @@ The game pauses by itself whenever the player cannot be playing:
 | Another window takes focus (notification shade, a dialog, split screen) | window focus |
 | Another app takes audio focus (a call, a voice assistant) | `AudioManager` focus loss ([audio focus](https://developer.android.com/media/optimize/audio-focus)) |
 | Headphones unplugged or disconnected | `ACTION_AUDIO_BECOMING_NOISY` ([output devices](https://developer.android.com/media/platform/output)) |
-| The output device changes | `AudioTrack.addOnRoutingChangedListener` |
+| The output device changes | `AudioTrack.addOnRoutingChangedListener`; as devices come or go, where Android plays the game's sound (`getAudioDevicesForAttributes`), since a paused track names its new output only once it plays again |
 
 A short sound that only ducks the game (a notification) does not pause it: Android lowers the game's volume for it by
 itself. Audio focus is asked for again on each resume; if it is refused (a call goes on), the game stays paused. When

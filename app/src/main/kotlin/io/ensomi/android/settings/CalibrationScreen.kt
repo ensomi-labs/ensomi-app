@@ -14,17 +14,12 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -304,13 +299,9 @@ fun CalibrationScreen(
             },
         ) { padding ->
             // One layout for both shapes, so that turning the phone resizes the field and keeps its game: wider than
-            // tall, the field on the left and the rest on the right; otherwise the field on top, the rest under it.
-            BoxWithConstraints(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
-            ) {
+            // tall, the field on the left and the rest on the right; otherwise the field on top, the rest under it. The
+            // Scaffold's padding holds the display cutout as well as the system bars.
+            BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
                 val wide = maxWidth > maxHeight
                 // On a phone held sideways the column is short: the readings scroll with the controls, so the scroll has
                 // its whole height (the K90 round). Tablets and portrait keep them in sight above the controls.

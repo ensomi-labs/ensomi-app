@@ -630,7 +630,8 @@ private fun HitStrip(errorsMs: List<Double>, averageMs: Double?, method: InputSo
  * The two values, each on a panel, then the help: Audio latency with its slots, its value with steps and a slider, Name
  * and the output the clicks play on; Input latency with the method chosen, the slot that method uses, its value with
  * steps and a slider, and Name. Each panel says what its value moves. Every change goes straight to the settings store.
- * [compact], on a phone held sideways, sets each slider between its steps and Name and spaces the panels closer.
+ * [compact], on a phone held sideways, spaces the panels closer and, but at large text sizes, where the value would leave
+ * it too little room, sets each slider between its steps and Name.
  */
 @Composable
 private fun Controls(
@@ -642,6 +643,7 @@ private fun Controls(
     onName: (SlotNaming) -> Unit,
     compact: Boolean,
 ) {
+    val sliderBeside = compact && LocalDensity.current.fontScale <= LARGE_TEXT_SCALE
     Column(verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)) {
         Panel(compact) {
             val active = settings.audioLatency.active
@@ -669,9 +671,9 @@ private fun Controls(
                 onName = { onName(SlotNaming(LatencyKind.AUDIO, active)) },
                 modifier = Modifier.fillMaxWidth(),
                 valueStyle = MaterialTheme.typography.headlineSmall,
-                between = if (compact) ({ slider(Modifier.weight(1f)) }) else null,
+                between = if (sliderBeside) ({ slider(Modifier.weight(1f)) }) else null,
             )
-            if (!compact) slider(Modifier.fillMaxWidth().padding(horizontal = PANEL_TEXT_INSET))
+            if (!sliderBeside) slider(Modifier.fillMaxWidth().padding(horizontal = PANEL_TEXT_INSET))
             PanelNote(stringResource(R.string.calibration_audio_help))
             PanelNote(stringResource(R.string.settings_sound_now, route.name))
         }
@@ -713,9 +715,9 @@ private fun Controls(
                 onName = { onName(SlotNaming(LatencyKind.INPUT, slot)) },
                 modifier = Modifier.fillMaxWidth(),
                 valueStyle = MaterialTheme.typography.headlineSmall,
-                between = if (compact) ({ slider(Modifier.weight(1f)) }) else null,
+                between = if (sliderBeside) ({ slider(Modifier.weight(1f)) }) else null,
             )
-            if (!compact) slider(Modifier.fillMaxWidth().padding(horizontal = PANEL_TEXT_INSET))
+            if (!sliderBeside) slider(Modifier.fillMaxWidth().padding(horizontal = PANEL_TEXT_INSET))
             PanelNote(stringResource(R.string.calibration_input_help))
         }
         // What the screen is for, in full, after the values it is about.

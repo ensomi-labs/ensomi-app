@@ -265,12 +265,12 @@ class InputQueueTest {
     }
 
     /**
-     * The first timestamp after a resume may put the audio clock ahead of the time it held at, which it takes at once.
-     * A press made while it still held, taken by a later frame, then maps before that time; it is stamped at it
-     * instead, where the session's clock already is after the release at the resume, so it is not late.
+     * After a resume the game's time runs on from the time it held at before the output's first timestamp comes, and
+     * that timestamp only steers it. A press made in between, taken by the frame that finds the timestamp, is stamped on
+     * the game's time after the time held, behind the release at the resume, and is not late.
      */
     @Test
-    fun onTheAudioClockAPressAfterTheResumeIsNeverStampedBeforeTheTimeItHeldAt() {
+    fun onTheAudioClockAPressAfterTheResumeIsStampedOnTheTimeRunningOnFromThePause() {
         val output = Output()
         val audio = AudioPlayClock(output, rate, leadInFrames = 0)
         val delivered = ArrayList<Pair<Double, LaneInput>>()
@@ -284,18 +284,19 @@ class InputQueueTest {
         output.next = OutputTimestamp(frames(5_010.0), 5_011 * ms)
         queue.add(LaneInput(0, press = false, 20_000 * ms, 1, InputSource.TOUCH, atPause = true))
         audio.resume(20_000 * ms)
-        // A press handled while the clock still waited, but only taken by the frame that finds the first timestamp,
-        // which is ahead of the held time by then: 5 022 ms at 20 020 ms.
+        // A press handled before the first timestamp, but only taken by the frame that finds it, 8 ms behind the game.
         val press = LaneInput(0, press = true, 20_004 * ms, 2, InputSource.TOUCH)
         audio.update(20_002 * ms)
-        queue.frame(audio.songTimeMs(20_002 * ms)!!, timing(), audio.isPaused)
+        assertEquals("The game's time runs on at once", 5_012.0, audio.songTimeMs(20_002 * ms)!!, 1e-9)
+        queue.frame(5_012.0, timing(), audio.isPaused)
         queue.add(press)
         output.next = OutputTimestamp(frames(5_012.0), 20_010 * ms)
         audio.update(20_020 * ms)
-        assertEquals("On the new line it is before the pause", 5_006.0, audio.songTimeMs(press.eventNanos)!!, 1e-9)
         queue.frame(audio.songTimeMs(20_020 * ms)!!, timing(), audio.isPaused)
-        assertEquals(listOf(5_010.0, 5_010.0), delivered.map { it.first })
-        assertEquals(press, delivered.last().second)
+        assertEquals(2, delivered.size)
+        assertEquals(5_010.0, delivered[0].first, 1e-9)
+        assertEquals(press, delivered[1].second)
+        assertTrue("stamped ${delivered[1].first}", delivered[1].first > 5_010.0 && delivered[1].first < 5_020.0)
     }
 
     /**

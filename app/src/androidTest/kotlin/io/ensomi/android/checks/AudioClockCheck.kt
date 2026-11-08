@@ -124,7 +124,8 @@ class AudioClockCheck {
                 "queuedMs" to GameAudio.QUEUED_MS,
                 "underruns" to underruns,
                 "clockReads" to clock.reads,
-                "clockStepsBackHeld" to clock.stepsBack,
+                "clockStepsBack" to clock.stepsBack,
+                "clockFurthestMs" to PhoneCheck.round(clock.furthestMs),
             ) + result + linkedMapOf(
                 "files" to listOf(csvFrames, csvPairs),
                 "ok" to (songBack == 0),

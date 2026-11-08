@@ -238,7 +238,7 @@ object AudioClickTracks : ClickTracks {
 
             override fun close() {
                 audio.close()
-                Log.i(TAG, "Clicks closed: ${audioClock.reads} timestamps read, ${audioClock.stepsBack} steps back held")
+                Log.i(TAG, "Clicks closed: ${audioClock.summary()}")
             }
         }
     }

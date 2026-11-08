@@ -189,22 +189,32 @@ conversion. Cancellation is checked between frames; other codecs keep one extrac
 
 **Reading it.** `AudioTrack.getTimestamp` gives a frame position and "the estimated time when that frame was presented
 or is committed to be presented" ([AudioTrack](https://developer.android.com/reference/android/media/AudioTrack#getTimestamp(android.media.AudioTimestamp))).
-The clock keeps the newest valid pair and carries it to any asked time at rate 1:
+The clock keeps the newest valid pair and carries it to any asked time at rate 1, the song time heard:
 
 ```text
-songMs(t) = (framePosition − leadInFrames) / sampleRate × 1000 + (t − nanoTime) / 1e6
+heardMs(t) = (framePosition − leadInFrames) / sampleRate × 1000 + (t − nanoTime) / 1e6
 ```
+
+The game does not take that line as it is: its song time, `songMs(t)`, is a line of its own steered toward it, as
+osu!'s gameplay clock follows its track (below), so that it never steps.
 
 - Only the low 32 bits of the position are valid; the clock extends them across wraps (same source).
 - It polls every 10 ms while the output warms up and for a second after each start, resume or route change, then once
   a second; the reference says short-term differences are not meaningful and to build the fine mapping in the app.
   Media3 does the same (10 ms, then 10 s; stack report §2.4). How often to poll once stable is a phone measurement.
-- Before the first valid timestamp after a start or a resume, the clock holds its time: a pair counts only if it was
-  presented after the start or resume and its frame is past the one play starts from (the lead-in's first, or after a
-  resume the one held). It never runs backwards:
-  if a new pair would move song time back, the clock keeps to the old line up to the latest time it was asked for
-  (frames ask for their presentation time, a little ahead) and holds there until the new line catches up, taking no
-  other pair meanwhile; a pair ahead is taken at once. The runtime's session never moves back either.
+- After a start or a resume, a pair counts only if it was presented after it and its frame is past the one play starts
+  from (the lead-in's first, or the one a resume plays from). The game's song time starts on the first pair after the
+  start.
+- **Steering.** Each frame the game's rate is 1 plus the difference from the time heard × ln 2 / 80 ms, so the
+  difference halves every 80 ms: osu!'s gameplay clock, an `InterpolatingFramedClock` over its track with a drift
+  recovery half-life of 80 ms (`ppy/osu@77df204:osu.Game/Beatmaps/FramedBeatmapClock.cs:78-81`;
+  `ppy/osu-framework@0d5edae:osu.Framework/Timing/InterpolatingFramedClock.cs:126-145`). Past 33.3 ms (two 60 Hz frames)
+  osu! jumps to its track instead (`InterpolatingFramedClock.cs:22`, `:137-144`); here the rate stays at what the
+  half-life gives there, 1 ± 0.29, until the difference is back under it, and it changes by at most 0.004 a
+  millisecond. So a timestamp late, early or stepped (a deep-buffer output's 40 ms period, an underrun) bends the
+  chart's speed for a moment and never moves it at once. The line turns at the latest time it was asked for (frames ask
+  for their presentation time, a little ahead), so nothing shown changes or runs back, as osu! keeps its time from going
+  back (`InterpolatingFramedClock.cs:156-159`). The runtime's session never moves back either.
 - The timestamp is a presented frame, so the output latency the device reports is already out of song time. What it
   does not report stays in the audio latency. There is no runtime API for true end-to-end audio latency, and the CDD
   bounds the reported value only loosely (stack report §2.4), so the latency slots stay necessary.
@@ -215,19 +225,30 @@ songMs(t) = (framePosition − leadInFrames) / sampleRate × 1000 + (t − nanoT
   ([latency.md](latency.md#the-model)); the device the track is routed to (`AudioTrack.getRoutedDevice`) only names
   the output, as the pause panel does when it changes.
 
-**Pause and resume.** Pause stops the track and the clock holds the song time being heard: the chart and the game hold
-on that frame through the pause panel and the count-in. Resume, after the count-in, plays the song again from that
-frame (the owner's decision). The output has taken frames past it, its latency's worth (on Bluetooth, typically 150
-to 300 ms), which play out after the pause; a plain `play()` would go on after them, and its first timestamp would put
-song time that far ahead at once. So the writer flushes the paused track (`AudioTrack.flush`), fills it again from the
-held frame and plays it, and the track's timestamps count on from there. The clock holds until the first timestamp
-after it, as the Swift clock waits for the first buffer after `play()`, and goes on from the held time; the step it
-takes then is how long after that frame was heard its timestamp was read, which the game logs with how long the output
-took to play it. The chart does not rewind; the music heard after the pause is heard again. Lanes held at the pause
-stay held through it ([Input](#input), Edge cases).
+**Pause and resume.** Pause stops the track and the clock holds the furthest song time shown: the chart and the game
+hold on that frame through the pause panel and the count-in. After the count-in the game's time goes on from it at
+once, frame by frame from the last paused frame's presentation, and the music is put where the game's time is (the
+owner's decisions): the chart neither rewinds nor waits for the sound. The output has taken frames past the paused one,
+its latency's worth (on the K90's speaker 158 to 184 ms), which play out after the pause, and after a restart it plays
+its first frame only after a latency of its own (77 to 88 ms there). So the writer flushes the paused track
+(`AudioTrack.flush`), fills it from the frame the game's time will have reached when it is heard, by how long the last
+start or resume took to be heard, or as much further on as the flush took (once 80 ms there), and plays it. Until the
+first timestamp after it, which on the K90 came 50 to 60 ms after its frame was heard, the game's time runs at rate 1;
+that timestamp only steers it. The game logs how long the music took to be heard again and how far it then was from the
+game's time. Lanes held at the pause stay held through it ([Input](#input), Edge cases).
 
-**The picture follows the audio.** Each frame is drawn for the time it will be on screen, not when its code runs: the
-render time is the song time at the frame's expected presentation time, less the audio latency (next section).
+osu! pauses its BASS channel in place and plays it on with no seek
+(`ppy/osu@77df204:osu.Game/Screens/Play/MasterGameplayClockContainer.cs:109-113`; until 2024 it seeked back to the time
+it stopped at, since a 200 ms frequency ramp ran the track on past it, `ppy/osu@e260e75`, same file, `:118-123`,
+`:151-157`), and its gameplay clock holds while stopped and interpolates on after
+(`InterpolatingFramedClock.cs:113-124`). Its track's position is what the mixer has played, not what is heard, so it
+goes on from the paused point at once. The timestamps here are what is heard, which a restart puts a latency behind;
+hence the music is placed that far ahead.
+
+**The picture follows the game's time.** Each frame is drawn for the time it will be on screen, not when its code runs:
+the render time is the game's song time at the frame's expected presentation time, less the audio latency (next
+section). Judgement takes the same time, so presses are judged on what is drawn, which is on what is heard but for the
+moments the steering takes.
 
 ## The frame
 

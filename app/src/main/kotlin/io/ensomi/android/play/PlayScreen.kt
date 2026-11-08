@@ -361,7 +361,7 @@ fun PlayScreen(
                 inputLog = inputLog,
                 onClose = {
                     audio.close()
-                    Log.i(TAG, "Clock: ${clock.reads} timestamps read, ${clock.stepsBack} steps back held")
+                    Log.i(TAG, "Clock: ${clock.summary()}")
                     writeLogs(clockLog, inputLog)
                 },
                 script = if (game.autoplay) Autoplay.inputs(game.chart) else emptyList(),

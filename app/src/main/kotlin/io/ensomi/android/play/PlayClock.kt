@@ -14,8 +14,9 @@ interface PlayClock : AutoCloseable {
     fun update(nanoTime: Long) = Unit
 
     /**
-     * The song time, in milliseconds, of the sound heard at [nanoTime]: negative during the lead-in before the
-     * song's first frame, frozen while paused, null until the output has reported its first frame.
+     * The game's song time at [nanoTime], in milliseconds, which follows the sound heard then without ever stepping:
+     * negative during the lead-in before the song's first frame, frozen while paused, null until the output has
+     * reported its first frame.
      */
     fun songTimeMs(nanoTime: Long): Double?
 

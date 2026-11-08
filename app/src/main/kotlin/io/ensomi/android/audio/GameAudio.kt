@@ -26,8 +26,9 @@ import kotlin.math.roundToLong
  *
  * The writer fills the track's buffer ([QUEUED_MS] or more) before [play] and blocks while it is full, so at least
  * 200 ms stay queued; while the track does not play, it waits once the buffer is full. [playFrom] plays again from a
- * frame after a pause: the writer flushes the track, fills it from that frame and plays it. [onRoute] hears the device
- * the track plays on, on the main thread: once when it starts, and at every change after.
+ * frame after a pause: the writer flushes the track, fills it from that frame, or as much further on as the flush took,
+ * and plays it. [onRoute] hears the device the track plays on, on the main thread: once when it starts, and at every
+ * change after.
  */
 class GameAudio(
     context: Context,
@@ -57,8 +58,16 @@ class GameAudio(
     /** The track is to play: from [play] or [playFrom] until [pause]. Under [lock]. */
     private var playing = false
 
-    /** The frame [playFrom] asked for, until the writer has flushed the track for it. Under [lock]. */
+    /** The frame [playFrom] asked for, until the writer has flushed the track for it, and when. Under [lock]. */
     private var restartFrame: Long? = null
+    private var restartAskedNanos = 0L
+
+    /**
+     * From [playFrom] until the writer plays the track again: it has no timestamp of the timeline, and a frame asking
+     * for one does not wait for the lock behind the flush, which on a phone took 80 ms.
+     */
+    @Volatile
+    private var restarting = false
 
     /** The frame of the timeline the track's positions count from: 0, or the last restart's. Under [lock]. */
     private var baseFrame = 0L
@@ -102,12 +111,18 @@ class GameAudio(
     val routedDevice: AudioDeviceInfo?
         get() = synchronized(lock) { if (released) null else track.routedDevice }
 
-    /** On the timeline: until the writer has flushed the track for a restart, its frames are those to be dropped. */
-    override fun timestamp(): OutputTimestamp? = synchronized(lock) {
-        if (!released && restartFrame == null && track.getTimestamp(timestamp)) {
-            OutputTimestamp(baseFrame + timestamp.framePosition, timestamp.nanoTime)
-        } else {
-            null
+    /**
+     * On the timeline: none while the writer restarts the track, and none at the track's own position 0, which it
+     * reports before it has presented a frame since it started.
+     */
+    override fun timestamp(): OutputTimestamp? {
+        if (restarting) return null
+        return synchronized(lock) {
+            if (!released && !restarting && track.getTimestamp(timestamp) && timestamp.framePosition != 0L) {
+                OutputTimestamp(baseFrame + timestamp.framePosition, timestamp.nanoTime)
+            } else {
+                null
+            }
         }
     }
 
@@ -143,6 +158,8 @@ class GameAudio(
             )
             playing = true
             restartFrame = frame
+            restartAskedNanos = System.nanoTime()
+            restarting = true
         }
         LockSupport.unpark(writer)
     }
@@ -181,9 +198,15 @@ class GameAudio(
                 val from = restartFrame
                 if (from != null && !released) {
                     track.flush()
-                    baseFrame = from
+                    // As far on as the time since it was asked: the music keeps step with the clock, which ran on.
+                    val lateNanos = System.nanoTime() - restartAskedNanos
+                    frame = from + lateNanos * sampleRate / 1_000_000_000L
+                    if (lateNanos > LATE_LOG_NANOS) {
+                        val lateMs = String.format(Locale.ROOT, "%.1f", lateNanos / 1e6)
+                        Log.i(TAG, "Output: flushed $lateMs ms after it was asked; plays as much further on")
+                    }
+                    baseFrame = frame
                     restartFrame = null
-                    frame = from
                     full = false
                     refilling = true
                 }
@@ -214,7 +237,10 @@ class GameAudio(
             full = written < count * channels
             if (refilling && full) {
                 refilling = false
-                synchronized(lock) { if (playing && restartFrame == null && !released) track.play() }
+                synchronized(lock) {
+                    if (playing && restartFrame == null && !released) track.play()
+                    if (restartFrame == null) restarting = false
+                }
             }
         }
     }
@@ -249,6 +275,7 @@ class GameAudio(
         /** How much the writer hands the track at a time. */
         private const val CHUNK_MS = 20
         private const val FULL_WAIT_NANOS = 5_000_000L
+        private const val LATE_LOG_NANOS = 5_000_000L
         private const val WRITER_JOIN_MS = 1_000L
 
         /** A game's music: the same attributes for the track and for its audio focus. */

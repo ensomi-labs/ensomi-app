@@ -4,11 +4,15 @@ import io.ensomi.android.play.PlayClock
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToLong
 
-/** A reading of the output: a frame position, of which only the low 32 bits are valid, and when it was presented. */
+/**
+ * A reading of the output: a frame of its timeline (the lead-in's first frame is 0), of which only the low 32 bits are
+ * valid, and when it was presented.
+ */
 data class OutputTimestamp(val framePosition: Long, val nanoTime: Long)
 
-/** What the clock reads and drives: `AudioTrack.getTimestamp`, `play` and `pause`. */
+/** What the clock reads and drives: `AudioTrack.getTimestamp`, `play`, `pause`, and play again from a frame. */
 interface PlayOutput {
     /** The newest timestamp, or null while the output has none. */
     fun timestamp(): OutputTimestamp?
@@ -16,6 +20,12 @@ interface PlayOutput {
     fun play()
 
     fun pause()
+
+    /**
+     * Plays again after a pause from [frame] of the timeline, dropping what the output holds past it: the frames still
+     * queued, and those it had already taken, which play out after the pause. Its timestamps go on from [frame].
+     */
+    fun playFrom(frame: Long)
 }
 
 /**
@@ -29,7 +39,9 @@ interface PlayOutput {
  * - It reads the output every 10 ms after a start, a resume or [outputChanged] for [WARM_NANOS], then every
  *   [STABLE_POLL_NANOS].
  * - Before the first timestamp presented after a start or a resume, it holds its time: none after a start, the time
- *   paused at after a resume.
+ *   paused at after a resume. A resume plays the output again from the frame of that time ([PlayOutput.playFrom]), so
+ *   song time goes on from it: the output has taken frames past it, its latency's worth, which played out after the
+ *   pause, and going on from those would put song time ahead at once.
  * - It never runs backwards. A new pair that would put song time back is taken, but the clock keeps to the old line up
  *   to the latest time it was asked for and then holds there until the new line catches up; it takes no other pair
  *   while it holds. A pair ahead of the old line is taken at once.
@@ -74,7 +86,6 @@ class AudioPlayClock(
 
     private var wraps = 0L
     private var lastLow = -1L
-    private var lastFrame = 0L
 
     private var lastPollNanos = Long.MIN_VALUE
     private var warmUntilNanos = Long.MIN_VALUE
@@ -113,9 +124,24 @@ class AudioPlayClock(
             waiting = false
             line = next
             holdFrom = null
-            holdMs = heldMs?.takeIf { next.at(max(nanoTime, latestQueryNanos)) < it }
+            val held = heldMs
+            holdMs = held?.takeIf { next.at(max(nanoTime, latestQueryNanos)) < it }
             heldMs = null
             warmUntilNanos = nanoTime + WARM_NANOS
+            if (held != null) {
+                // When the frame held was heard again, by this pair: how long the output took to play it, and how far
+                // song time steps on now that the clock knows.
+                val heardNanos = next.nanos + ((held - next.songMs) * 1e6).toLong()
+                log(
+                    String.format(
+                        Locale.ROOT,
+                        "Clock: on again from %.1f ms, heard %.1f ms after the resume; a step of %.1f ms as its timestamp came",
+                        held,
+                        (heardNanos - waitFromNanos) / 1e6,
+                        (nanoTime - heardNanos) / 1e6,
+                    ),
+                )
+            }
             return
         }
         val current = line ?: return
@@ -182,10 +208,11 @@ class AudioPlayClock(
         if (!paused) return
         paused = false
         pausedAtNanos = null
-        // A paused output reports the frame it stopped at; the first timestamp to take is one past it.
-        val stoppedAt = output.timestamp()?.let { extend(it.framePosition) } ?: lastFrame
-        waitFor(nanoTime, stoppedAt)
-        output.play()
+        // The song goes on from the frame of the time held, or from the lead-in's first when nothing was heard yet; the
+        // first timestamp to take is one past it.
+        val from = heldMs?.let { max(0L, (it * sampleRate / 1000).roundToLong() + leadInFrames) } ?: 0L
+        waitFor(nanoTime, from)
+        output.playFrom(from)
     }
 
     /** The output moved to another device: read it often again while the new route settles. */
@@ -220,9 +247,7 @@ class AudioPlayClock(
         val low = position and 0xFFFF_FFFFL
         if (lastLow >= 0 && low < lastLow && lastLow - low > HALF_RANGE) wraps++
         lastLow = low
-        val frame = (wraps shl 32) or low
-        lastFrame = frame
-        return frame
+        return (wraps shl 32) or low
     }
 
     companion object {

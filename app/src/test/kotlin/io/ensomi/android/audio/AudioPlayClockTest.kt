@@ -1,5 +1,6 @@
 package io.ensomi.android.audio
 
+import kotlin.math.roundToLong
 import kotlin.random.Random
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -17,6 +18,7 @@ class AudioPlayClockTest {
         var reads = 0
         var plays = 0
         var pauses = 0
+        val playedFrom = ArrayList<Long>()
 
         override fun timestamp(): OutputTimestamp? {
             reads++
@@ -29,6 +31,10 @@ class AudioPlayClockTest {
 
         override fun pause() {
             pauses++
+        }
+
+        override fun playFrom(frame: Long) {
+            playedFrom += frame
         }
     }
 
@@ -123,7 +129,7 @@ class AudioPlayClockTest {
     }
 
     @Test
-    fun pauseFreezesAndResumeWaitsForAFrameHeardAfterIt() {
+    fun pauseFreezesAndResumePlaysAgainFromTheFrameHeld() {
         val output = ScriptedOutput()
         val clock = AudioPlayClock(output, rate, leadInFrames = 0)
         clock.start(0, 0.0)
@@ -136,22 +142,135 @@ class AudioPlayClockTest {
         // Held at the furthest time shown, whatever is asked.
         assertEquals(5_016.0, clock.songTimeMs(9_000 * ms)!!, 1e-9)
         clock.update(9_000 * ms)
-        // The output stopped at 5 012 ms; resumed at 20 s.
-        output.next = OutputTimestamp(frames(5_012.0), 5_013 * ms)
+        // Resumed at 20 s: the output plays again from the frame of the time held, not from the frames it had taken.
         clock.resume(20_000 * ms)
         assertFalse(clock.isPaused)
-        assertEquals(2, output.plays)
+        assertEquals(listOf(frames(5_016.0)), output.playedFrom)
+        assertEquals("Not a plain play", 1, output.plays)
+        output.next = OutputTimestamp(frames(5_030.0), 19_990 * ms)
         clock.update(20_000 * ms)
         assertEquals("A timestamp from before the resume is not taken", 5_016.0, clock.songTimeMs(20_010 * ms)!!, 1e-9)
-        output.next = OutputTimestamp(frames(5_012.0), 20_030 * ms)
-        clock.update(20_030 * ms)
-        assertEquals("Nor one that has not moved", 5_016.0, clock.songTimeMs(20_030 * ms)!!, 1e-9)
-        output.next = OutputTimestamp(frames(5_013.0), 20_041 * ms)
-        clock.update(20_041 * ms)
-        // 5 013 ms at 20.041 s: held at 5 016 until the line reaches it at 20.044 s.
-        assertEquals(5_016.0, clock.songTimeMs(20_042 * ms)!!, 1e-9)
-        assertEquals(5_016.0, clock.songTimeMs(20_044 * ms)!!, 1e-9)
-        assertEquals(5_020.0, clock.songTimeMs(20_048 * ms)!!, 1e-9)
+        output.next = OutputTimestamp(frames(5_016.0), 20_200 * ms)
+        clock.update(20_200 * ms)
+        assertEquals("Nor the frame it plays from", 5_016.0, clock.songTimeMs(20_200 * ms)!!, 1e-9)
+        // 5 017 ms at 20.211 s: the frame held was heard at 20.210 s, and song time goes on from it.
+        output.next = OutputTimestamp(frames(5_017.0), 20_211 * ms)
+        clock.update(20_211 * ms)
+        assertEquals(5_017.0, clock.songTimeMs(20_211 * ms)!!, 1e-9)
+        assertEquals(5_056.0, clock.songTimeMs(20_250 * ms)!!, 1e-9)
+    }
+
+    /**
+     * An output with a pipeline, as Bluetooth headphones have: the track hands it each frame [latencyMs] before it is
+     * heard, and its timestamps come every 20 ms, each the frame heard then. A pause stops it taking frames, and those
+     * it has taken are heard after the pause. A plain [play] goes on after them; [playFrom] starts from the frame asked
+     * for.
+     */
+    private class PipelineOutput(latencyMs: Double, private val rate: Int) : PlayOutput {
+        private class Stretch(val fromFrame: Long, val fromNanos: Long, var untilNanos: Long = Long.MAX_VALUE)
+
+        private val latencyNanos = (latencyMs * 1e6).toLong()
+        private val stretches = ArrayList<Stretch>()
+        var nowNanos = 0L
+        var plays = 0
+        val playedFrom = ArrayList<Long>()
+
+        private fun frames(nanos: Long) = nanos * rate / 1_000_000_000L
+
+        /** The frame heard at [t]; null before the first frame of the latest play is heard. */
+        fun heardAt(t: Long): Long? {
+            val stretch = stretches.lastOrNull() ?: return null
+            val taken = t - latencyNanos
+            if (taken < stretch.fromNanos) return null
+            return stretch.fromFrame + frames(minOf(taken, stretch.untilNanos) - stretch.fromNanos)
+        }
+
+        override fun timestamp(): OutputTimestamp? {
+            val tick = nowNanos / PERIOD_NANOS * PERIOD_NANOS
+            return heardAt(tick)?.let { OutputTimestamp(it, tick) }
+        }
+
+        override fun play() {
+            plays++
+            val taken = stretches.lastOrNull()?.let { it.fromFrame + frames(it.untilNanos - it.fromNanos) } ?: 0L
+            stretches += Stretch(taken, nowNanos)
+        }
+
+        override fun pause() {
+            stretches.last().untilNanos = nowNanos
+        }
+
+        override fun playFrom(frame: Long) {
+            playedFrom += frame
+            stretches += Stretch(frame, nowNanos)
+        }
+
+        private companion object {
+            const val PERIOD_NANOS = 20_000_000L
+        }
+    }
+
+    /**
+     * The chart jumped after Resume on Bluetooth headphones: at a pause the output has taken a pipeline's worth past
+     * the frame being heard, which is heard after the pause, so a plain play goes on after it and its first timestamp
+     * puts song time that far ahead at once. Played again from the frame held, song time holds at the paused value
+     * through the count-in, then goes on from it, a step no larger than how late the first timestamp came, and is the
+     * time heard from then on; never back. On a speaker's short pipeline and on Bluetooth's long one alike.
+     */
+    @Test
+    fun afterAResumeSongTimeGoesOnFromThePausedValueWithoutAJump() {
+        for (latencyMs in listOf(20.0, 250.0)) {
+            val lead = 96_000L
+            val output = PipelineOutput(latencyMs, rate)
+            val clock = AudioPlayClock(output, rate, leadInFrames = lead)
+            val frameNanos = 8_333_333L
+            var now = 1_000 * ms
+            output.nowNanos = now
+            clock.start(now, -2_000.0)
+            val pauseAt = 6_000 * ms
+            val resumeAt = 9_000 * ms
+            var held: Double? = null
+            var takenAtPause = 0L
+            var movedAt: Long? = null
+            var lastNow = Double.NEGATIVE_INFINITY
+            var lastPresent = Double.NEGATIVE_INFINITY
+            while (now < 12_000 * ms) {
+                now += frameNanos
+                output.nowNanos = now
+                if (held == null && now >= pauseAt) {
+                    clock.pause(now)
+                    held = clock.songTimeMs(now)
+                    takenAtPause = (now - 1_000 * ms) * rate / 1_000_000_000L
+                }
+                if (clock.isPaused && now >= resumeAt) clock.resume(now)
+                clock.update(now)
+                val atNow = clock.songTimeMs(now) ?: continue
+                val atPresent = clock.songTimeMs(now + 2 * frameNanos)!!
+                assertTrue("now went back at $now: $atNow < $lastNow", atNow >= lastNow)
+                assertTrue("present went back at $now: $atPresent < $lastPresent", atPresent >= lastPresent)
+                lastNow = atNow
+                lastPresent = atPresent
+                val paused = held ?: continue
+                if (now < resumeAt || (movedAt == null && atNow == paused)) {
+                    assertEquals("Held through the pause and the count-in", paused, atNow, 0.0)
+                    continue
+                }
+                val heard = (output.heardAt(now)!! - lead) * 1000.0 / rate
+                if (movedAt == null) {
+                    movedAt = now
+                    // The frame held was heard [latencyMs] after the resume; the clock learns of it a timestamp later.
+                    val step = atNow - paused
+                    assertTrue("latency $latencyMs: stepped $step ms", step > 0 && step <= 45.0)
+                }
+                assertEquals("latency $latencyMs: the time heard", heard, atNow, 0.05)
+            }
+            val from = (held!! * rate / 1000).roundToLong() + lead
+            assertEquals("Played again from the frame held", listOf(from), output.playedFrom)
+            assertEquals("Not a plain play, which goes on after the frames taken", 1, output.plays)
+            // What a plain play would have jumped by: the frames taken past the one held, the pipeline's worth.
+            assertEquals(latencyMs, (takenAtPause - from) * 1000.0 / rate, 10.0)
+            assertTrue(movedAt != null)
+        }
     }
 
     /**
@@ -231,6 +350,11 @@ class AudioPlayClockTest {
 
             override fun pause() {
                 playing = false
+            }
+
+            override fun playFrom(frame: Long) {
+                heardAt = (frame - 96_000) * 1000.0 / rate
+                playing = true
             }
         }
         val clock = AudioPlayClock(output, rate, leadInFrames = 96_000)

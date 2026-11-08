@@ -171,13 +171,15 @@ fields out.
 Making charts logs under `EnsomiCharts` (each song's audio stages and each chart, with their times and the peak
 resident memory), games under `EnsomiPlay` (the latency for the game, "Latency for this game: audio slot 1 +142 ms; touch slot 0 +8 ms;
 keyboard slot 1 +30 ms", with "(no slot)" for a value no slot gave; each input method's first input and how far the
-input clock held for it; why each pause happened; at the first frame of each pause and after it the inputs delivered
+input clock held for it; why each pause happened, and after each resume when the frame it held was heard again; at
+the first frame of each pause and after it the inputs delivered
 then or the lanes released at the pause's time, the lanes the session holds and the holds held in them, numbered 1 to
 4, and the late inputs so far; at game over the score, the presses by source, the methods that pressed, the hits timed
 by source with their average error, and the late inputs by source, then the keys: the most lane keys held together,
 the keyboards seen by their index in the game, vendor and product id, whether injected keys came, and the map by key
 names), their sound under
-`EnsomiAudio` (the track's buffer, its route and its underruns), and the playfield under `EnsomiPlayfield`: at each
+`EnsomiAudio` (the track's buffer, its route and its underruns, and the song time it plays again from at each
+resume), and the playfield under `EnsomiPlayfield`: at each
 resume the lanes it released at the pause's time and those still held, and from its render thread the frame rate it
 asked for and got, then every two seconds the frames drawn, the vsyncs missed, the frames finished after their
 deadline, and the time in the runtime and in drawing (average, most, and the whole frame's work at the median and the

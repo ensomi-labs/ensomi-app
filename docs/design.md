@@ -295,9 +295,11 @@ changed, the panel also says so: "Sound moved to Pixel Buds. This game keeps aud
 its latencies from start to end, as in the Swift app; [latency.md](latency.md#pause-after-a-change-of-output)). Opened
 by the Pause key, the panel gives Resume focus.
 
-**Resume counts in**: three beats over 1.5 seconds ("3, 2, 1" with "Get ready"), then the music goes on from where it
-stopped. The Swift app resumes at once, which suits a keyboard; on a phone the hands left the glass. The runtime's
-session never moves back in time, so the game cannot rewind instead.
+**Resume counts in**: three beats over 1.5 seconds ("3, 2, 1" with "Get ready"), then the music and the notes go on
+together from the frame the playfield froze on
+([gameplay.md](gameplay.md#the-clock-song-time-from-the-audio-being-heard), Pause and resume). The Swift app resumes at
+once, which suits a keyboard; on a phone the hands left the glass. The runtime's session never moves back in time, so
+the game cannot rewind instead.
 
 ### Results
 

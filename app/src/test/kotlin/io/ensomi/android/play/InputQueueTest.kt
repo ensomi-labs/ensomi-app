@@ -218,6 +218,8 @@ class InputQueueTest {
         override fun play() = Unit
 
         override fun pause() = Unit
+
+        override fun playFrom(frame: Long) = Unit
     }
 
     private val rate = 48_000
@@ -251,12 +253,12 @@ class InputQueueTest {
             audio.pause(5_020 * ms)
             frame(5_030)
             frame(9_000)
-            // The output stopped at 5 012 ms. The playfield queues the release, then the clock runs again.
+            // The playfield queues the release, then the clock runs again: the output plays again from 5 032 ms.
             output.next = OutputTimestamp(frames(5_012.0), 5_013 * ms)
             val release = LaneInput(2, press = false, 20_000 * ms, 2, InputSource.TOUCH, atPause = true)
             queue.add(release)
             audio.resume(20_000 * ms)
-            if (timestampFirst) output.next = OutputTimestamp(frames(5_013.0), 20_005 * ms)
+            if (timestampFirst) output.next = OutputTimestamp(frames(5_033.0), 20_005 * ms)
             frame(20_010)
             assertEquals(listOf(5_005.0 to press, 5_032.0 to release), delivered)
         }

@@ -200,7 +200,8 @@ songMs(t) = (framePosition − leadInFrames) / sampleRate × 1000 + (t − nanoT
   a second; the reference says short-term differences are not meaningful and to build the fine mapping in the app.
   Media3 does the same (10 ms, then 10 s; stack report §2.4). How often to poll once stable is a phone measurement.
 - Before the first valid timestamp after a start or a resume, the clock holds its time: a pair counts only if it was
-  presented after the start or resume and its frame is past the one the output stopped at. It never runs backwards:
+  presented after the start or resume and its frame is past the one play starts from (the lead-in's first, or after a
+  resume the one held). It never runs backwards:
   if a new pair would move song time back, the clock keeps to the old line up to the latest time it was asked for
   (frames ask for their presentation time, a little ahead) and holds there until the new line catches up, taking no
   other pair meanwhile; a pair ahead is taken at once. The runtime's session never moves back either.
@@ -214,9 +215,16 @@ songMs(t) = (framePosition − leadInFrames) / sampleRate × 1000 + (t − nanoT
   ([latency.md](latency.md#the-model)); the device the track is routed to (`AudioTrack.getRoutedDevice`) only names
   the output, as the pause panel does when it changes.
 
-**Pause and resume.** Pause stops the track and the clock holds the song time being heard. Resume, after the count-in,
-plays the track and the clock holds until the first timestamp after it, as the Swift clock waits for the first buffer
-after `play()`. Lanes held at the pause stay held through it ([Input](#input), Edge cases).
+**Pause and resume.** Pause stops the track and the clock holds the song time being heard: the chart and the game hold
+on that frame through the pause panel and the count-in. Resume, after the count-in, plays the song again from that
+frame (the owner's decision). The output has taken frames past it, its latency's worth (on Bluetooth, typically 150
+to 300 ms), which play out after the pause; a plain `play()` would go on after them, and its first timestamp would put
+song time that far ahead at once. So the writer flushes the paused track (`AudioTrack.flush`), fills it again from the
+held frame and plays it, and the track's timestamps count on from there. The clock holds until the first timestamp
+after it, as the Swift clock waits for the first buffer after `play()`, and goes on from the held time; the step it
+takes then is how long after that frame was heard its timestamp was read, which the game logs with how long the output
+took to play it. The chart does not rewind; the music heard after the pause is heard again. Lanes held at the pause
+stay held through it ([Input](#input), Edge cases).
 
 **The picture follows the audio.** Each frame is drawn for the time it will be on screen, not when its code runs: the
 render time is the song time at the frame's expected presentation time, less the audio latency (next section).

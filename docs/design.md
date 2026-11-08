@@ -268,6 +268,10 @@ reach the lanes. The lead-in runs only while the play window has focus: the firs
 Android shows its "Viewing full screen" prompt, which takes focus a moment later, so losing focus before the song has
 started holds the lead-in, without the pause panel, until the prompt is dismissed.
 
+A hardware keyboard plays beside touch: while one is connected each cap carries its key's label, and keys pause, resume
+and move through the panels ([keyboard.md](keyboard.md); its keys table is [Keys around the
+game](keyboard.md#keys-around-the-game)).
+
 The game pauses by itself whenever the player cannot be playing:
 
 | Event | API |
@@ -287,8 +291,9 @@ the app returns from the background, the game is where it was, paused: it outliv
 
 The playfield stays visible, dimmed and frozen, without the judgement word and combo. A panel in the brand's card
 shape says "Paused" and "Resume when you're ready", with **Resume** (primary), Restart and Quit. When the output
-changed, the panel also says so: "Sound moved to Pixel Buds. Its audio offset applies from the next game." (the game
-keeps its offsets from start to end, as in the Swift app).
+changed, the panel also says so: "Sound moved to Pixel Buds. This game keeps audio latency 0 · Speaker." (the game keeps
+its latencies from start to end, as in the Swift app; [latency.md](latency.md#pause-after-a-change-of-output)). Opened
+by the Pause key, the panel gives Resume focus.
 
 **Resume counts in**: three beats over 1.5 seconds ("3, 2, 1" with "Get ready"), then the music goes on from where it
 stopped. The Swift app resumes at once, which suits a keyboard; on a phone the hands left the glass. The runtime's
@@ -299,11 +304,11 @@ session never moves back in time, so the game cannot rewind instead.
 In the game's dark presentation, replacing the game, and still in the play orientation, so the end of a song does not
 turn the screen under the player's hands: the song with its stars and seed; accuracy, large; Perfect, Good
 and Miss counts, each named and coloured (three tiles, or three rows at large text sizes); the longest combo; a timing
-chart of how early or late the hits were, with the mean in words ("Your hits were 6 ms late on average."). When the
-runtime's score suggests an audio offset change of 3 ms or more, a line offers it for the output that was used:
-"Suggested audio offset for Phone speaker: −6 ms (now 0 ms)." with **Use suggested offset**. Then **Play again**
-(primary) and Back to song. In landscape the screen has two columns, the score on the left and the timing, the
-suggestion and the actions on the right, so Play again is on the first screen. Content scrolls behind an opaque band
+chart of how early or late the hits were, with the mean in words ("Your hits were 6 ms late on average."), each method's
+mean when touch and keys both hit notes, and the latency slots the game used ([latency.md](latency.md#results)); nothing
+is suggested. Then **Play again** (primary, with focus when the game ended after a key) and Back to song. In landscape
+the screen has two columns, the score on the left and the timing and the actions on the right, so Play again is on the
+first screen. Content scrolls behind an opaque band
 under the status bar.
 
 ### Settings
@@ -320,33 +325,24 @@ A Material list in sections:
   held upright and beside them in landscape, so it stays in sight while a slider moves. The preview follows
   the lean, width and scroll speed while their sliders are dragged, so the player sees what a change does before playing.
   For the full-size look, About › Playfield preview opens the same sample as a game.
-- **Sound and timing**: music volume (a fraction of the song's own level), audio offset for the current output
-  ("Audio offset for Phone speaker"), visual offset, both with −/+ steppers in 1 ms steps; Calibrate timing.
+- **Keyboard**: one row, the keys and the keyboards connected, opening Settings › Keyboard
+  ([keyboard.md](keyboard.md#settings--keyboard)).
+- **Sound and timing**: music volume (a fraction of the song's own level), the three audio latency slots with the active
+  one chosen by hand, each method's input latency slot, and Calibrate timing
+  ([latency.md](latency.md#settings--sound-and-timing)).
 - **Chart model**: the model panel above, its licence, the model card, the notices.
 - **About**: the playfield preview (a sample chart playing itself), Diagnostics, the version.
 
-Settings are stored with Jetpack DataStore; the audio offset is kept per output device (gameplay.md, Offsets).
+Settings are stored with Jetpack DataStore; nothing is kept per output device (gameplay.md, Offsets and calibration).
 
 ### Timing calibration
 
-In the game's dark presentation, two steps on a segmented control (in landscape it sits in the top bar beside the
-title, so each step keeps the height it needs). The clicks play from the moment the screen opens until it closes,
-through the output play uses.
-
-1. **Sound.** A click every half second. The player taps a large pad on each click, eyes closed if they like. A strip
-   shows the last 16 taps from early to late, as the game would judge them with the offset in use now, so they gather
-   at the middle once it is right. After 16 taps the screen suggests the audio offset for the output the clicks play on
-   (named on the screen) from the median of the last 16, and keeps it current with each tap; Use applies it (a
-   `CONFIRM` tick), Start over clears the taps. Before 16 taps the suggestion reads "—" and Use is off. If the sound
-   moves to another output, the taps start over and the new output is named.
-2. **Picture.** The clicks go on and a note falls onto the line with each one, drawn by the play renderer with the
-   player's lane lean, on the clicks' own clock. The player moves the visual offset slider until the notes cross the
-   line on the click. In landscape the notes sit beside the slider, so the field keeps its height. There is no tapping
-   in this step, so touch latency cannot leak into the visual offset.
-
-The clicks pause when the app leaves the foreground or another app takes audio focus, and go on when it comes back;
-while they are paused the pad says "Paused. Tap to go on.", and a tap does so. How the click is timed and why this
-separates the offsets is in gameplay.md.
+In the game's dark presentation, one screen with no steps ([latency.md](latency.md#timing-calibration-one-screen)): the
+play renderer judges a note on every click of the click track, played through the output play uses, and the player
+moves one audio latency and one input latency value, for touch or the keyboard, by sight and sound alone or by pressing
+along by touch or with lane keys. Every change is kept at once in the slot being edited; nothing is suggested or
+applied. The clicks pause when the app leaves the foreground or another app takes audio focus, and a tap on the field
+or a lane key makes them go on.
 
 ### Diagnostics
 
@@ -415,10 +411,9 @@ Haptics go through `View.performHapticFeedback`, which honours the player's touc
 `VIBRATE` permission ([Haptic feedback](https://developer.android.com/develop/ui/views/haptics/haptic-feedback)).
 
 - **Chrome**: Material components' own feedback; `CONFIRM` when a chart being made is ready (not when a stored one is
-  opened) and when a calibration's or the results' suggested offset is applied, `REJECT` when a chart fails.
+  opened), `REJECT` when a chart fails.
 - **Play**: none (the owner's decision of 2026-10-31): the actuator answers late, and a late tick reads as a late hit.
-- **Calibration**: never while tapping. A tick would be a second cue competing with the click; the pad also turns off
-  its click sound.
+- **Calibration**: never while pressing. A tick would be a second cue competing with the click.
 
 ## Accessibility
 
@@ -431,8 +426,8 @@ Haptics go through `View.performHapticFeedback`, which honours the player's touc
   a dialog says "TalkBack is on: … the lanes need direct touch. Turn TalkBack off to play, or start anyway." with Start
   anyway and Back; the lead-in waits behind it. A dialog is its own window, so TalkBack moves into it at once instead
   of starting on the playfield. Playing with TalkBack on is not a goal of this round.
-- **TalkBack in calibration**: the pad is one labelled element ("Tap pad. Tap on the click"); a TalkBack double tap
-  is not timed, so it counts as no tap. The strip says where the middle of the taps is ("… 22 ms late").
+- **TalkBack in calibration**: the field is one labelled element and a TalkBack double tap on it presses nothing; the
+  strip is one sentence of where the hits lie ([latency.md, L3 as built](latency.md#l3-as-built)).
 - **Font size**: chrome follows the system font size up to Android 14's 200 %
   ([non-linear font scaling](https://developer.android.com/about/versions/14/features#non-linear-font-scaling)):
   text wraps, steppers sit under their labels, nothing is truncated to fit. The HUD and the panels scale too; text
@@ -491,37 +486,37 @@ Haptics go through `View.performHapticFeedback`, which honours the player's touc
 | Model install from Hugging Face at the pinned tag, `checkPackage`, per-file SHA-256, Range resume, install record, update on start; Choose Folder | Free space checked and reserved with `StorageManager`; files under `noBackupFilesDir`; Choose Folder became Install from files (the owner's decision of 2026-10-29): the picked folder's files are copied into app storage, since the runtime needs a file path and a tree URI is not one; both ways accept only the pinned manifest's SHA-256 |
 | Music folders as the library | Songs picked one by one with the system picker: no permission, nothing scanned |
 | Generation states, phase names, Stop, the core's message on failure, Use Seed | A state bar at the bottom of a phone screen instead of a two-panel setup; no Session tiles or lane preview; no chart-server engine (out of scope); the last chart kept on disk |
-| The play look: brand palette, notes by kind, coral line, hit flash and miss tint, "Ready", combo from 2, Reduce Motion rules | Drawn on a `SurfaceView` canvas instead of Metal; touch lanes instead of key caps with letters; immersive full screen in landscape with leaning lanes (new: the owner's choice, after Malody), portrait as a setting; a lead-in and a count-in after pause; Restart in the pause panel |
+| The play look: brand palette, notes by kind, coral line, hit flash and miss tint, "Ready", combo from 2, Reduce Motion rules | Drawn on a `SurfaceView` canvas instead of Metal; touch lanes, with the caps labelled by their keys only while a keyboard is connected; immersive full screen in landscape with leaning lanes (new: the owner's choice, after Malody), portrait as a setting; a lead-in and a count-in after pause; Restart in the pause panel |
 | The timing contract: event timestamps, a 100 ms input allowance, frames drawn for their presentation time, offsets applied once | Android's clocks (`AudioTrack` timestamps, `getEventTimeNanos`, `FrameTimeline`), all on `CLOCK_MONOTONIC` (gameplay.md) |
-| Audio offset per output device, one visual offset, the scroll-speed scale, judge C, music volume 0.8 | Offsets default to 0 until the phones are measured (the Swift −15 ms was tuned on a Mac); the output keyed by `AudioDeviceInfo` type and name |
-| Calibration: clicks every 500 ms after 1 s, median of 16 taps | Two steps; the visual step has no taps |
-| Results: accuracy, max combo, misses | Its own screen with all three tiers, a timing chart and the runtime's offset suggestion |
+| Audio offset per output device, one visual offset, the scroll-speed scale, judge C, music volume 0.8 | Audio latency slots chosen by hand and an input latency slot per method, no visual offset ([latency.md](latency.md)), all 0 ms by default (the Swift −15 ms was tuned on a Mac) |
+| Calibration: clicks every 500 ms after 1 s, median of 16 taps | One screen: notes on the clicks, presses judged by touch or keys, the average of the last 16 hits, every change kept |
+| Results: accuracy, max combo, misses | Its own screen with all three tiers, a timing chart, the slots used and each method's mean |
 | Settings sections: gameplay, sound and timing, chart model | Playfield section (orientation, lane lean, lane width, live preview); About with the playfield preview and Diagnostics |
 
-Not carried over in this round: the Chart Inspector, the chart server, key bindings, saving
-`.osu` and `.osz`.
+Not carried over in this round: the Chart Inspector, the chart server, saving `.osu` and `.osz`.
 
 ## The prototype in the app
 
 The app opens on the Library and runs every screen above on its own stores (`AppStores`): the settings, kept with
-DataStore, the audio offset per output, written by Settings, calibration's Use and Results' Use; the song library from
+DataStore, the latency slots and the key map, written by Settings, the calibration and Settings › Keyboard; the song
+library from
 the document picker, with File not found, Find again and Remove; decoding to PCM; the model download and the install from files, their states, the
 licence, the model card and the notices; making charts with the runtime (prepare on opening a song, the whole-chart
 scheduler, Stop, the model's capabilities, the last chart per song kept); play: the player's chart on the song's sound,
 the `AudioTrack` clock, the pauses, the results from the runtime's score, and the playfield: the `SurfaceView` render
 thread paced by `postVsyncCallback`, the runtime's `GameplaySession` judging, its `GameplayFeedback` easing lights and
-the judgement word, `noteGeometry` placing notes, touches mapped to lanes with their event times; and the calibration:
-the click track through the play output, the pad's taps on its clock, the picture step drawn on the same clock.
+the judgement word, `noteGeometry` placing notes, touches and keys mapped to lanes with their event times; and the
+calibration: the click track through the play output, and the field judging presses on its clock.
 
 Two parts play a fixed chart by design: the playfield preview in Settings, a 27-second chart on a clock without sound,
 pressed by an autoplay with fixed early and late offsets so every judgement shows ("Sample chart · no sound"), whose
-results are the runtime's real score of that game; and the calibration's picture step, a note on every click.
+results are the runtime's real score of that game; and the calibration's field, a note on every click.
 
 **For review**, a debuggable build opens in any state of any screen from a launch extra
 (`adb shell am start -n io.ensomi.android/.MainActivity --es prototype make-chart-made`), on the fakes in
-`prototype/Fakes.kt` (sample songs, a fixed model and chart state, settings in memory, a click track without sound and
-16 sample taps); `scripts/capture-prototype.sh` drives them all and plays one real game. Nothing in the screens says
-"not built yet" any more.
+`prototype/Fakes.kt` (sample songs, a fixed model and chart state, settings in memory, a click track without sound,
+sample calibration hits and keyboards); `scripts/capture-prototype.sh` drives them all and plays one real game.
+Nothing in the screens says "not built yet" any more.
 
 ### Crash recovery diagnostics
 

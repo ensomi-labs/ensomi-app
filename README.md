@@ -87,8 +87,8 @@ adb shell am start -n io.ensomi.android/.MainActivity --es prototype make-chart-
 
 MainActivity is `singleTask`: debug launch extras are read only when a new instance is created. Force-stop the app before launching with those extras.
 
-A few scenarios use the app's own stores instead of fakes: `results-stored` (the sample results, whose Use writes the
-active audio latency slot), `play-stored` (the sample game, no sound, played with the stored input latency slots),
+A few scenarios use the app's own stores instead of fakes: `results-stored` (the sample results, their slots line
+naming the stored slots), `play-stored` (the sample game, no sound, played with the stored input latency slots),
 `settings-stored` and `calibration-stored` (the stored latency slots on those screens).
 
 Games take keys from a hardware keyboard (docs/keyboard.md): Z X . / play the lanes and Escape pauses by default.

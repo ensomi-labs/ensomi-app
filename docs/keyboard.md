@@ -1,14 +1,13 @@
-# Ensomi for Android: hardware keyboard play (accepted)
+# Ensomi for Android: hardware keyboard play (accepted and built)
 
 This is the design for issue [#29](https://github.com/ensomi-labs/ensomi/issues/29), Bluetooth keyboard input. It was
 written against `dev/android` at `8a09ddf`, the shipped `android-v0.1.3`, revised after the owner's decisions of
 2026-11-07 ([Decided](#decided-owner-2026-11-07)) and accepted by the owner the same day, every open question decided as
-recommended, with two amendments ([Open questions, decided](#open-questions-decided-owner-2026-11-07)). It is built step
-by step ([Build plan](#build-plan)). Once it is built, its screens fold into [design.md](design.md), its input path into
-[gameplay.md](gameplay.md), its steps into [plan.md](plan.md) and its checklist rows into
-[phone-checks.md](phone-checks.md). Until then those documents describe the app as it is. Timing for keys, and for touch
-beside them, is a design of its own, [latency.md](latency.md), accepted the same day: input latency slots per input
-method, audio latency slots chosen by hand and one calibration screen.
+recommended, with two amendments ([Open questions, decided](#open-questions-decided-owner-2026-11-07)). It is built
+([Build plan](#build-plan)), K4 cut down. [design.md](design.md), [gameplay.md](gameplay.md) and [plan.md](plan.md) say
+in brief that keys play and link here; [phone-checks.md](phone-checks.md) has the checklist rows. Timing for keys, and
+for touch beside them, is a design of its own, [latency.md](latency.md), accepted the same day: input latency slots per
+input method, audio latency slots chosen by hand and one calibration screen.
 
 **In scope:** play with a hardware keyboard (in practice a Bluetooth keyboard on a phone or tablet), the key map and its
 test, keyboards connecting and disconnecting, the keys around the game, diagnostics and checks. **Not in scope**, by
@@ -625,9 +624,9 @@ on `ensomi-36-16k` by touches held across a pause.
 | K1 (done) | `LaneHolds` in place of `LaneTouchTracker`, touch unchanged; `LaneInput.source`; the key map (table, defaults, swap, Clear, completeness, storage) in `StoredSettings`; `KeyLanes` and `GameKeys` as pure logic | The JVM tests above; a game from `adb shell input tap` and the capture script as before; `settings.json` keeps every field and gains `keys` | — | D1 to D3, D5; O9, O10 |
 | K2 (done) | Keyboard play: the manifest's `keyboard\|keyboardHidden\|navigation`; `HardwareKeys` in `MainActivity`; `ConnectedKeyboards` in `AppStores` with a fake for the scenarios; lane keys, the Pause key with its fresh-down rule and the taken keys in play; `FLAG_ALT_FOCUSABLE_IM` on the game's screens; labels on the caps; the key log and the game log's additions | `input keyevent` taps judged; `--duration` gives one press and one release, and a held Pause key pauses once; `emu event send` chords and holds judged; a `hid` keyboard registered mid-game: `am get-config` before and after, `MainActivity` created once (a debug log line), the song goes on; `hid` closed: canceled ups in the key log, no lane left lit, no pause; the window flag in `dumpsys window`; captures with labels in both orientations | 14, 16, 17, 20 | K1; latency.md L1; O6, O7 |
 | K3 (done) | Settings › Keyboard: status, links, the five slots, capture with Clear, Cancel and moving on, swap, refusal, the empty lane's mark and notice, defaults, the key test and its limit sentence; the Settings row; scenarios with a fake keyboard | Capture by `input keyevent`, Escape included; kept after a force-stop; Clear on a lane shows the mark and the notice, and the Settings row says so; the test lit by `emu event send` holds (4 of 4) and by a `hid` keyboard that never reports a fourth key (the sentence); UI Automator dumps; TalkBack walk; 200 % font; landscape | 14, 15 | K2; O5, O9, O10 |
-| K4 | Keys around the game: the Pause key in the count-in and on the pause panel, lane keys taken on the panel and Results, Escape in and out of the game, first focus on Resume and Play again; a focus pass over every screen; optionally the game's keys in Android's keyboard shortcuts list (`Activity.onProvideKeyboardShortcuts`, API 24) | `input keyevent` sequences of Tab, arrows, Enter, Space and Escape from the Library to a game, its pause, its results and back, without a tap; a lane key (Space bound to a lane) sent as the panel and Results open presses nothing; screenshots of every focus state; UI Automator's `focused` | 21 | K2; O1 to O4 |
-| K5 | Calibration with keys: lane keys as presses on the calibration screen, judged with the keyboard's slot; the method in the calibration log | Key presses from `input keyevent` at logged event times give the runtime's errors when recomputed with the keyboard's slot, as latency.md's check does for taps | 18, 19 | K2; latency.md L3 |
-| K6 | Diagnostics and runbook: the journal's `input_device`, the summary's `input.keyboards`, the `manual` collection of `key-log.csv`, checklist rows 14 to 21 in phone-checks.md | Redaction tests; the Diagnostics JSON lists a `hid` keyboard by vendor and product; no device name anywhere in the export or the archive | The checklist run | K2; O8 |
+| K4 (done, cut down) | Keys around the game: the Pause key in the count-in and on the pause panel, lane keys taken on the panel and Results, Escape in and out of the game, first focus on Resume and Play again; a focus pass over every screen; optionally the game's keys in Android's keyboard shortcuts list (`Activity.onProvideKeyboardShortcuts`, API 24) | `input keyevent` sequences of Tab, arrows, Enter, Space and Escape from the Library to a game, its pause, its results and back, without a tap; a lane key (Space bound to a lane) sent as the panel and Results open presses nothing; screenshots of every focus state; UI Automator's `focused` | 21 | K2; O1 to O4 |
+| K5 (done) | Calibration with keys: lane keys as presses on the calibration screen, judged with the keyboard's slot; the method in the calibration log | Key presses from `input keyevent` at logged event times give the runtime's errors when recomputed with the keyboard's slot, as latency.md's check does for taps | 18, 19 | K2; latency.md L3 |
+| K6 (done) | Diagnostics and runbook: the journal's `input_device`, the summary's `input.keyboards`, the `manual` collection of `key-log.csv`, checklist rows 14 to 21 in phone-checks.md | Redaction tests; the Diagnostics JSON lists a `hid` keyboard by vendor and product; no device name anywhere in the export or the archive | The checklist run | K2; O8 |
 
 What K1 showed (builds b1 and b2 of `claude/android-keyboard`, `991ac24` and `691b628`, on an `ensomi-36` made afresh,
 since the old one was gone): the full build passed with 431 JVM tests, 51 of them in `LaneHoldsTest`, `KeyLanesTest`,
@@ -876,9 +875,54 @@ Built as the K5 row says, from [Calibration with keys](#calibration-with-keys), 
 - Not built: the calibration writes no `key-log.csv`; the game log's key lines are play's. A lane bound to Space, an
   arrow, Tab or Enter loses its first press after a touch to Android's touch mode, as K3 found; that is K4's to meet.
 
-When the steps are done, design.md takes the screens and the keys table, gameplay.md the input path and edge cases,
-plan.md the steps and what they showed, phone-checks.md the rows, and design.md's "Not carried over in this round"
-drops key bindings.
+### K4 as built
+
+Cut down, by the owner's instruction for this round, to first focus, a visible focus state and the first key after a
+touch. Not built: the focus pass over every screen, and the game's keys in Android's keyboard shortcuts list.
+
+- **First focus.** The pause panel opened by the Pause key, in play or from the count-in, gives Resume focus. Escape is
+  neither a typing nor a navigation key to `ViewRootImpl`, so it leaves the window in touch mode, where stock buttons
+  take no focus; the panel therefore leaves touch mode first (`View.requestFocusFromTouch`), as K3's wait does. Opened
+  otherwise (the Pause button, Back, the app leaving), the panel gives Resume focus only out of touch mode. Results give
+  Play again focus when they open out of touch mode, that is when the game's last input was a key other than Escape;
+  after a touch nothing is focused.
+- **The focus state.** The primary button (`ActionButton`: Resume, Play again, and the chrome's Play and Make chart)
+  draws a 3 dp ring in the text colour while focused, and the panels' outlined buttons (Restart, Quit, Back to song;
+  `FocusOutlinedButton`) a 3 dp outline: Material's focus state layer alone is faint on the plum and the coral, as K3
+  found for the slots.
+- **The first key after a touch.** `ViewRootImpl`'s `EarlyPostImeInputStage` spends a navigation key's down (Enter,
+  Space, Tab, the arrows) on leaving touch mode when leaving it focuses a view (`checkForLeavingTouchModeAndConsume`,
+  `leaveTouchMode`, AOSP `android-16.0.0_r1`). During play the HUD's Pause button was the play screen's only control
+  that could take focus; it now never does (`focusProperties { canFocus = false }`). With no focus target
+  `AndroidComposeView.requestFocus` returns false (Compose UI 1.12.1), the playfield's `SurfaceView` is not focusable,
+  and the key goes on to the activity and the game. The Pause key and Back still pause, and TalkBack's focus is its own.
+  This is read from the sources; whether a lane on Space plays after a tap is checklist 21.
+- **Not met:** the calibration screen keeps its focusable controls, so there a lane on Space, an arrow, Tab or Enter
+  still loses its first press after a touch.
+
+What K4 and K6 showed (Astra job `20261108-151333-android-keyboard-k4l4k6-b1` at `3d1cf77`, with latency.md's L4, on
+`ensomi-36-16k`; only the essential checks, the owner leaving the rest to a phone): the full build passed with 577 JVM
+tests, and lint found the same 6 warnings as before. In the sample game, never touched, Escape opened the panel with
+Resume focused and ringed; a game whose last input was an `input keyevent` Z ended on Results with Play again focused
+and ringed; a swipe on Results, a touch, took the ring away. A pause by the scenario after those keys, out of touch
+mode, focused Resume too, as the rule says. The app and Diagnostics launched without a crash; with no keyboard
+connected, `input.keyboards` listed the AVD's 12 built-in devices, all `non_alphabetic` and internal, 11 of them
+`0000:0000`. `settings.json` was unchanged. The keyboard-only flow, Space after a tap, the other focus states and the
+Diagnostics JSON with a keyboard connected are checklist rows 21 and 14.
+
+### K6 as built
+
+Built as the K6 row says. The journal's `input_device` records come from `ConnectedKeyboards`' listener, once per
+keyboard the game reads that connects or goes, `in_game` true while a play screen is open (`GameScreens`). The summary's
+`input.keyboards` lists every non-virtual input device with keys, so a phone's own buttons show as `non_alphabetic`,
+with ids as four hexadecimal digits ([diagnostics.md](diagnostics.md#summary-json)); `DiagnosticsReportTest` covers its
+shape. Neither reads a device's name. The `manual` collection takes `key-log.csv`, and phone-checks.md has rows 14 to
+21, row 14 gaining the Diagnostics JSON with a keyboard connected and row 21 the Space after a tap, which the owner left
+to the phone for this round with the keyboard-only flow and its focus states.
+
+design.md, gameplay.md and plan.md say briefly that keys play, with links to this document for the screens, the keys
+table, the input path and the steps, rather than copies of them; design.md's "Not carried over in this round" no
+longer lists key bindings.
 
 ## Sources
 

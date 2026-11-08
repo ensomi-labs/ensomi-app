@@ -1,14 +1,14 @@
-# Ensomi for Android: latency slots and one calibration screen (accepted)
+# Ensomi for Android: latency slots and one calibration screen (accepted and built)
 
-Steps L1 to L3 of this design are built on `claude/android-keyboard` ([L1 as built](#l1-as-built), [L2 as
-built](#l2-as-built), [L3 as built](#l3-as-built)); L4 and L5 are not. It was written against `dev/android` at
-`8a09ddf`, the shipped `android-v0.1.3`, from the owner's decisions of 2026-11-07, and accepted by the owner the same
-day, every open question decided as recommended, with one amendment to which methods count as live ([Open questions,
-decided](#open-questions-decided-owner-2026-11-07)). It replaces decision 6 of the keyboard proposal
+Steps L1 to L5 of this design are built on `claude/android-keyboard` ([L1 as built](#l1-as-built), [L2 as
+built](#l2-as-built), [L3 as built](#l3-as-built), [L4 and L5 as built](#l4-and-l5-as-built)). It was written against
+`dev/android` at `8a09ddf`, the shipped `android-v0.1.3`, from the owner's decisions of 2026-11-07, and accepted by the
+owner the same day, every open question decided as recommended, with one amendment to which methods count as live ([Open
+questions, decided](#open-questions-decided-owner-2026-11-07)). It replaces decision 6 of the keyboard proposal
 ([keyboard.md](keyboard.md#timing)) and changes timing for touch play as well as for keys. Once it is built, its screens
 fold into [design.md](design.md), its timing into [gameplay.md](gameplay.md), its steps into [plan.md](plan.md) and its
 checks into [phone-checks.md](phone-checks.md); [What changes once built](#what-changes-once-built) lists the passages.
-Until L5 those documents describe the app before L1, and this one the timing of builds from L1 on.
+L5 changed those passages briefly, with links here for the details, which this document keeps.
 
 Claims about today's app are read from its code at `8a09ddf`; claims about the runtime from ensomi-runtime at
 `d090374`, the commit the 0.1.3 build links (README, plan.md "0.1.3 integration"). Nothing here was run on a device.
@@ -444,9 +444,9 @@ or a permission.
 | --- | --- | --- | --- | --- |
 | L1 (done) | The model: the slots and the methods' slots in `StoredSettings`, the migration, `PlaySettings` and `PlayTiming` carrying A and I per source; `PlayController`'s formulas, input clock and watermark; `resolveAudioOffset`, the per-output offset and the visual offset removed; the previews without offsets; the game log | The JVM tests; the migration check; a game by `input tap` at 0 and at +30 ms | — | `LaneInput.source` (keyboard.md K1, or added here first); O1, O2, O5 |
 | L2 (done) | Settings › Sound and timing: the audio slots, the input rows, the name dialog | Captures; UI Automator dumps; values kept after a force-stop | — | L1 |
-| L3 | The calibration screen: the field judging on the click track, both values, the slot and method choices, the readings, nothing to confirm; the pad, the suggestion and the steps removed; the calibration log | The calibration check; TalkBack walk; landscape | 4 | L1, L2; O3 |
-| L4 | Results and pause: the suggestion removed, the slots line, the per-method averages; the pause panel's line | Captures; a game by `input tap` to its results | 5 | L1; O4, O6 |
-| L5 | design.md, gameplay.md, plan.md and phone-checks.md updated as [What changes once built](#what-changes-once-built) lists | — | — | L1–L4 |
+| L3 (done) | The calibration screen: the field judging on the click track, both values, the slot and method choices, the readings, nothing to confirm; the pad, the suggestion and the steps removed; the calibration log | The calibration check; TalkBack walk; landscape | 4 | L1, L2; O3 |
+| L4 (done) | Results and pause: the suggestion removed, the slots line, the per-method averages; the pause panel's line | Captures; a game by `input tap` to its results | 5 | L1; O4, O6 |
+| L5 (done) | design.md, gameplay.md, plan.md and phone-checks.md updated as [What changes once built](#what-changes-once-built) lists | — | — | L1–L4 |
 
 ### L1 as built
 
@@ -671,6 +671,31 @@ What it adds, and where it differs:
 - **Left as known** (round 3, `20261108-013718-android-keyboard-l3k5-b3`, 571 tests, lint unchanged): at 200 % font a long
   slot name clips in portrait, and in landscape a panel's note overlaps "Ready" and the readings need their own scroll; in
   landscape the input method covers the name dialog's buttons, as on any phone dialog.
+
+### L4 and L5 as built
+
+L4 is built as its row says, from [Results](#results) and [Pause after a change of
+output](#pause-after-a-change-of-output), with keyboard.md's K4 on the same screens. What it adds, and where it differs:
+
+- **Results.** The suggestion, Use and its `CONFIRM` tick are gone. Under the average, when touch and keys both hit
+  notes: "Touch: 4 ms late on average. Keys: 9 ms late on average.", each hit counted for the method of the input whose
+  session call decided it (`MethodMeans`). Under the timing chart, the slots line: the audio slot only for a game with
+  sound (the sample game and Listen & Play keep none), touch's slot always, the keyboard's when keys pressed, each named
+  as Settings names it ("Audio latency 1 · WH-1000XM4. Touch on input 0. Keyboard on input 1."; `ResultSlots`). The
+  sample result shows both lines. `PlayResultTest` covers them.
+- **The pause panel** after a change of output: "Sound moved to Pixel Buds. This game keeps audio latency 0 · Speaker.",
+  the slot active when the game started, since Settings cannot be opened during a game. The scenario
+  `play-paused-moved` shows it on the emulator, which has one output.
+
+What L4 showed (Astra job `20261108-151333-android-keyboard-k4l4k6-b1` at `3d1cf77`, with keyboard.md's K4 and K6):
+Results had no suggestion and no Use; the sample game, after one key, said "Touch on input 0. Keyboard on input 1."; the
+sample result showed both methods' averages and "Audio latency 0. Touch on input 0. Keyboard on input 1."; the panel
+of `play-paused-moved` said "Sound moved to Pixel Buds. This game keeps audio latency 0 · Speaker.", in two lines, with
+nothing clipped. The line after a real change of output is checklist row 5.
+
+L5 changed design.md, gameplay.md, plan.md and phone-checks.md where their text had become wrong, each change a few
+lines linking here or to keyboard.md: the per-output audio offset, the visual offset and the two-step calibration in
+all four; Results' suggestion; touch-only input; key bindings "not carried over"; phone-checks.md's row 4.
 
 ## Open questions, decided (owner, 2026-11-07)
 

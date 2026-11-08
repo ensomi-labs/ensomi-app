@@ -9,7 +9,7 @@ calls and touch handling are the real ones, driven by a fake clock and an autopl
 ## What good means
 
 1. **Notes and music agree.** A note crosses the judgement line at the moment its sound is heard, every frame, for the
-   whole song, on speaker, wired and Bluetooth output, once the offsets are set.
+   whole song, on speaker, wired and Bluetooth output, once the audio latency slot kept for that output is set.
 2. **A tap counts when the finger landed.** The judged error is the touch's own time minus the note's time, the same
    whether the app handled the touch at once or 50 ms later, and the same at any frame rate.
 3. **Motion is smooth.** Every display refresh at 60, 90 or 120 Hz shows a new frame drawn for the moment it appears;
@@ -201,21 +201,21 @@ songMs(t) = (framePosition − leadInFrames) / sampleRate × 1000 + (t − nanoT
   (frames ask for their presentation time, a little ahead) and holds there until the new line catches up, taking no
   other pair meanwhile; a pair ahead is taken at once. The runtime's session never moves back either.
 - The timestamp is a presented frame, so the output latency the device reports is already out of song time. What it
-  does not report stays in the audio offset. There is no runtime API for true end-to-end audio latency, and the CDD
-  bounds the reported value only loosely (stack report §2.4), so the offset stays necessary.
+  does not report stays in the audio latency. There is no runtime API for true end-to-end audio latency, and the CDD
+  bounds the reported value only loosely (stack report §2.4), so the latency slots stay necessary.
 - `AudioTrack.getUnderrunCount()` is logged per game; the writer keeps at least 200 ms queued (the track's buffer is
   400 ms or the platform's minimum, whichever is larger, filled before `play()`). After the song it writes silence until
   the game closes, so the clock keeps reading real timestamps through the last notes and the results.
-- The game's audio offset is the one of the device the track is routed to (`AudioTrack.getRoutedDevice`), taken when
-  the clock first runs, in the lead-in; from then on that device is the output Settings and Results show.
+- The game's audio latency is the active audio slot's, taken when the game starts and kept to its end
+  ([latency.md](latency.md#the-model)); the device the track is routed to (`AudioTrack.getRoutedDevice`) only names
+  the output, as the pause panel does when it changes.
 
 **Pause and resume.** Pause stops the track and the clock holds the song time being heard. Resume, after the count-in,
 plays the track and the clock holds until the first timestamp after it, as the Swift clock waits for the first buffer
 after `play()`. Lanes held at the pause stay held through it ([Input](#input), Edge cases).
 
 **The picture follows the audio.** Each frame is drawn for the time it will be on screen, not when its code runs: the
-render time is the song time at the frame's expected presentation time, plus the audio and visual offsets (next
-section).
+render time is the song time at the frame's expected presentation time, less the audio latency (next section).
 
 ## The frame
 
@@ -226,18 +226,24 @@ thread a `FrameData`, whose preferred `FrameTimeline` gives the expected present
 ([Choreographer](https://developer.android.com/reference/android/view/Choreographer#postVsyncCallback(android.view.Choreographer.VsyncCallback))).
 Then, in this order, as in the Swift app:
 
-1. Take the touches queued since the last frame, convert each event time to chart time through the clock, and deliver
-   those stamped at or before the frame's gameplay time to the session in time order (`InputQueue`). A paused frame
-   delivers all of them, stamped at the pause's time at the latest, and skips step 2.
-2. `advance` the session to the gameplay time less the 100 ms input allowance.
+1. Take the touches and keys queued since the last frame, convert each event time to chart time through the clock, less
+   its method's input latency, and deliver those stamped at or before the input clock to the session in time order
+   (`InputQueue`; [latency.md, Formulas](latency.md#formulas)). A paused frame delivers all of them, stamped at the
+   pause's time at the latest, and skips step 2.
+2. `advance` the session to the input clock less the 100 ms input allowance.
 3. Read what to draw at the render time: `visibleObjects` from 700 ms before it to the scroll time plus 250 ms after,
    lane brightness, the recent judgement batches, the judgement presentation, the score.
 4. Draw on a recording canvas and hand it to HWUI, which renders on its own thread.
 
 ```text
-gameplayMs = songMs(now) + audioOffset
-renderMs   = songMs(expectedPresentation) + audioOffset + visualOffset
+gameplayMs = songMs(now) − A
+renderMs   = songMs(expectedPresentation) − A
+inputMs    = songMs(eventTime) − A − I[method]
 ```
+
+A is the audio latency and I the method's input latency; the input clock is the gameplay time less the largest live
+method's I, never moving back ([latency.md, Where the input latency is
+applied](latency.md#where-the-input-latency-is-applied)).
 
 The next vsync is asked for at the start of a frame's work, not at its end. `Choreographer` delivers a vsync only to a
 request made before it, and at high refresh rates a frame's deadline lies past the next vsync, so a frame that asked at
@@ -274,8 +280,11 @@ batches only `ACTION_MOVE`, not downs and ups, so the app does not ask for unbuf
 AOSP's input consumers). Touches arrive on the main thread and go to the render thread through a lock-free queue;
 the render thread delivers them at the next frame.
 
+**Keys.** A hardware keyboard's lane keys press and release lanes through the same queue, stamped with the key event's
+own time, beside touch in the same game ([keyboard.md, How keys reach the game](keyboard.md#how-keys-reach-the-game)).
+
 **The allowance.** The session never moves its clock back, and a touch stamped before a frame may still be waiting on
-a busy main thread. So a frame declares inputs delivered only up to its time less 100 ms: a touch handled within
+a busy main thread. So a frame declares inputs delivered only up to its input clock less 100 ms: a touch handled within
 100 ms of happening is judged exactly when it happened. Hits show at once; misses show up to 100 ms after they fall due.
 A touch later than that is judged at the session's clock and counted in the runtime's `lateInputs`, which the app
 logs.
@@ -326,44 +335,19 @@ The runtime does every rule; the app moves inputs and time and draws what it is 
 
 ## Offsets and calibration
 
-The session applies offsets once, as in the Swift app: the audio offset moves judging and the drawn notes together;
-the visual offset moves only the drawn notes; scroll speed changes only how far ahead notes are drawn.
+Timing is set by latency slots ([latency.md](latency.md)): three audio latency slots, the active one chosen by hand,
+whose value moves judging and the drawn notes together; three input latency slots, touch and the keyboard each using
+one, whose value moves only that method's presses; no visual offset; all 0 ms by default. A positive value is later.
+Scroll speed changes only how far ahead notes are drawn. The lean moves no latency: it changes where a note is drawn,
+not when, so a note crosses the line at its time at any lean and in either orientation.
 
-- **Audio offset** belongs to the output: the `AudioTrack`'s routed `AudioDeviceInfo`, keyed by its type and product
-  name (speaker, wired, a given pair of Bluetooth headphones), as `bluetooth-a2dp/WH-1000XM4`. A device without one
-  uses the default. Outside a game (Settings, calibration, results) the output is the media route Android picks by
-  default among the connected devices: Bluetooth or a hearing aid, then wired or USB, then HDMI, then the speaker.
-- **Visual offset** belongs to the display and is one value.
-- **No separate input offset.** The time from a finger landing to its event timestamp shifts every tap the same way an
-  unreported output latency does; judgement cannot tell them apart, so both live in the audio offset. Because the
-  phone is fixed and the output varies, keeping the offset per output is enough. The visual offset is calibrated
-  without taps, so touch latency cannot leak into it.
-- **The lean moves no offset.** It changes where a note is drawn, not when: a note crosses the line at its time at any
-  lean and in either orientation, so neither offset depends on them. Near the line a leaning note moves faster, so a
-  given visual error shows as a larger gap; the picture step therefore draws with the player's own lean, so the visual
-  offset is set on the field that is played.
-- **Defaults are 0 ms** for both until the phones are measured; the Swift app's −15 ms was tuned on a Mac with a
-  keyboard. The phone measurements may give per-route defaults.
+**Calibration** is one screen ([latency.md, Timing calibration](latency.md#timing-calibration-one-screen)). The same
+`AudioTrack` path (`GameAudio`) and clock (`AudioPlayClock`) as a game play a click track: one second of silence, then
+a click every 500 ms without end, generated in code (`ClickTrack`: 48 kHz mono, a 30 ms tone burst at 1760 Hz that
+rises in half a millisecond, whose first sample is the click's time). Click k is heard at song time `1000 + 500 k` ms.
+The play renderer draws and judges a note on each click; presses by touch or keys are stamped and judged as in a game.
 
-**Calibration, sound step.** The same `AudioTrack` path (`GameAudio`) and clock (`AudioPlayClock`) as a game play a
-click track: one second of silence, then a click every 500 ms without end, generated in code (`ClickTrack`: 48 kHz
-mono, a 30 ms tone burst at 1760 Hz that rises in half a millisecond, whose first sample is the click's time); the
-writer repeats the 500 ms period, so every click falls on a whole frame. Click k is heard at song time `1000 + 500 k`
-ms on the play clock. The track plays at full gain (the phone's media volume sets the level) and its routed device is
-the output calibrated, named on the screen; a change of output starts the taps over. The pad is a `View` that stamps
-taps with `getEventTimeNanos`, as the playfield does; the screen polls the clock every 10 ms, since no render thread
-does in this step. A tap's song-time error is its song time minus the nearest click's (taps more than 250 ms before
-the first click are dropped). A tap is judged at its song time plus the audio offset, so the offset that puts the taps
-on the clicks is minus the median song-time error of the last 16 taps, whatever offset was in use while they were made
-(the same as the current offset minus the median chart-time error). The strip shows chart-time errors at the offset in
-use, so calibrating again from a result gives errors near zero.
-
-**Calibration, picture step.** The clicks go on and the play renderer draws a note at each click's time on the same
-clock (a `PlayController` that reads the clicks' clock but neither starts nor closes it, judging nothing), with the
-visual offset from the slider, live. The player moves it until the notes cross the line on the click. No taps.
-
-**After a game**, Results offer the runtime's `suggestedAudioOffsetMs` (minus the mean error of hit taps and hold
-heads) for the output used, when it is at least 3 ms.
+**After a game**, Results show the slots used and each method's mean; nothing is suggested.
 
 ## Frame pacing at 60, 90 and 120 Hz
 
@@ -448,7 +432,7 @@ speaker, wired and Bluetooth output where it applies. [phone-checks.md](phone-ch
 | --- | --- | --- |
 | Clock smoothness | Log every timestamp pair over a 3-minute song; fit a line | Residual sd under 0.5 ms; no backward step; no stall after resume or a route change |
 | Picture against audio | Chart-time step between frames minus the presentation-time step | sd under 0.5 ms (the Swift app measured 0.010 ms) |
-| Unreported output latency | The calibration's sound step, three runs per output; for speaker and wired also an external recording of a click against the logged clock | Runs within 5 ms of each other; gives each output's default offset |
+| Unreported output latency | The calibration's audio value by sight and sound, three runs per output; for speaker and wired also an external recording of a click against the logged clock | Runs within 5 ms of each other |
 | Touch stamp | Event time against handling time for every touch of a game; the runtime's `lateInputs` | `lateInputs` 0 in normal play; handling delay p99 well under 100 ms |
 | Touch to light | 240 fps video of a finger tapping a lane | The light within two refreshes of the finger landing |
 | Frame pacing | Perfetto FrameTimeline over a 60 s autoplay of the densest sample, at 120 Hz, at no lean, 40° and 55°, and the frame log of a hand-played game | Under 0.5 % of vsyncs missed and of frames late; render-thread work p99 under 3 ms at every lean |
@@ -460,7 +444,7 @@ speaker, wired and Bluetooth output where it applies. [phone-checks.md](phone-ch
 Which check makes each (`app/src/androidTest/.../checks/`, or the runbook's checklist): clock smoothness,
 `AudioClockCheck` (per output, the raw timestamps' line fit); picture against audio, `AudioClockCheck` on vsync-paced
 reads of the game's clock, and a hand-played game's `clock-log.csv` (checklist 2); unreported output latency, the
-calibration by ear (checklist 4); touch stamp, the runtime's `lateInputs` and each touch's handling delay (`touch-log.csv`) from a hand-played game
+calibration (checklist 4); touch stamp, the runtime's `lateInputs` and each touch's handling delay (`touch-log.csv`) from a hand-played game
 (checklist 2); touch to light, slow-motion video (checklist 1); frame
 pacing and refresh rate, `FramePacingCheck`, also in the checks build, which is not debuggable, and a hand-played
 game's `frame-log.csv`; the lean in hand,

@@ -3,8 +3,13 @@ package io.ensomi.android.ui
 import android.app.Activity
 import android.view.WindowInsetsController
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,14 +18,17 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SliderColors
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,7 +52,8 @@ import io.ensomi.android.ui.theme.Brand
 
 /**
  * The one primary action of a screen (Make chart, Play, Resume): a pill in the brand's coral gradient with dark ink.
- * Everything else uses Material's own buttons.
+ * Everything else uses Material's own buttons. Focused (by a key: it takes no focus in touch mode), it draws a 3 dp ring
+ * in the text colour, since a focus state layer alone is faint on the coral (keyboard.md, Keys around the game).
  */
 @Composable
 fun ActionButton(
@@ -61,12 +70,16 @@ fun ActionButton(
         Modifier.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f), shape)
     }
     val ink = if (enabled) Brand.ActionInk else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val ring = if (focused) Modifier.border(FOCUS_RING, MaterialTheme.colorScheme.onSurface, shape) else Modifier
     Box(
         modifier = modifier
             .defaultMinSize(minHeight = 56.dp)
             .clip(shape)
             .then(background)
-            .clickable(enabled = enabled, onClick = onClick)
+            .then(ring)
+            .clickable(interaction, LocalIndication.current, enabled = enabled, onClick = onClick)
             .semantics { role = Role.Button }
             .padding(horizontal = 24.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
@@ -79,6 +92,24 @@ fun ActionButton(
         }
     }
 }
+
+/**
+ * Material's outlined button with a focus state that shows on the game's plum (Restart, Quit, Back to song): its
+ * outline is 3 dp in the text colour while it has focus, as [ActionButton]'s ring.
+ */
+@Composable
+fun FocusOutlinedButton(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        border = if (focused) BorderStroke(FOCUS_RING, MaterialTheme.colorScheme.onSurface) else ButtonDefaults.outlinedButtonBorder(),
+        interactionSource = interaction,
+    ) { content() }
+}
+
+private val FOCUS_RING = 3.dp
 
 /**
  * A section's title in a chrome list (Settings, Settings › Keyboard): small, in the primary colour, a heading for

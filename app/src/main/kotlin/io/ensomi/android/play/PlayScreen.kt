@@ -74,6 +74,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -99,6 +102,7 @@ import io.ensomi.android.settings.JudgeDifficulty
 import io.ensomi.android.settings.PlayOrientation
 import io.ensomi.android.settings.PlaySettings
 import io.ensomi.android.ui.ActionButton
+import io.ensomi.android.ui.FocusOutlinedButton
 import io.ensomi.android.ui.theme.Brand
 import io.ensomi.android.ui.theme.GameTheme
 import io.ensomi.runtime.Judge
@@ -197,15 +201,18 @@ fun PlayScreen(
         var view by remember { mutableStateOf<PlayfieldView?>(null) }
         // Where the sound moved during this game, for the pause panel.
         var movedTo by remember { mutableStateOf<String?>(null) }
+        // The panel was opened by the Pause key, so Resume takes focus (keyboard.md, Keys around the game).
+        var pausedByKey by remember { mutableStateOf(false) }
         val running = remember(restarts) { RunningGame() }
         val connected by keyboards.keyboards.collectAsStateWithLifecycle()
         // The first keyboard connected labels the caps (keyboard.md, Several keyboards).
         val capLabels = connected.firstOrNull()?.laneLabels
 
-        fun pause(cause: String) {
+        fun pause(cause: String, byKey: Boolean = false) {
             if (phase == PlayPhase.PAUSED) return
             Log.i(TAG, "Paused: $cause")
             view?.pause()
+            pausedByKey = byKey
             phase = PlayPhase.PAUSED
         }
 
@@ -393,7 +400,7 @@ fun PlayScreen(
                     GameKeys.Action.PASS_ON -> false
                     GameKeys.Action.TAKE -> true
                     GameKeys.Action.PAUSE -> {
-                        pause("the Pause key")
+                        pause("the Pause key", byKey = true)
                         true
                     }
                     GameKeys.Action.RESUME -> {
@@ -403,6 +410,7 @@ fun PlayScreen(
                     }
                     GameKeys.Action.BACK_TO_PANEL -> {
                         Log.i(TAG, "Back to the pause panel: the Pause key in the count-in")
+                        pausedByKey = true
                         phase = PlayPhase.PAUSED
                         true
                     }
@@ -426,6 +434,7 @@ fun PlayScreen(
                 }
                 PlayPhase.PAUSED -> PausePanel(
                     movedTo = movedTo,
+                    focusResume = pausedByKey,
                     // The music in the room cannot start again.
                     canRestart = ambient == null,
                     onResume = { phase = PlayPhase.COUNTDOWN },
@@ -653,7 +662,11 @@ private fun PlayHudRow(
             )
             Text(accuracyLabel, style = MaterialTheme.typography.labelSmall, color = Brand.MutedText)
         }
-        IconButton(onClick = onPause, enabled = !paused) {
+        // Never focusable, so nothing on the play screen can take focus during play: Android spends the first Space,
+        // Enter, Tab or arrow after a touch on leaving touch mode when that focuses a view (ViewRootImpl's
+        // EarlyPostImeInputStage), and a lane on one of those keys would lose its press (keyboard.md, K4). The Pause key
+        // and Back pause from a keyboard; TalkBack's focus is its own.
+        IconButton(onClick = onPause, enabled = !paused, modifier = Modifier.focusProperties { canFocus = false }) {
             Box(
                 Modifier.size(40.dp).border(BorderStroke(1.dp, Brand.PanelBorder), CircleShape),
                 contentAlignment = Alignment.Center,
@@ -671,11 +684,21 @@ private fun PlayHudRow(
 @Composable
 private fun PausePanel(
     movedTo: String?,
+    /** Opened by the Pause key: Resume takes focus, with its ring, out of touch mode. */
+    focusResume: Boolean,
     canRestart: Boolean,
     onResume: () -> Unit,
     onRestart: () -> Unit,
     onQuit: () -> Unit,
 ) {
+    val resume = remember { FocusRequester() }
+    val view = LocalView.current
+    LaunchedEffect(Unit) {
+        // Escape, the default Pause key, does not leave touch mode as typing and navigation keys do, and stock buttons
+        // take no focus in it. Opened otherwise, Resume takes focus only out of touch mode: after a key, never a touch.
+        if (focusResume && view.isInTouchMode) view.requestFocusFromTouch()
+        runCatching { resume.requestFocus() }
+    }
     Box(Modifier.fillMaxSize().background(Brand.Plum.copy(alpha = 0.6f)), contentAlignment = Alignment.Center) {
         Surface(
             // The brand's card shape: round corners, a tighter one at the bottom left.
@@ -708,15 +731,15 @@ private fun PausePanel(
                     stringResource(R.string.play_resume),
                     onClick = onResume,
                     icon = R.drawable.ic_play,
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).focusRequester(resume),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     if (canRestart) {
-                        OutlinedButton(onClick = onRestart, modifier = Modifier.weight(1f)) {
+                        FocusOutlinedButton(onClick = onRestart, modifier = Modifier.weight(1f)) {
                             Text(stringResource(R.string.play_restart))
                         }
                     }
-                    OutlinedButton(onClick = onQuit, modifier = Modifier.weight(1f)) {
+                    FocusOutlinedButton(onClick = onQuit, modifier = Modifier.weight(1f)) {
                         Text(stringResource(R.string.play_quit))
                     }
                 }

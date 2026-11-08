@@ -26,16 +26,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import android.view.HapticFeedbackConstants
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -59,6 +61,7 @@ import io.ensomi.android.settings.Latency
 import io.ensomi.android.settings.PlaySettings
 import io.ensomi.android.settings.latencySlotLabel
 import io.ensomi.android.ui.ActionButton
+import io.ensomi.android.ui.FocusOutlinedButton
 import io.ensomi.android.ui.DarkSystemBars
 import io.ensomi.android.ui.theme.Brand
 import io.ensomi.android.ui.theme.GameTheme
@@ -72,7 +75,8 @@ import kotlin.math.abs
  *
  * Lane keys do nothing here, their downs, repeats and ups all taken, so a key pressed as the results appear never
  * presses Play again (keyboard.md, O4); nor does a Pause key other than Escape. Enter, Space when no lane has it, and
- * Escape, which is Back unless a lane has it, go on as on any screen. The window is no input method target, as in play.
+ * Escape, which is Back unless a lane has it, go on as on any screen. Play again has focus first when the game ended
+ * after a key. The window is no input method target, as in play.
  */
 @Composable
 fun ResultsScreen(
@@ -91,6 +95,10 @@ fun ResultsScreen(
             GameKeys(KeyLanes(settings.keys, keyboards::keys, LaneSender({ 0L }) {}))
         }
         HardwareKeyHandler { event -> keys.handle(KeyInput.of(event), GameKeys.State.RESULTS) == GameKeys.Action.TAKE }
+        // A key leaves touch mode and a touch enters it, and buttons take no focus in touch mode: so Play again takes
+        // focus, with its ring, when the game's last input was a key, and nothing is focused after a touch.
+        val playAgainFocus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { runCatching { playAgainFocus.requestFocus() } }
         Box(Modifier.fillMaxSize().background(Brand.Plum), contentAlignment = Alignment.TopCenter) {
             // Wider than tall (the game's landscape, which the results keep): the score on the left, the timing on the
             // right, each scrolling on its own if it must, and the actions held at the bottom right, on the first screen.
@@ -208,10 +216,15 @@ fun ResultsScreen(
                     }
                 }
                 val playAgain: @Composable (Modifier) -> Unit = { modifier ->
-                    ActionButton(stringResource(R.string.results_play_again), onClick = onPlayAgain, icon = R.drawable.ic_refresh, modifier = modifier)
+                    ActionButton(
+                        stringResource(R.string.results_play_again),
+                        onClick = onPlayAgain,
+                        icon = R.drawable.ic_refresh,
+                        modifier = modifier.focusRequester(playAgainFocus),
+                    )
                 }
                 val done: @Composable (Modifier) -> Unit = { modifier ->
-                    OutlinedButton(onClick = onDone, modifier = modifier.height(48.dp)) {
+                    FocusOutlinedButton(onClick = onDone, modifier = modifier.height(48.dp)) {
                         Text(stringResource(R.string.results_done), color = Brand.Text)
                     }
                 }

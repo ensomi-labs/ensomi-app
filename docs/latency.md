@@ -1,15 +1,14 @@
 # Ensomi for Android: latency slots and one calibration screen (accepted)
 
-Steps L1 and L2 of this design are built on `claude/android-keyboard` ([L1 as built](#l1-as-built), [L2 as
-built](#l2-as-built)); L3 to L5 are not. It was written against `dev/android` at `8a09ddf`, the shipped
-`android-v0.1.3`, from the owner's decisions of 2026-11-07, and
-accepted by the owner the same day, every open question decided as recommended, with one amendment to which methods
-count as live ([Open questions, decided](#open-questions-decided-owner-2026-11-07)). It replaces decision 6 of the
-keyboard proposal ([keyboard.md](keyboard.md#timing)) and changes timing for touch play as well as for keys. Once it is
-built, its screens fold into [design.md](design.md), its timing into [gameplay.md](gameplay.md), its steps into
-[plan.md](plan.md) and its checks into [phone-checks.md](phone-checks.md); [What changes once
-built](#what-changes-once-built) lists the passages. Until L5 those documents describe the app before L1, and this one
-the timing of builds from L1 on.
+Steps L1 to L3 of this design are built on `claude/android-keyboard` ([L1 as built](#l1-as-built), [L2 as
+built](#l2-as-built), [L3 as built](#l3-as-built)); L4 and L5 are not. It was written against `dev/android` at
+`8a09ddf`, the shipped `android-v0.1.3`, from the owner's decisions of 2026-11-07, and accepted by the owner the same
+day, every open question decided as recommended, with one amendment to which methods count as live ([Open questions,
+decided](#open-questions-decided-owner-2026-11-07)). It replaces decision 6 of the keyboard proposal
+([keyboard.md](keyboard.md#timing)) and changes timing for touch play as well as for keys. Once it is built, its screens
+fold into [design.md](design.md), its timing into [gameplay.md](gameplay.md), its steps into [plan.md](plan.md) and its
+checks into [phone-checks.md](phone-checks.md); [What changes once built](#what-changes-once-built) lists the passages.
+Until L5 those documents describe the app before L1, and this one the timing of builds from L1 on.
 
 Claims about today's app are read from its code at `8a09ddf`; claims about the runtime from ensomi-runtime at
 `d090374`, the commit the 0.1.3 build links (README, plan.md "0.1.3 integration"). Nothing here was run on a device.
@@ -587,6 +586,91 @@ Audio latency slot 1 · Phone speaker, Radio button, 2 of 3"), the steps and Nam
 0"), each value, and the menus ("1 · K380, Keyboard uses slot, Drop down list"). Two things TalkBack met are older than
 L2: opened at a section, Settings lets it visit the row half under the top app bar, and Music volume's slider takes two
 stops. The app's settings were written back as found at the end of each round.
+
+### L3 as built
+
+Built as the L3 row says, from [Timing calibration: one screen](#timing-calibration-one-screen), in place of L1's
+bridging steps (`settings/CalibrationScreen.kt`, `settings/Calibration.kt`), with keyboard.md's K5 (lane keys on it).
+What it adds, and where it differs:
+
+- **Layout.** One layout for both shapes, so that turning the phone resizes the field and keeps its game: in portrait
+  the field takes the top 42 % of the window under the top bar, edge to edge, the readings sit under it, and the
+  controls scroll below them; wider than tall, the field takes the left half and the readings and the controls the
+  right. The field and the readings never scroll away. The readings and controls are centred at 640 dp at most. Wider
+  than tall at large text sizes (a font scale above 1.3) the readings go under the field, which keeps 55 % of the
+  height: round 2's captures at 200 % left the controls beside the readings about 50 dp.
+- **The field** is the play renderer on the clicks' clock (`ownsClock = false`), judging: a note in lane 2
+  (`SampleCharts.CALIBRATION_LANE`) on every click, and every touch and every lane key presses that lane
+  (`PlayfieldView.pressLane`). It draws with the lean and lane width of the orientation the player plays in, whatever
+  its own shape, and shows the judgement word and the combo but no song progress, the clicks having no end. Two
+  additions. A note left alone shows no Miss, neither its word nor its lane's tint, when no method has pressed in the
+  1.5 s before it is decided, and "Ready" shows until the first press (`PlayController.quietMissesAfterMs`): round 1
+  showed a Miss on every click while nobody pressed, which a player lining the notes up by sight and sound alone would
+  read as failing. The session judges those notes all the same. And the field is clickable with a click that does
+  nothing, so TalkBack's double tap, which carries no time, never becomes a touch on it.
+- **Values while the notes fall.** `PlayController.timing` takes new latencies while it runs, A and each method's I, in
+  place of L1's `audioLatencyMs`, and the field takes them on its next frame. A rise of A or I by more than the 100 ms
+  allowance at once (a slot chosen) moves the gameplay time back; the input clock holds, as it never moves back, and a
+  press made within the rise less 100 ms of it is late. Such a press gives no reading (below).
+- **Audio latency.** A panel with the slot row of Settings (`AudioSlotChoice`, shared with Settings), the active slot's
+  value with − and +, the slider from −150 to +150 ms, and Name; "Line each note up with its click. It moves the notes
+  and the judging together." and "Sound now: …", the output the clicks play on.
+- **Input latency.** A panel with Touch | Keyboard (O3), Keyboard first when a keyboard is connected as the screen
+  opens, Touch otherwise; "Touch uses slot", Settings' menu (`InputSlotMenu`, shared); the slot's value with − and +,
+  the slider, and Name; "Gather your hits at the middle: raise it if they are late, lower it if they are early. It
+  moves only your presses." An addition: when both methods use one slot, "The keyboard uses this slot too, so it
+  changes with it." (or touch), since the panel shows one method and the other's change would go unseen.
+- **Reaching a value** (the main thread's review: −/+ moved 1 ms a tap, and a Bluetooth output needs 150 ms or more).
+  Both ways, since each serves a different player: a step held down repeats after 400 ms, 1 ms a step, at a pace set by
+  the time held, from 10 to 100 steps a second over 0.8 s (`StepRepeat`), so +150 ms is 2.3 s from 0 and +300 ms
+  3.8 s, letting go shows the value reached and a tap moves it by one. Holding is the phone's own gesture for a
+  stepper, needs no aim, and works with Enter or Space held on a focused step. The slider takes a value most of the way
+  in one drag, and while it has focus the arrow keys move it 1 ms and Page Up and Page Down 10 ms, a held key repeating
+  as the keyboard repeats it, for a player whose hands are on the keys. The pace follows the time, not the frames: as
+  first built each repeat waited for the main thread, and round 1 held + for 2 s on the emulator for 27 steps.
+  Settings' steps are the same component and repeat the same way.
+- **Readings** (`CalibrationReadings`): the last 16 hits of each method, each the runtime's `offsetMs` with the A + I
+  its press was stamped with (`InputStamp`: the song time of its event, and the chart time that and the latencies gave
+  it), shown less the rise in A + I[method] since. The line names the method, "Last 16 touch hits: 6 ms late on
+  average.", "Last 9 key hits: …", or before any, "No touch hits yet. Tap the field with the clicks." and "No key hits
+  yet. Press a lane key with the clicks.": the readings follow the method chosen, which the panel holding the choice
+  may have scrolled out of sight. It is a polite live region, and takes the width at large text sizes, with Clear hits
+  under it. The strip runs from 100 ms early to 100 ms late, a hit further out at its end, the newest brightest, early in
+  lavender and late in rose, its middle in the judgement line's coral and two white marks at the average the line
+  states. A press gives no reading when it hit nothing, was judged late at the session's clock, or was handed on later
+  than its own time, held to a pause or to its lane's last input (`JudgedPress.exact`): its error then says nothing of
+  where it landed. Clear hits empties both methods' readings; a new output starts them over.
+- **Where this differs.** The strip marks the average, not the median: the line states the average (the decided
+  reading), and one screen showing two middles would make the player ask which to trust. `CalibrationTaps.median`
+  had no use left and went, with `suggestionMs`; `errorMs` stays, for the log. The help comes after the two panels,
+  not before: round 1's captures put it first, and in landscape and at 200 % font it pushed every value below the
+  fold. Each panel's note now says what to do with its value.
+- **Paused.** The field dims under "Paused. Tap the field or press a key to go on.", one button for TalkBack, read
+  without its own full stop since TalkBack adds one; a tap there, or a lane key's fresh down, makes the clicks go on and
+  presses nothing. Other keys keep their meaning, so Tab still moves focus.
+- **Accessibility.** The field is one element, "Calibration field: a note falls onto the line with each click.", and is
+  clickable with a click that does nothing, so a double tap presses nothing; the strip is one sentence, "Your last touch
+  hits, early on the left and late on the right: from 2 ms late to 11 ms late"; the slot rows, steps, values, Name
+  buttons, the method choice and the menu are read as in Settings; section titles are headings. Each slider is one stop
+  with its label as its text and its value as its state: as first built its label was its content description, which
+  Compose moves to a node of its own on a node that merges its children, as the slider's does, and TalkBack stopped on
+  the value and then on the label (round 2; Settings' Music volume does the same since L2, left as it is). With Remove
+  animations on, the field follows the playfield's rules. No haptics.
+- **Log** (`EnsomiCalibration`): "Clicks started" with the latencies, and "Clicks: song time 1000 ms at N ns" whenever
+  click 0's time moves (after a pause, or as the output reports anew) and every 5 s; each press ("Press: touch on
+  input slot 0 +8 ms, audio slot 1 -2 ms; event … ns, song … ms, chart … ms, from the nearest click … ms; error … ms
+  (p1)", or "no hit", or why it is no reading); each change of a value, a slot or a slot's choice, by number ("Audio
+  latency slot 2: +38 ms, was +32 ms", "Touch uses input slot 2, was 0", "… named"), never a name; the method edited;
+  pauses, Clear hits and a new output.
+- **Removed:** `CalibrationPadView`, `CalibrationStep` and the two-step control, `CalibrationTaps.suggestionMs` and
+  `median`, Use and its `CONFIRM` tick, Done, the 10 ms clock polling. Settings' Calibrate timing row reads "Line falling
+  notes up with clicks, and press with them, to set audio and input latency."
+- **Scenarios** `calibration`, `calibration-hits`, `calibration-keyboard`, `calibration-long`, `calibration-shared`,
+  `calibration-paused`, `calibration-name` and `calibration-stored`, and the capture script's `calibration` group, in
+  place of `calibration-sound`, `calibration-picture` and `calibration-picture-stored` (README).
+- **Left as known** (round 3, `20261108-013718-android-keyboard-l3k5-b3`, 571 tests, lint unchanged): at 200 % font a long
+  slot name clips in portrait, and in landscape a panel's note overlaps "Ready" and the readings need their own scroll; in
+  landscape the input method covers the name dialog's buttons, as on any phone dialog.
 
 ## Open questions, decided (owner, 2026-11-07)
 

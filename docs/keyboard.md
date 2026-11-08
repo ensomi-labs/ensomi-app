@@ -851,6 +851,31 @@ it; that is the list's, not this step's. The app's settings were as found at the
 Bluetooth service crash (`bt_stack_manage`, a hardware error event) recurred on the image in rounds 1, 4 and 5, with no
 crash of the app.
 
+### K5 as built
+
+Built as the K5 row says, from [Calibration with keys](#calibration-with-keys), with latency.md's L3 (the one screen,
+[L3 as built](latency.md#l3-as-built)). What it adds, and where it differs:
+
+- **The path.** The calibration screen registers a `HardwareKeyHandler` and hands each event to
+  `PlayfieldView.calibrationKeyInput`, which asks `CalibrationKeys`, pure Kotlin beside `GameKeys`: a lane key, from a
+  keyboard or the virtual keyboard of `adb shell input`, goes through the field's `KeyLanes` to its one `LaneSender` as
+  `LaneHolder.Key`, source `KEYBOARD`, so it is stamped with its own event time and judged with the keyboard's input
+  slot by the same `InputQueue` and input clock as play. Every lane key presses the note's lane, as every touch does;
+  its repeats press nothing, and its up releases, canceled or not. Two lane keys held together are one press, the lane
+  being held, as in play.
+- **Keys around it**, as the keys table's "Other screens" row says: a key the map does not hold for a lane is passed
+  on, the Pause key among them, so Escape is Back, Tab and the arrows move focus or a focused slider, and Enter and
+  Space press the focused control. Escape bound to a lane presses. Back leaves, as on any screen, every change having
+  been kept as it was made.
+- **Paused clicks.** A lane key's fresh down makes them go on and presses nothing; the key is held from that down, so
+  its repeats and its up are taken and release nothing.
+- **The method.** The Input latency panel opens on Keyboard when a keyboard is connected as the screen opens (O3), and
+  key presses count in the readings while Keyboard is chosen; touch presses count while Touch is. Every press is judged
+  with its own method's slot whichever is chosen. The caps carry the first keyboard's labels, as in play.
+- **The log** names the method of each press ("Press: keyboard on input slot 1 +30 ms, …").
+- Not built: the calibration writes no `key-log.csv`; the game log's key lines are play's. A lane bound to Space, an
+  arrow, Tab or Enter loses its first press after a touch to Android's touch mode, as K3 found; that is K4's to meet.
+
 When the steps are done, design.md takes the screens and the keys table, gameplay.md the input path and edge cases,
 plan.md the steps and what they showed, phone-checks.md the rows, and design.md's "Not carried over in this round"
 drops key bindings.

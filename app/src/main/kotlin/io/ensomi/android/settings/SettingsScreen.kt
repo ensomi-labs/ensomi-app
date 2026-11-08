@@ -132,8 +132,9 @@ fun SettingsScreen(
                 SettingsSection.PLAYFIELD -> PLAYFIELD_HEADER
                 SettingsSection.KEYBOARD -> PLAYFIELD_HEADER + 1 + playfieldItems
                 SettingsSection.SOUND -> PLAYFIELD_HEADER + 3 + playfieldItems
-                // About is last, so the list opens at its end.
-                SettingsSection.ABOUT -> PLAYFIELD_HEADER + 12 + playfieldItems + licenceItems
+                // The list's last item, the dedication: the list scrolls back from it to fill the window, so it opens at
+                // its end, all of About in sight when it fits.
+                SettingsSection.ABOUT -> PLAYFIELD_HEADER + 16 + playfieldItems + licenceItems
             }
             val listState = rememberLazyListState(initialFirstVisibleItemIndex = firstIndex)
             // Landscape puts the navigation bar or a cutout at a side: the list keeps clear of it.

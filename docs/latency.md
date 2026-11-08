@@ -711,6 +711,15 @@ hits cleared; the clicks and the notes start over"; on a phone held sideways the
 which are closer set, and the readings no longer go under the field at large text there; and the field keeps the back
 gesture off its lower outer edges, as play does.
 
+The owner asked whether Android takes Bluetooth latency off by itself. Its own Bluetooth audio HAL does, for the delay a
+headset reports: `out_get_presentation_position` leaves the frames still queued in the headset out of the presented
+position (AOSP `packages/modules/Bluetooth/system/audio_bluetooth_hw/stream_apis.cc`; the HAL's
+`PresentationPosition.remoteDeviceAudioDelayNanos`, zero when unknown), and `AudioTrack.getTimestamp`, which the clock
+reads, reports that position. So u, and the audio slot, hold only what the output does not report. No public API says
+whether the output in use reported a delay (`AudioTimestamp`: "cannot account for any delay unknown to the
+implementation"; `AudioDeviceInfo` and `AudioTrack` give no latency), and a vendor's offloaded path is its own, so the
+screens add no "latency auto detected".
+
 ## Open questions, decided (owner, 2026-11-07)
 
 The owner took every recommendation below, and amended which methods count as live for the input clock ([Live

@@ -255,7 +255,8 @@ controls on the right, as the picture step is laid out now.
 - **Help:** "A note falls onto the line with each click. Move Audio latency until they meet. Press with the clicks to
   see where your presses land, and move Input latency until they gather at the middle. Do either, both, in any order.
   Changes are kept as you make them."
-- **Nothing to confirm.** No Use, no Done, no suggestion. Back leaves; every change was written when it was made.
+- **Nothing to confirm.** No Use, no Done, no suggestion. Back or Up leaves, and nothing else: the field keeps the back
+  gesture off its lower outer edges, as play does. Every change was written when it was made.
 
 **No order, and what each value moves.** The audio value moves the picture and the judging together, so it moves the
 readings too; the input value moves only the presses. Lining up the picture first and the presses second moves each

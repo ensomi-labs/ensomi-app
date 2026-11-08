@@ -340,7 +340,10 @@ class PlayfieldView @JvmOverloads constructor(
         if (previewSize == null && excludeBackGesture) systemGestureExclusionRects = backGestureExclusion(g)
     }
 
-    /** During play the outer lanes' lower part is kept from the back gesture (the system caps each edge's share). */
+    /**
+     * During play, and on the calibration's field, the outer lanes' lower part is kept from the back gesture (the system
+     * caps each edge's share), so a press near the screen's edge never leaves the screen.
+     */
     var excludeBackGesture = false
         set(value) {
             field = value

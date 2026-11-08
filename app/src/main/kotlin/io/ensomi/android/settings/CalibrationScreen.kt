@@ -109,7 +109,8 @@ import kotlinx.coroutines.isActive
  * or Keyboard (O3), in any order, judging by sight and sound alone or by pressing too. Each change is kept at once in the
  * slot it edits and the field takes it on its next frame; the slots are chosen and named here as in Settings. The
  * readings show the chosen method's last hits as they would be judged with the values now. Nothing is suggested,
- * applied or confirmed: Back leaves.
+ * applied or confirmed, and nothing but Back or Up leaves: the field keeps the back gesture off its lower outer edges, as
+ * play does, since a press there is a press.
  *
  * In portrait the field is at the top and stays there, the readings under it, and the controls scroll below them; wider
  * than tall, the field fills the left, and the readings and the controls take the right, or at large text sizes the
@@ -378,7 +379,7 @@ private class LoggedSettings(var settings: PlaySettings)
  * anywhere on it, or any lane key ([PlayfieldView.calibrationKeyInput]), presses that lane, so each press reaches
  * [onPress] through the same sender, queue and input latency slots as in play. A note left alone while nothing is
  * pressed passes without a Miss ([QUIET_MISSES_AFTER_MS]). While [paused], it says so over its frozen picture, and a tap
- * goes on.
+ * goes on. Its lower outer edges are kept from the back gesture, as in play, so a press there never leaves the screen.
  */
 @Composable
 private fun CalibrationField(
@@ -409,6 +410,7 @@ private fun CalibrationField(
                             contentDescription = description
                             pressLane = SampleCharts.CALIBRATION_LANE
                             takesUntimedClicks = true
+                            excludeBackGesture = true
                             // The map as the screen opens: Settings › Keyboard is not reachable from here.
                             useKeys(settings.keys, keyboards::keys)
                             if (paused) pause()

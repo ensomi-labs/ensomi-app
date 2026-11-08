@@ -53,7 +53,7 @@ landscape) with a 24 dp gesture area.
 
 | Part | Landscape (the default) | Portrait |
 | --- | --- | --- |
-| Lanes at the line, phone default | 64 % of the width, at most 640 dp (591 dp, 148 dp per lane) | The width less 8 dp margins, at most 440 dp (395 dp, 99 dp per lane) |
+| Lanes at the line, phone default | 75 % of the width (692 dp, 173 dp per lane); the original, the width setting's lower end, is 64 %, at most 640 dp (591 dp) | The width less 8 dp margins, at most 440 dp (395 dp, 99 dp per lane) |
 | Lanes at the line, large-window default | 80 % of the width | 90 % of the width |
 | HUD | In the top corners beside the lanes' far end: title and chart on the left, accuracy and Pause on the right | A 64 dp row at the top, below any display cutout |
 | Far end of the lanes | 6 dp under the top edge | Under the HUD row |
@@ -61,12 +61,15 @@ landscape) with a 24 dp gesture area.
 | Key tray | 64 dp, one 44 dp cap per lane | 88 dp, one 68 dp cap per lane |
 | Under the tray | The system's mandatory gesture inset, at least 10 dp | The same, at least 16 dp |
 | Lanes' height on the screen | 317 dp | About 750 dp |
-| Lean by default | 40° | Flat |
+| Lean by default | 47° in a phone-sized window, 40° in a larger one | Flat |
 
 **Lane width.** Settings offers the width of all four lanes at the line as a share of the window, from the original
 phone geometry in the table to 98 %. Each orientation keeps its own choice; Use default width returns to the window's
-default. A window at least 600 dp on its shorter side uses the large-window default; smaller windows keep the original
-calculation exactly, including both caps. An older settings file has no width choice and follows this default.
+default. A window at least 600 dp on its shorter side uses the large-window default; a smaller one, a phone's, uses 75 %
+in landscape, the owner's choice on the Redmi K90 Ultra with a 47° lean, and keeps the original calculation exactly in
+portrait. An older settings file has no width choice and follows this default. The landscape lean is the same kind of
+default until the player moves it: a new install keeps none and follows the window; a file from before kept 40, the old
+default or the player's, and that is kept.
 The Redmi K Pad's saved display report is 1880 × 3008 px at 450 dpi (668 × 1070 dp). Its landscape default grows from
 640 to 856 dp, and portrait from 440 to 602 dp: a clearly wider tray with room beside the leaning far end for the HUD.
 The maximum is 1048 dp and 655 dp respectively. Width changes the lanes, notes, caps and lights together; it changes
@@ -82,7 +85,8 @@ end.
 **The model.** The lanes are a flat strip tilted back by the lean angle θ about the judgement line, seen from an eye
 level with the strip's far end and 0.36 of the lanes' screen height in front of the screen. The far end stays at the top
 whatever the angle, and is `k = 1 / (1 + tan θ / 0.36)` of the line's width: 0.67 at 10°, 0.50 at 20°, 0.38 at 30°,
-**0.30 at 40°** (the default, close to Malody V's look), 0.20 at 55° (the most). 0° is flat, so the lean needs no
+**0.30 at 40°** (the default in a large window, close to Malody V's look), 0.25 at 47° (a phone's), 0.20 at 55° (the
+most). 0° is flat, so the lean needs no
 separate switch. The eye distance was chosen so that 40° looks like the convention; it is one constant.
 
 **Lane space.** Everything on the lanes (lanes, lights, notes, hit feedback) is drawn as on the flat strip, in lane

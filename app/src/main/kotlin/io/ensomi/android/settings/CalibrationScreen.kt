@@ -394,6 +394,7 @@ private fun CalibrationField(
     modifier: Modifier,
 ) {
     val description = stringResource(R.string.calibration_field_description)
+    val lean = PlaySettings.farScale(settings.lean(settings.orientation, phoneWindow()))
     val pausedText = stringResource(R.string.calibration_paused)
     // TalkBack puts its own full stop before "Button".
     val pausedSaid = pausedText.trimEnd('.')
@@ -435,7 +436,6 @@ private fun CalibrationField(
                         // The values now: the field takes them on its next frame.
                         it.timing = PlayTiming.game(settings)
                         // The lean and width the player plays with, whatever the field's own shape.
-                        val lean = PlaySettings.farScale(settings.lean)
                         it.landscapeFarScale = lean
                         it.portraitFarScale = lean
                         it.landscapeWidth = settings.laneWidth(settings.orientation)

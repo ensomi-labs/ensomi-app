@@ -362,13 +362,14 @@ private fun OrientationSetting(settings: PlaySettings, onChange: ((PlaySettings)
 @Composable
 private fun LeanSetting(settings: PlaySettings, onChange: ((PlaySettings) -> PlaySettings) -> Unit) {
     val orientation = settings.orientation
+    val lean = settings.lean(orientation, phoneWindow())
     SliderSetting(
         title = stringResource(
             if (orientation == PlayOrientation.LANDSCAPE) R.string.settings_lean_landscape else R.string.settings_lean_portrait,
         ),
-        valueText = leanText(settings.lean),
+        valueText = leanText(lean),
         supporting = stringResource(R.string.settings_lean_help),
-        value = settings.lean.toFloat(),
+        value = lean.toFloat(),
         range = PlaySettings.LEANS.first.toFloat()..PlaySettings.LEANS.last.toFloat(),
         steps = PlaySettings.LEANS.last - PlaySettings.LEANS.first - 1,
     ) { value -> onChange { it.withLean(orientation, PlaySettings.snapLean(value)) } }

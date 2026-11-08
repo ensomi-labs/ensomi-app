@@ -122,19 +122,24 @@ data class PlayfieldGeometry(
         const val TRAY_HEIGHT_DP = 88f
 
         /**
-         * Landscape: the lanes at the line take this share of the width (Malody's key mode on phones spans about 65
-         * to 80 %), at most [LANDSCAPE_MAX_FIELD_WIDTH_DP]: about 148 dp per lane on a phone 923 dp long. The corners
-         * beside the lanes' far end hold the HUD; the far end sits just under the top edge.
+         * Landscape: the original width at the line is this share of the width (Malody's key mode on phones spans about
+         * 65 to 80 %), at most [LANDSCAPE_MAX_FIELD_WIDTH_DP]: about 148 dp per lane on a phone 923 dp long, the width
+         * setting's lower end. The corners beside the lanes' far end hold the HUD; the far end sits just under the top
+         * edge.
          */
         const val LANDSCAPE_FIELD_SHARE = 0.64f
         const val LANDSCAPE_MAX_FIELD_WIDTH_DP = 640f
         const val LANDSCAPE_TOP_DP = 6f
         const val LANDSCAPE_TRAY_HEIGHT_DP = 64f
 
-        /** A large window uses more of the glass; a phone's default stays exactly as before. */
+        /**
+         * A large window uses more of the glass. A phone-sized one, under this on its shorter side, has its own landscape
+         * default, the owner's from the Redmi K90 Ultra; in portrait it keeps the original width exactly.
+         */
         const val LARGE_WINDOW_DP = 600f
         const val LARGE_LANDSCAPE_SHARE = 0.80f
         const val LARGE_PORTRAIT_SHARE = 0.90f
+        const val PHONE_LANDSCAPE_SHARE = 0.75f
         const val MAX_WIDTH_SHARE = 0.98f
 
         const val CAP_INSET_DP = 10f
@@ -189,14 +194,17 @@ data class PlayfieldGeometry(
         /** Width changes neither the lean nor the line's height, tray height or fall length. */
         fun lineWidth(width: Float, height: Float, density: Float, share: Float? = null): Float {
             val original = lineWidth(width, density, width > height)
-            val chosen = share?.takeIf { it.isFinite() } ?: if (min(width, height) / density >= LARGE_WINDOW_DP) {
-                if (width > height) LARGE_LANDSCAPE_SHARE else LARGE_PORTRAIT_SHARE
-            } else {
-                // Return the old calculation itself: no rounding through a percentage on a phone.
-                return original
+            val chosen = share?.takeIf { it.isFinite() } ?: when {
+                !phoneSized(width, height, density) -> if (width > height) LARGE_LANDSCAPE_SHARE else LARGE_PORTRAIT_SHARE
+                width > height -> PHONE_LANDSCAPE_SHARE
+                // Return the old calculation itself: no rounding through a percentage on a phone held upright.
+                else -> return original
             }
             return (width * chosen.coerceIn(0f, MAX_WIDTH_SHARE)).coerceAtLeast(original)
         }
+
+        /** A window under [LARGE_WINDOW_DP] on its shorter side: a phone's, whose landscape defaults are its own. */
+        fun phoneSized(width: Float, height: Float, density: Float): Boolean = min(width, height) / density < LARGE_WINDOW_DP
 
         /** The strongest lean drawn: below this the far end is too small to read notes at. */
         const val MIN_FAR_SCALE = 0.2f

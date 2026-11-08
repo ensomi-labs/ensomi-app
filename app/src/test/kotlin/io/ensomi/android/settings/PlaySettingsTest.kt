@@ -15,16 +15,32 @@ class PlaySettingsTest {
     fun phonesPlayInLandscapeWithTheLanesLeaningAndPortraitFlat() {
         val settings = PlaySettings()
         assertEquals(PlayOrientation.LANDSCAPE, settings.orientation)
-        assertEquals(40, settings.lean)
-        assertEquals(0, settings.lean(PlayOrientation.PORTRAIT))
-        assertEquals(0, settings.copy(orientation = PlayOrientation.PORTRAIT).lean)
+        assertEquals(40, settings.lean(PlayOrientation.LANDSCAPE, phone = false))
+        assertEquals(47, settings.lean(PlayOrientation.LANDSCAPE, phone = true))
+        assertEquals(0, settings.lean(PlayOrientation.PORTRAIT, phone = false))
+        assertEquals(0, settings.lean(PlayOrientation.PORTRAIT, phone = true))
     }
 
     @Test
     fun eachOrientationKeepsItsOwnLean() {
         val settings = PlaySettings().withLean(PlayOrientation.PORTRAIT, 20)
         assertEquals(20, settings.portraitLean)
-        assertEquals(40, settings.landscapeLean)
+        assertEquals(null, settings.landscapeLean)
+    }
+
+    @Test
+    fun aLeanThePlayerSetIsKeptOnAnyWindowAndTheDefaultIsNotWritten() {
+        val set = PlaySettings().withLean(PlayOrientation.LANDSCAPE, 40)
+        assertEquals(40, set.lean(PlayOrientation.LANDSCAPE, phone = true))
+        assertEquals(40, StoredSettings().with(set).toPlaySettings().landscapeLean)
+        // A new install writes no lean, so it follows the window it plays in.
+        val fresh = StoredSettings.JSON.encodeToString(StoredSettings.serializer(), StoredSettings().with(PlaySettings()))
+        val read = StoredSettings.JSON.decodeFromString(StoredSettings.serializer(), fresh).toPlaySettings()
+        assertEquals(null, read.landscapeLean)
+        assertEquals(47, read.lean(PlayOrientation.LANDSCAPE, phone = true))
+        // A file from before held its lean, the old default or the player's: it is kept.
+        val old = StoredSettings.JSON.decodeFromString(StoredSettings.serializer(), """{"landscapeLean":40}""").toPlaySettings()
+        assertEquals(40, old.lean(PlayOrientation.LANDSCAPE, phone = true))
     }
 
     @Test

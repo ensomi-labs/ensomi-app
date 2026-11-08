@@ -24,9 +24,10 @@ data class PlaySettings(
     val orientation: PlayOrientation = PlayOrientation.LANDSCAPE,
     /**
      * How far the lanes are tilted back, in degrees, 0 for flat: one value for each orientation, since landscape
-     * lanes are short and lean by default while portrait ones are long and flat by default.
+     * lanes are short and lean by default while portrait ones are long and flat by default. Landscape's is null until
+     * the player sets it, and follows the window's default then ([lean]).
      */
-    val landscapeLean: Int = DEFAULT_LANDSCAPE_LEAN,
+    val landscapeLean: Int? = null,
     val portraitLean: Int = DEFAULT_PORTRAIT_LEAN,
     /** Share of the window's width at the line; null follows the window's default. Kept per orientation. */
     val landscapeWidth: Float? = null,
@@ -47,11 +48,12 @@ data class PlaySettings(
     /** How long a note takes to fall from the top of the playfield to the line. */
     val scrollTimeMs: Double get() = scrollTimeMs(scrollSpeed)
 
-    /** The lean of the orientation play will use. */
-    val lean: Int get() = lean(orientation)
-
-    fun lean(orientation: PlayOrientation): Int = when (orientation) {
-        PlayOrientation.LANDSCAPE -> landscapeLean
+    /**
+     * The lean of [orientation] in a window that is [phone]-sized or not (`PlayfieldGeometry.phoneSized`): the player's,
+     * or by default [DEFAULT_LANDSCAPE_LEAN] in landscape, [PHONE_LANDSCAPE_LEAN] on a phone, and flat in portrait.
+     */
+    fun lean(orientation: PlayOrientation, phone: Boolean): Int = when (orientation) {
+        PlayOrientation.LANDSCAPE -> landscapeLean ?: if (phone) PHONE_LANDSCAPE_LEAN else DEFAULT_LANDSCAPE_LEAN
         PlayOrientation.PORTRAIT -> portraitLean
     }
 
@@ -74,8 +76,11 @@ data class PlaySettings(
         const val DEFAULT_SCROLL_SPEED = 25.0
         val SCROLL_SPEEDS = 1.0..40.0
 
-        /** The convention's common lean: Malody players mostly set 40. */
+        /** The convention's common lean: Malody players mostly set 40. Tuned on the K Pad. */
         const val DEFAULT_LANDSCAPE_LEAN = 40
+
+        /** A phone-sized window's, the owner's from the Redmi K90 Ultra, with its 75 % width. */
+        const val PHONE_LANDSCAPE_LEAN = 47
         const val DEFAULT_PORTRAIT_LEAN = 0
 
         /** Degrees: 0 is flat; 55 is the most Malody allows in its key mode. */

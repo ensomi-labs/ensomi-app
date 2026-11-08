@@ -25,7 +25,11 @@ data class StoredSettings(
     val judge: JudgeDifficulty = JudgeDifficulty.C,
     val musicVolume: Float = PlaySettings().musicVolume,
     val orientation: PlayOrientation = PlayOrientation.LANDSCAPE,
-    val landscapeLean: Int = PlaySettings.DEFAULT_LANDSCAPE_LEAN,
+    /**
+     * Null until the player sets it: the window's default. A file written before phones had their own default always
+     * holds a value, which is kept, since its 40 may be the player's.
+     */
+    val landscapeLean: Int? = null,
     val portraitLean: Int = PlaySettings.DEFAULT_PORTRAIT_LEAN,
     val landscapeWidth: Float? = null,
     val portraitWidth: Float? = null,
@@ -44,7 +48,7 @@ data class StoredSettings(
         judge = judge,
         musicVolume = musicVolume.coerceIn(0f, 1f),
         orientation = orientation,
-        landscapeLean = landscapeLean.coerceIn(PlaySettings.LEANS),
+        landscapeLean = landscapeLean?.coerceIn(PlaySettings.LEANS),
         portraitLean = portraitLean.coerceIn(PlaySettings.LEANS),
         landscapeWidth = landscapeWidth?.takeIf { it.isFinite() }?.coerceIn(0f, 1f),
         portraitWidth = portraitWidth?.takeIf { it.isFinite() }?.coerceIn(0f, 1f),

@@ -103,6 +103,7 @@ import io.ensomi.android.settings.JudgeDifficulty
 import io.ensomi.android.settings.PlayOrientation
 import io.ensomi.android.settings.PlaySettings
 import io.ensomi.android.settings.latencySlotLabel
+import io.ensomi.android.settings.phoneWindow
 import io.ensomi.android.ui.ActionButton
 import io.ensomi.android.ui.FocusOutlinedButton
 import io.ensomi.android.ui.theme.Brand
@@ -217,6 +218,8 @@ fun PlayScreen(
         val connected by keyboards.keyboards.collectAsStateWithLifecycle()
         // The first keyboard connected labels the caps (keyboard.md, Several keyboards).
         val capLabels = connected.firstOrNull()?.laneLabels
+        // A phone-sized window has its own default landscape lean.
+        val landscapeLean = settings.lean(PlayOrientation.LANDSCAPE, phoneWindow())
 
         fun pause(cause: String, byKey: Boolean = false) {
             if (phase == PlayPhase.PAUSED) return
@@ -378,7 +381,7 @@ fun PlayScreen(
                     },
                     update = {
                         it.insets = cutoutTop to gestureBottom
-                        it.landscapeFarScale = PlaySettings.farScale(settings.landscapeLean)
+                        it.landscapeFarScale = PlaySettings.farScale(landscapeLean)
                         it.portraitFarScale = PlaySettings.farScale(settings.portraitLean)
                         it.landscapeWidth = settings.landscapeWidth
                         it.portraitWidth = settings.portraitWidth
@@ -434,7 +437,7 @@ fun PlayScreen(
                 hud.accuracy,
                 paused = phase != PlayPhase.PLAYING,
                 onPause = { pause("the pause button") },
-                landscapeFarScale = PlaySettings.farScale(settings.landscapeLean),
+                landscapeFarScale = PlaySettings.farScale(landscapeLean),
                 landscapeWidth = settings.landscapeWidth,
             )
 

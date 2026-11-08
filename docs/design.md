@@ -318,8 +318,9 @@ A Material list in sections:
 - **Gameplay**: scroll speed (a slider from 1.0× to 40.0× in 0.5 steps, with the fall time in seconds: "Notes take
   0.46 s to fall to the line."), judge difficulty (segmented A to E, C by default).
 - **Playfield**: orientation (segmented Landscape and Portrait, Landscape by default); **Lane lean** for the
-  orientation chosen (a slider from Flat to 55° in whole degrees; 40° in landscape and Flat in portrait by default:
-  each orientation keeps its own); **Lane width** as a share of the screen at the line, with Use default width;
+  orientation chosen (a slider from Flat to 55° in whole degrees; 40° in landscape, 47° on a phone-sized window, and
+  Flat in portrait by default: each orientation keeps its own); **Lane width** as a share of the screen at the line,
+  with Use default width;
   and a **live preview**: the sample chart playing itself on the game's own renderer,
   at the current window's proportions in the chosen orientation, scaled into the list, under the sliders on a phone
   held upright and beside them in landscape, so it stays in sight while a slider moves. The preview follows
@@ -450,9 +451,10 @@ Haptics go through `View.performHapticFeedback`, which honours the player's touc
   hold the phone in one hand or are used to portrait 4K games.
 - **Lane width** sits beside Lane lean in Settings and follows the orientation selected there. It is the four lanes'
   share of the window at the line, from the original width to 98 %, with a live preview and Use default width.
-  Defaults stay exactly as before on phone-sized windows; windows at least 600 dp on their shorter side use 80 % in
-  landscape and 90 % in portrait. At the K Pad's 668 × 1070 dp this gives a wider area under the hands while keeping
-  the landscape HUD beside the far end at the default 40° lean. Width changes the caps and touch columns together;
+  Phone-sized windows use 75 % in landscape, with a 47° lean (the owner's, from the Redmi K90 Ultra), and the original
+  width in portrait; windows at least 600 dp on their shorter side use 80 % in landscape and 90 % in portrait. At the
+  K Pad's 668 × 1070 dp this gives a wider area under the hands while keeping the landscape HUD beside the far end at
+  the default 40° lean. Width changes the caps and touch columns together;
   lean still moves neither, and touches beside the field still reach the nearest lane (gameplay.md).
 - **The game holds its orientation** from the count-in through pause and the results, with
   `SCREEN_ORIENTATION_USER_LANDSCAPE` or `SCREEN_ORIENTATION_USER_PORTRAIT`, which let the phone take either side of

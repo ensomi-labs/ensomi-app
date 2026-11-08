@@ -51,10 +51,11 @@ fun PlayfieldPreview(settings: PlaySettings, modifier: Modifier = Modifier) {
     val density = LocalView.current.resources.displayMetrics.density
     val widthPercent = PlayfieldGeometry.lineWidth(size.first.toFloat(), size.second.toFloat(), density, settings.laneWidth(settings.orientation)) / size.first * 100
     val reduceMotion = remember { !ValueAnimator.areAnimatorsEnabled() }
+    val phone = phoneWindow()
     val description = stringResource(
         R.string.settings_playfield_preview_description,
         stringResource(if (landscape) R.string.settings_orientation_landscape else R.string.settings_orientation_portrait),
-        leanText(settings.lean(settings.orientation)),
+        leanText(settings.lean(settings.orientation, phone)),
         widthPercent.roundToInt(),
     )
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -91,7 +92,7 @@ fun PlayfieldPreview(settings: PlaySettings, modifier: Modifier = Modifier) {
                         }
                     },
                     update = {
-                        it.landscapeFarScale = PlaySettings.farScale(settings.landscapeLean)
+                        it.landscapeFarScale = PlaySettings.farScale(settings.lean(PlayOrientation.LANDSCAPE, phone))
                         it.portraitFarScale = PlaySettings.farScale(settings.portraitLean)
                         it.landscapeWidth = settings.landscapeWidth
                         it.portraitWidth = settings.portraitWidth
@@ -116,6 +117,16 @@ fun playfieldPreviewSize(orientation: PlayOrientation): Pair<Int, Int> {
         max(width, height) to min(width, height)
     }
     return if (orientation == PlayOrientation.LANDSCAPE) screen else screen.second to screen.first
+}
+
+/**
+ * Whether the current window is phone-sized ([PlayfieldGeometry.phoneSized]), which chooses the default landscape lean;
+ * the playfield chooses the default width from its own surface by the same line.
+ */
+@Composable
+fun phoneWindow(): Boolean {
+    val (width, height) = playfieldPreviewSize(PlayOrientation.LANDSCAPE)
+    return PlayfieldGeometry.phoneSized(width.toFloat(), height.toFloat(), LocalView.current.resources.displayMetrics.density)
 }
 
 /** "Flat" for no lean, otherwise its angle: "40°". */

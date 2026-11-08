@@ -29,7 +29,7 @@ class PlayfieldGeometryTest {
     @Test
     fun landscapeHasWiderLanesNoHudRowAndALowerTray() {
         assertTrue(sideways.landscape)
-        assertEquals(2424f * 0.64f, sideways.lineWidth, 0.01f)
+        assertEquals(2424f * 0.75f, sideways.lineWidth, 0.01f)
         val tablet = PlayfieldGeometry.of(2560f, 1600f, density = 2f, topInsetPx = 0f, bottomInsetPx = 0f)
         assertEquals(2560f * 0.80f, tablet.lineWidth, 0.01f)
         assertEquals((2424f - sideways.lineWidth) / 2, sideways.lineLeft, 0.01f)
@@ -137,21 +137,21 @@ class PlayfieldGeometryTest {
     }
 
     @Test
-    fun phoneDefaultGeometryIsNumericallyUnchanged() {
-        // Exact old formula, even on a long phone whose landscape field meets the 640 dp cap.
+    fun phoneDefaultGeometryIsNumericallyUnchangedButForTheLandscapeWidth() {
+        // Exact old formula upright, and 75 % of the width in landscape, even on a long phone past the old 640 dp cap.
         for ((w, h, d) in listOf(Triple(1080f, 2424f, 2.625f), Triple(1200f, 2800f, 2.5f))) {
             for ((width, height) in listOf(w to h, h to w)) {
                 val g = PlayfieldGeometry.of(width, height, d, 0f, 24 * d)
                 val oldWidth = PlayfieldGeometry.lineWidth(width, d, width > height)
-                assertEquals(oldWidth, g.lineWidth, 0f)
-                assertEquals((width - oldWidth) / 2, g.lineLeft, 0f)
+                assertEquals(if (width > height) width * 0.75f else oldWidth, g.lineWidth, 0f)
+                assertEquals((width - g.lineWidth) / 2, g.lineLeft, 0f)
                 assertEquals(if (width > height) 6 * d else 64 * d, g.fieldTop, 0f)
                 assertEquals(height - 24 * d, g.trayBottom, 0f)
                 assertEquals(g.trayBottom - (if (width > height) 64 else 88) * d, g.lineY, 0f)
             }
         }
         assertEquals(1038f, phone.lineWidth, 0f)
-        assertEquals(1551.36f, sideways.lineWidth, 0f)
+        assertEquals(1818f, sideways.lineWidth, 0f)
         assertEquals(2130f, phone.lineY, 0f)
         assertEquals(849f, sideways.lineY, 0f)
     }
@@ -197,9 +197,12 @@ class PlayfieldGeometryTest {
         val d = 450f / 160
         assertEquals(2406.4f, PlayfieldGeometry.of(3008f, 1880f, d, 0f, 0f).lineWidth, 0.001f)
         assertEquals(1692f, PlayfieldGeometry.of(1880f, 3008f, d, 0f, 0f).lineWidth, 0.001f)
-        // A phone-sized window on a tablet must retain the original default too.
-        assertEquals(PlayfieldGeometry.lineWidth(1800f, d, true), PlayfieldGeometry.of(1800f, 1000f, d, 0f, 0f).lineWidth, 0f)
-        assertEquals(640f, PlayfieldGeometry.of(1100f, 599f, 1f, 0f, 0f).lineWidth, 0f)
+        // A phone-sized window on a tablet takes a phone's defaults too: 75 % in landscape, the original width upright.
+        assertEquals(1800f * 0.75f, PlayfieldGeometry.of(1800f, 1000f, d, 0f, 0f).lineWidth, 0f)
+        assertEquals(PlayfieldGeometry.lineWidth(1000f, d, false), PlayfieldGeometry.of(1000f, 1800f, d, 0f, 0f).lineWidth, 0f)
+        assertEquals(825f, PlayfieldGeometry.of(1100f, 599f, 1f, 0f, 0f).lineWidth, 0f)
         assertEquals(880f, PlayfieldGeometry.of(1100f, 600f, 1f, 0f, 0f).lineWidth, 0f)
+        assertTrue(PlayfieldGeometry.phoneSized(1100f, 599f, 1f))
+        assertFalse(PlayfieldGeometry.phoneSized(3008f, 1880f, d))
     }
 }

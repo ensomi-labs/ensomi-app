@@ -1,7 +1,6 @@
 package io.ensomi.android.play
 
 import io.ensomi.runtime.Score
-import kotlin.math.roundToInt
 import kotlinx.serialization.Serializable
 
 /** A finished game as the results screen shows it. Counts come from the runtime's score. */
@@ -17,8 +16,10 @@ data class PlayResult(
     /** Hits per 10 ms of error from −150 to +150 ms; early on the left. */
     val histogram: List<Int>,
     val meanOffsetMs: Double?,
-    /** The runtime's suggested change to the audio offset: minus the mean error of hit taps and hold heads. */
-    val suggestedAdjustmentMs: Int?,
+    /** The slots the game used; null for a game that kept none. */
+    val slots: ResultSlots? = null,
+    /** Each method's average, when both touch and keys hit notes. */
+    val methodMeans: MethodMeans? = null,
     /** The game was the playfield preview's sample chart, not a chart of the player's song. */
     val sample: Boolean,
 ) {
@@ -26,7 +27,7 @@ data class PlayResult(
         const val BIN_MS = 10
         const val RANGE_MS = 150
 
-        fun of(title: String, detail: String, score: Score, hitOffsetsMs: List<Double>, sample: Boolean): PlayResult {
+        fun of(title: String, detail: String, score: Score, hud: PlayHud, sample: Boolean): PlayResult {
             val counts = score.tierCounts
             return PlayResult(
                 title = title,
@@ -37,9 +38,10 @@ data class PlayResult(
                 good = (counts.p1 + counts.p2 + counts.p3 + counts.g).toInt(),
                 miss = counts.m.toInt(),
                 maxCombo = score.maxCombo.toInt(),
-                histogram = histogram(hitOffsetsMs),
-                meanOffsetMs = hitOffsetsMs.takeIf { it.isNotEmpty() }?.average(),
-                suggestedAdjustmentMs = score.suggestedAudioOffsetMs?.roundToInt(),
+                histogram = histogram(hud.hitOffsetsMs),
+                meanOffsetMs = hud.hitOffsetsMs.takeIf { it.isNotEmpty() }?.average(),
+                slots = hud.timing?.let { ResultSlots.of(it, keysPressed = hud.keyboard.pressed) },
+                methodMeans = MethodMeans.of(hud.touch, hud.keyboard),
                 sample = sample,
             )
         }
@@ -52,5 +54,33 @@ data class PlayResult(
             }
             return bins.toList()
         }
+    }
+}
+
+/** One method's part in a game: whether it pressed, and its hits timed with the sum of their errors. */
+data class MethodHits(val pressed: Boolean = false, val hits: Int = 0, val errorSumMs: Double = 0.0)
+
+/**
+ * The slots a game used, for Results' line "Audio latency 1 · WH-1000XM4. Touch on input 0. Keyboard on input 1."
+ * (latency.md, Results): [audio] null for a game without sound (the sample, Listen & Play), [keyboard] null unless keys
+ * pressed.
+ */
+@Serializable
+data class ResultSlots(val audio: Int?, val touch: Int?, val keyboard: Int?) {
+    companion object {
+        fun of(timing: PlayTiming, keysPressed: Boolean): ResultSlots =
+            ResultSlots(timing.audioSlot, timing.touchSlot, timing.keyboardSlot?.takeIf { keysPressed })
+    }
+}
+
+/**
+ * Touch's and the keys' average errors, by the method of the input that decided each hit (latency.md, O6). Only when both
+ * methods hit notes; one method's average is the game's own.
+ */
+@Serializable
+data class MethodMeans(val touchMs: Double, val keysMs: Double) {
+    companion object {
+        fun of(touch: MethodHits, keys: MethodHits): MethodMeans? =
+            if (touch.hits > 0 && keys.hits > 0) MethodMeans(touch.errorSumMs / touch.hits, keys.errorSumMs / keys.hits) else null
     }
 }

@@ -93,6 +93,8 @@ data class Scenario(
     val sectionsOpen: Boolean = false,
     val pauseAfterMs: Long? = null,
     val holdCountdown: Boolean = false,
+    /** The pause after [pauseAfterMs] is as after a change of output, to this one. */
+    val movedTo: String? = null,
     /** Hits the calibration starts with, its slot dialog open, and its clicks paused as it opens. */
     val calibrationHits: List<CalibrationHit> = emptyList(),
     val calibrationNaming: SlotNaming? = null,
@@ -305,13 +307,19 @@ data class Scenario(
             "pacing-lean-max" to Scenario(listOf(Library, MakeChart(SONG), Play(SONG, loop = true)), settings = MOST_LEAN),
             "pacing-portrait" to Scenario(listOf(Library, MakeChart(SONG), Play(SONG, loop = true)), settings = PORTRAIT),
             "play-paused" to Scenario(listOf(Library, MakeChart(SONG), Play(SONG, loop = false)), pauseAfterMs = 12_400),
+            "play-paused-moved" to Scenario(
+                listOf(Library, MakeChart(SONG), Play(SONG, loop = false)),
+                pauseAfterMs = 12_400,
+                movedTo = "Pixel Buds",
+                settings = PlaySettings(audioLatency = AudioLatency(listOf(LatencySlot("Speaker", -2), LatencySlot(), LatencySlot()))),
+            ),
             "play-countdown" to Scenario(
                 listOf(Library, MakeChart(SONG), Play(SONG, loop = false)),
                 pauseAfterMs = 12_400,
                 holdCountdown = true,
             ),
             "results" to Scenario(listOf(Library, MakeChart(SONG), Results(SONG, SAMPLE_RESULT))),
-            // The sample result over the app's own stores: Use writes the active audio latency slot.
+            // The sample result over the app's own stores: its slots line names the stored slots.
             "results-stored" to Scenario(listOf(Library, Results(null, SAMPLE_RESULT)), real = true),
             // Over the app's own stores, for the latency checks: the sample game, played with the stored input
             // latency slots (no sound, so no audio slot), and Settings and the calibration showing the stored slots.

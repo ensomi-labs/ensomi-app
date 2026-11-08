@@ -101,6 +101,7 @@ import io.ensomi.android.R
 import io.ensomi.android.settings.JudgeDifficulty
 import io.ensomi.android.settings.PlayOrientation
 import io.ensomi.android.settings.PlaySettings
+import io.ensomi.android.settings.latencySlotLabel
 import io.ensomi.android.ui.ActionButton
 import io.ensomi.android.ui.FocusOutlinedButton
 import io.ensomi.android.ui.theme.Brand
@@ -183,9 +184,13 @@ fun PlayScreen(
     game: SongGame? = null,
     /** A game along with the music in the room, in place of [game]; the recognition session's join. */
     ambient: AmbientGame? = null,
-    /** Debug scenarios only: pause after this long, and hold the count-in on its first beat. */
+    /**
+     * Debug scenarios only: pause after this long, as after a change of output to [movedToAtPause] when it is given, and
+     * hold the count-in on its first beat.
+     */
     autoPauseAfterMs: Long? = null,
     holdCountdown: Boolean = false,
+    movedToAtPause: String? = null,
 ) {
     GameTheme {
         Immersive()
@@ -254,6 +259,7 @@ fun PlayScreen(
         if (autoPauseAfterMs != null) {
             LaunchedEffect(Unit) {
                 delay(autoPauseAfterMs)
+                movedToAtPause?.let { movedTo = it }
                 pause("the scenario")
                 if (holdCountdown) phase = PlayPhase.COUNTDOWN
             }
@@ -385,7 +391,7 @@ fun PlayScreen(
             LaunchedEffect(hud.finished) {
                 val score = hud.finished ?: return@LaunchedEffect
                 currentView?.let { Log.i(TAG, it.keysSummary()) }
-                onFinished(PlayResult.of(title, detail, score, hud.hitOffsetsMs, sample = game == null))
+                onFinished(PlayResult.of(title, detail, score, hud, sample = game == null))
             }
 
             // Keys until the game is over; Results take them after it.
@@ -434,6 +440,8 @@ fun PlayScreen(
                 }
                 PlayPhase.PAUSED -> PausePanel(
                     movedTo = movedTo,
+                    // The game took the active slot as it started, and Settings cannot be opened during it.
+                    keptSlot = settings.audioLatency.let { latencySlotLabel(it.active, it.slots[it.active]) },
                     focusResume = pausedByKey,
                     // The music in the room cannot start again.
                     canRestart = ambient == null,
@@ -684,6 +692,8 @@ private fun PlayHudRow(
 @Composable
 private fun PausePanel(
     movedTo: String?,
+    /** The audio latency slot the game keeps, as Settings names it: "0 · Speaker", or "0". */
+    keptSlot: String,
     /** Opened by the Pause key: Resume takes focus, with its ring, out of touch mode. */
     focusResume: Boolean,
     canRestart: Boolean,
@@ -721,7 +731,7 @@ private fun PausePanel(
                 Text(stringResource(R.string.play_paused_detail), style = MaterialTheme.typography.bodyMedium, color = Brand.MutedText)
                 if (movedTo != null) {
                     Text(
-                        stringResource(R.string.play_output_moved, movedTo),
+                        stringResource(R.string.play_output_moved, movedTo, keptSlot),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Brand.Text,
                         textAlign = TextAlign.Center,

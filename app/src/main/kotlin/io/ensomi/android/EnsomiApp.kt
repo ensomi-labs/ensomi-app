@@ -228,6 +228,7 @@ fun EnsomiApp(scenario: Scenario, graph: AppGraph) {
                             keyboards = graph.keyboards,
                             autoPauseAfterMs = scenario.pauseAfterMs,
                             holdCountdown = scenario.holdCountdown,
+                            movedToAtPause = scenario.movedTo,
                         )
                     }
                 }
@@ -236,7 +237,6 @@ fun EnsomiApp(scenario: Scenario, graph: AppGraph) {
                         result = key.result,
                         settings = settings,
                         keyboards = graph.keyboards,
-                        onChange = graph.settings::update,
                         onPlayAgain = { backStack.replaceLast(Play(key.songId, loop = false)) },
                         onDone = { backStack.removeLastOrNull() },
                     )

@@ -127,6 +127,10 @@ data class PlayHud(
     val finished: Score? = null,
     /** The hit errors of the game so far, for the results' timing chart. */
     val hitOffsetsMs: List<Double> = emptyList(),
+    /** With [finished], for the results: the game's latencies and slots, and what each method did. */
+    val timing: PlayTiming? = null,
+    val touch: MethodHits = MethodHits(),
+    val keyboard: MethodHits = MethodHits(),
 )
 
 /** Everything one frame draws, read from the runtime on the render thread. */
@@ -474,9 +478,15 @@ class PlayController(
             combo = score.combo.toInt(),
             finished = finished,
             hitOffsetsMs = if (finished != null) hitOffsets.toList() else emptyList(),
+            timing = if (finished != null) frameTiming else null,
+            touch = if (finished != null) methodHits(InputSource.TOUCH) else MethodHits(),
+            keyboard = if (finished != null) methodHits(InputSource.KEYBOARD) else MethodHits(),
         )
         if (next != hud.value) hud.value = next
     }
+
+    private fun methodHits(source: InputSource) =
+        MethodHits(pressesBySource[source.ordinal] > 0, hitsBySource[source.ordinal], hitErrorBySource[source.ordinal])
 
     /**
      * The game's log at game over: the score, the presses by source and the methods that pressed, the hits timed by the

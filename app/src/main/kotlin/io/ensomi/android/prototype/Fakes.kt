@@ -26,8 +26,10 @@ import io.ensomi.android.model.Notice
 import io.ensomi.android.model.ONNX_RUNTIME_NOTICES
 import io.ensomi.android.play.FakePlayClock
 import io.ensomi.android.play.InputSource
+import io.ensomi.android.play.MethodMeans
 import io.ensomi.android.play.PlayClock
 import io.ensomi.android.play.PlayResult
+import io.ensomi.android.play.ResultSlots
 import io.ensomi.android.settings.CalibrationEdits
 import io.ensomi.android.settings.CalibrationHit
 import io.ensomi.android.settings.ClickPlayer
@@ -39,7 +41,6 @@ import io.ensomi.android.settings.PlayOutputs
 import io.ensomi.android.settings.PlaySettings
 import io.ensomi.android.settings.PlaySettingsStore
 import java.io.File
-import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -244,7 +245,8 @@ val SAMPLE_RESULT = PlayResult(
     maxCombo = 642,
     histogram = listOf(0, 0, 0, 1, 1, 2, 4, 6, 11, 19, 33, 61, 98, 141, 170, 182, 160, 128, 92, 60, 37, 22, 12, 6, 3, 2, 1, 0, 0, 0),
     meanOffsetMs = 6.4,
-    suggestedAdjustmentMs = (-6.4).roundToInt(),
+    slots = ResultSlots(audio = 0, touch = 0, keyboard = 1),
+    methodMeans = MethodMeans(touchMs = 4.2, keysMs = 9.1),
     sample = false,
 )
 

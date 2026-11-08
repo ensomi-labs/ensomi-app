@@ -28,12 +28,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import android.view.HapticFeedbackConstants
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -43,12 +40,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -57,7 +51,6 @@ import io.ensomi.android.R
 import io.ensomi.android.keyboard.HardwareKeyHandler
 import io.ensomi.android.keyboard.KeepInputMethodAway
 import io.ensomi.android.keyboard.Keyboards
-import io.ensomi.android.settings.Latency
 import io.ensomi.android.settings.PlaySettings
 import io.ensomi.android.settings.latencySlotLabel
 import io.ensomi.android.ui.ActionButton
@@ -70,8 +63,8 @@ import kotlin.math.abs
 
 /**
  * The end of a game, in the game's dark presentation: accuracy, the judgement counts in words and colour, the longest
- * combo, how early or late the hits were, and the runtime's suggested change, offered for the active audio latency slot
- * until latency.md's step L4 removes it.
+ * combo, how early or late the hits were, by method when both touch and keys hit notes, and the latency slots the game
+ * used (latency.md, Results). Nothing is suggested.
  *
  * Lane keys do nothing here, their downs, repeats and ups all taken, so a key pressed as the results appear never
  * presses Play again (keyboard.md, O4); nor does a Pause key other than Escape. Enter, Space when no lane has it, and
@@ -83,7 +76,6 @@ fun ResultsScreen(
     result: PlayResult,
     settings: PlaySettings,
     keyboards: Keyboards,
-    onChange: ((PlaySettings) -> PlaySettings) -> Unit,
     onPlayAgain: () -> Unit,
     onDone: () -> Unit,
 ) {
@@ -166,49 +158,28 @@ fun ResultsScreen(
                     Panel {
                         Text(stringResource(R.string.results_timing), style = MaterialTheme.typography.titleSmall, color = Brand.Text)
                         Text(timingSummary(result.meanOffsetMs), style = MaterialTheme.typography.bodyMedium, color = Brand.MutedText)
+                        result.methodMeans?.let { means ->
+                            Text(
+                                listOf(
+                                    methodSummary(stringResource(R.string.results_method_touch), means.touchMs),
+                                    methodSummary(stringResource(R.string.results_method_keys), means.keysMs),
+                                ).joinToString(" "),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Brand.MutedText,
+                            )
+                        }
                         TimingHistogram(result.histogram, Modifier.fillMaxWidth().height(72.dp).padding(top = 8.dp))
                         Row(Modifier.fillMaxWidth()) {
                             Text(stringResource(R.string.results_early), style = MaterialTheme.typography.labelSmall, color = Brand.Lavender, modifier = Modifier.weight(1f))
                             Text(stringResource(R.string.results_late), style = MaterialTheme.typography.labelSmall, color = Brand.Rose, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
                         }
-                    }
-                    val adjustment = result.suggestedAdjustmentMs
-                    if (adjustment != null && abs(adjustment) >= MIN_SUGGESTION_MS) {
-                        Panel {
-                            // The game was played at the active slot's value when the results opened. The runtime
-                            // suggests a change of the audio offset, whose sign the latency has the other way round.
-                            val active = settings.audioLatency.active
-                            val slot = latencySlotLabel(active, settings.audioLatency.slots[active])
-                            val playedAt = rememberSaveable(active) { settings.audioLatencyMs }
-                            val proposed = (playedAt - adjustment).coerceIn(Latency.RANGE)
-                            if (settings.audioLatencyMs == proposed) {
-                                Text(
-                                    stringResource(R.string.results_offset_used, slot, PlaySettings.formatOffset(proposed)),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Brand.Text,
-                                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                                )
-                            } else {
-                                Text(
-                                    stringResource(
-                                        R.string.results_offset_suggestion,
-                                        slot,
-                                        PlaySettings.formatOffset(settings.audioLatencyMs),
-                                        PlaySettings.formatOffset(proposed),
-                                    ),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Brand.Text,
-                                )
-                                val view = LocalView.current
-                                TextButton(
-                                    onClick = {
-                                        onChange { it.withAudioLatencyMs(proposed) }
-                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    },
-                                ) {
-                                    Text(stringResource(R.string.results_offset_apply), color = Brand.Lavender)
-                                }
-                            }
+                        result.slots?.let { slots ->
+                            Text(
+                                slotsLine(slots, settings),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Brand.MutedText,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
                         }
                     }
                     if (result.sample) {
@@ -313,6 +284,25 @@ private fun timingSummary(meanMs: Double?): String = when {
     else -> stringResource(R.string.results_timing_late, String.format(Locale.ROOT, "%.0f", meanMs))
 }
 
+/** "Touch: 4 ms late on average." */
+@Composable
+private fun methodSummary(method: String, meanMs: Double): String = when {
+    abs(meanMs) < 0.5 -> stringResource(R.string.results_method_centred, method)
+    meanMs < 0 -> stringResource(R.string.results_method_early, method, String.format(Locale.ROOT, "%.0f", -meanMs))
+    else -> stringResource(R.string.results_method_late, method, String.format(Locale.ROOT, "%.0f", meanMs))
+}
+
+/** "Audio latency 1 · WH-1000XM4. Touch on input 0. Keyboard on input 1.", each slot as Settings names it. */
+@Composable
+private fun slotsLine(slots: ResultSlots, settings: PlaySettings): String {
+    val input = settings.inputLatency.slots
+    return listOfNotNull(
+        slots.audio?.let { stringResource(R.string.results_slots_audio, latencySlotLabel(it, settings.audioLatency.slots[it])) },
+        slots.touch?.let { stringResource(R.string.results_slots_touch, latencySlotLabel(it, input[it])) },
+        slots.keyboard?.let { stringResource(R.string.results_slots_keyboard, latencySlotLabel(it, input[it])) },
+    ).joinToString(" ")
+}
+
 @Composable
 private fun CountTile(label: String, count: Int, color: Color, modifier: Modifier = Modifier) {
     Surface(
@@ -381,5 +371,3 @@ private fun TimingHistogram(bins: List<Int>, modifier: Modifier = Modifier) {
         drawLine(Brand.Text.copy(alpha = 0.6f), Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), strokeWidth = 2f)
     }
 }
-
-private const val MIN_SUGGESTION_MS = 3

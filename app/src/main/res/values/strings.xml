@@ -197,7 +197,7 @@
     <string name="play_preview_title">Playfield preview</string>
     <string name="play_sample_detail">Sample chart · no sound</string>
     <string name="play_detail">%1$s stars · Judge %2$s</string>
-    <string name="play_output_moved">Sound moved to %1$s. This game keeps its audio latency.</string>
+    <string name="play_output_moved">Sound moved to %1$s. This game keeps audio latency %2$s.</string>
     <!-- A key cap's label for these keys while a keyboard is connected (docs/keyboard.md); other keys show their character. -->
     <string name="key_space">Space</string>
     <string name="key_escape">Esc</string>
@@ -220,9 +220,14 @@
     <string name="results_early">Early</string>
     <string name="results_late">Late</string>
     <string name="results_histogram_description">Hits by how early or late they were</string>
-    <string name="results_offset_suggestion">Suggested audio latency for slot %1$s: %3$s (now %2$s).</string>
-    <string name="results_offset_apply">Use suggested latency</string>
-    <string name="results_offset_used">Audio latency slot %1$s is now %2$s.</string>
+    <string name="results_method_touch">Touch</string>
+    <string name="results_method_keys">Keys</string>
+    <string name="results_method_centred">%1$s: centred on the notes.</string>
+    <string name="results_method_early">%1$s: %2$s ms early on average.</string>
+    <string name="results_method_late">%1$s: %2$s ms late on average.</string>
+    <string name="results_slots_audio">Audio latency %1$s.</string>
+    <string name="results_slots_touch">Touch on input %1$s.</string>
+    <string name="results_slots_keyboard">Keyboard on input %1$s.</string>
     <string name="results_sample_note">This game used the sample chart. A chart of your song will show its own results here.</string>
     <string name="results_play_again">Play again</string>
     <string name="results_done">Back to song</string>

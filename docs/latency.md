@@ -235,7 +235,7 @@ limits](diagnostics.md#traces-privacy-and-limits)).
 In the game's dark presentation, from Settings › Calibrate timing. The top bar holds Back and "Timing calibration".
 In portrait the field is at the top and the controls under it; wider than tall, the field is on the left and the
 controls on the right, as the picture step is laid out now. On a phone held sideways the readings scroll with the
-controls, which are set closer, each slider between its steps and Name.
+controls, which are set closer, each slider between its steps and Name but at large text sizes.
 
 - **The field.** The play renderer, with the player's lean and lane width, draws a note onto the line on every click
   of the click track (`SampleCharts.CALIBRATION`), and judges. The clicks play from the moment the screen opens until it

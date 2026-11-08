@@ -62,7 +62,7 @@ data class CalibrationReadings(val hits: List<CalibrationHit> = emptyList()) {
     fun averageMs(method: InputSource, latencyMs: Double): Double? =
         shown(method, latencyMs).takeIf { it.isNotEmpty() }?.average()
 
-    /** Empty: Clear hits, or a new output. It changes no value. */
+    /** Empty: Restart, or a new output. It changes no value. */
     fun cleared(): CalibrationReadings = CalibrationReadings()
 
     companion object {

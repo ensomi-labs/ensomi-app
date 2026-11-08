@@ -187,7 +187,7 @@ took in place (a keyboard's comes as `keyboard`, `keyboardHidden` and `navigatio
 when click 0 was heard on the `System.nanoTime()` clock, whenever that moves and every five seconds; each press with its
 method, the input and audio slots and values it was judged with, its event time, song and chart time, its error from
 the nearest click on the song's clock and the runtime's error and tier (or no hit, and why a press is no reading); each
-change of a value or a slot (by number, never a name); the method whose slot is edited; pauses, Clear hits and a new
+change of a value or a slot (by number, never a name); the method whose slot is edited; pauses, Restart and a new
 output starting the readings over.
 A debuggable build takes these extras on a normal launch, for checks on an emulator:
 

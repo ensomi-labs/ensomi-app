@@ -46,6 +46,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -108,13 +109,15 @@ import kotlinx.coroutines.isActive
  * The player moves the audio latency, the active audio slot's value, and the input latency of the method chosen, Touch
  * or Keyboard (O3), in any order, judging by sight and sound alone or by pressing too. Each change is kept at once in the
  * slot it edits and the field takes it on its next frame; the slots are chosen and named here as in Settings. The
- * readings show the chosen method's last hits as they would be judged with the values now. Nothing is suggested,
- * applied or confirmed, and nothing but Back or Up leaves: the field keeps the back gesture off its lower outer edges, as
- * play does, since a press there is a press.
+ * readings show the chosen method's last hits as they would be judged with the values now. Restart clears them and starts
+ * the clicks and the notes over after a second of silence, so the first note to fall goes with the first click heard.
+ * Nothing is suggested, applied or confirmed, and nothing but Back or Up leaves: the field keeps the back gesture off
+ * its lower outer edges, as play does, since a press there is a press.
  *
  * In portrait the field is at the top and stays there, the readings under it, and the controls scroll below them; wider
  * than tall, the field fills the left, and the readings and the controls take the right, or at large text sizes the
- * readings go under the field. Either way the field stays in sight while a value moves.
+ * readings go under the field. On a phone held sideways the readings scroll with the controls, which are compact, so the
+ * short column scrolls whole. Either way the field stays in sight while a value moves.
  *
  * The clicks pause when the app leaves the foreground or another app takes audio focus, and the field says so; a tap on
  * it, or a lane key, makes them go on. A change of output starts the readings over; the slots stay as chosen.
@@ -154,10 +157,17 @@ fun CalibrationScreen(
         // The field's presses, from its render thread.
         val presses = remember { Channel<JudgedPress>(Channel.UNLIMITED) }
         val reduceMotion = remember { !ValueAnimator.areAnimatorsEnabled() }
+        val phone = phoneWindow()
 
-        DisposableEffect(clicks) {
+        // Each start is a new track, whose first click comes after its own second of silence: Restart counts them. The
+        // track it replaces is flushed, so only what the output already holds plays on, for the output's latency, and
+        // the new first click comes through that same latency a second later, whatever the output.
+        var starts by remember { mutableIntStateOf(0) }
+        DisposableEffect(clicks, starts) {
             val opened = clicks.open(context.applicationContext) { playingOn(it) }
             opened.clock.start(System.nanoTime(), 0.0)
+            // Started over while paused, the new clicks wait as the old ones did, for a tap or a lane key.
+            if (paused) opened.clock.pause(System.nanoTime())
             player = opened
             Log.i(AudioClickTracks.TAG, "Clicks started; latency: ${PlayTiming.game(settings).describe()}")
             onDispose {
@@ -260,6 +270,12 @@ fun CalibrationScreen(
         }
         LaunchedEffect(method) { Log.i(AudioClickTracks.TAG, CalibrationLog.method(method)) }
 
+        fun restart() {
+            Log.i(AudioClickTracks.TAG, "Restart: hits cleared; the clicks and the notes start over")
+            readings = readings.cleared()
+            starts++
+        }
+
         // Lane keys press the note's lane, with the keyboard's input slot, through the field's sender and queue.
         HardwareKeyHandler { event ->
             val view = playfield ?: return@HardwareKeyHandler false
@@ -296,9 +312,12 @@ fun CalibrationScreen(
                     .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
             ) {
                 val wide = maxWidth > maxHeight
+                // On a phone held sideways the column is short: the readings scroll with the controls, so the scroll has
+                // its whole height (the K90 round). Tablets and portrait keep them in sight above the controls.
+                val readingsScroll = wide && phone
                 // Wider than tall with large text, the readings would leave the controls beside them no height: they go
                 // under the field instead, which gives up a share of its height for them (L3's round 2).
-                val readingsUnderField = wide && LocalDensity.current.fontScale > LARGE_TEXT_SCALE
+                val readingsUnderField = wide && !readingsScroll && LocalDensity.current.fontScale > LARGE_TEXT_SCALE
                 val fieldWidth = if (wide) (maxWidth - GAP) / 2 else maxWidth
                 // Otherwise the field keeps its height however large the text: the readings and controls give way.
                 val fieldHeight = when {
@@ -311,10 +330,7 @@ fun CalibrationScreen(
                         readings,
                         method,
                         settings,
-                        onClear = {
-                            Log.i(AudioClickTracks.TAG, "Hits cleared")
-                            readings = readings.cleared()
-                        },
+                        onRestart = ::restart,
                         modifier = modifier,
                     )
                 }
@@ -327,6 +343,8 @@ fun CalibrationScreen(
                     reduceMotion = reduceMotion,
                     onPress = { presses.trySend(it) },
                     onView = { playfield = it },
+                    // Restart makes a new field before the old one is let go.
+                    onGone = { if (playfield === it) playfield = null },
                     onGoOn = ::resumeClicks,
                     modifier = Modifier.size(fieldWidth, fieldHeight),
                 )
@@ -343,16 +361,26 @@ fun CalibrationScreen(
                             .weight(1f)
                             .padding(start = if (wide) 0.dp else 16.dp, end = 16.dp),
                     ) {
-                        if (!readingsUnderField) readingsPart(Modifier.fillMaxWidth().padding(top = if (wide) 0.dp else 8.dp))
-                        Controls(
-                            settings = settings,
-                            route = route,
-                            method = method,
-                            onMethod = { method = it },
-                            onChange = onChange,
-                            onName = { naming = it },
-                            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(top = 12.dp, bottom = 16.dp),
-                        )
+                        if (!readingsUnderField && !readingsScroll) {
+                            readingsPart(Modifier.fillMaxWidth().padding(top = if (wide) 0.dp else 8.dp))
+                        }
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState())
+                                .padding(top = if (readingsScroll) 0.dp else 12.dp, bottom = 16.dp),
+                        ) {
+                            if (readingsScroll) readingsPart(Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                            Controls(
+                                settings = settings,
+                                route = route,
+                                method = method,
+                                onMethod = { method = it },
+                                onChange = onChange,
+                                onName = { naming = it },
+                                compact = readingsScroll,
+                            )
+                        }
                     }
                 }
                 if (readingsUnderField) {
@@ -390,7 +418,8 @@ private fun CalibrationField(
     paused: Boolean,
     reduceMotion: Boolean,
     onPress: (JudgedPress) -> Unit,
-    onView: (PlayfieldView?) -> Unit,
+    onView: (PlayfieldView) -> Unit,
+    onGone: (PlayfieldView) -> Unit,
     onGoOn: () -> Unit,
     modifier: Modifier,
 ) {
@@ -446,7 +475,7 @@ private fun CalibrationField(
                         it.keyboardsChanged(connected)
                         if (paused) it.pause()
                     },
-                    onRelease = { onView(null) },
+                    onRelease = onGone,
                 )
             }
         }
@@ -473,15 +502,15 @@ private fun CalibrationField(
 
 /**
  * The readings for [method]: the strip of its last hits from early to late, and "Last 16 touch hits: 6 ms early on
- * average.", each hit as it would be judged with the values now; and Clear hits, which empties them and changes no value.
- * The line is a polite live region, so TalkBack hears it whenever it changes.
+ * average.", each hit as it would be judged with the values now; and Restart, which empties them and starts the clicks and
+ * the notes over, and changes no value. The line is a polite live region, so TalkBack hears it whenever it changes.
  */
 @Composable
 private fun Readings(
     readings: CalibrationReadings,
     method: InputSource,
     settings: PlaySettings,
-    onClear: () -> Unit,
+    onRestart: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val latencyMs = CalibrationEdits.latencyMs(settings, method)
@@ -496,21 +525,19 @@ private fun Readings(
             modifier = textModifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
     }
-    val clear: @Composable () -> Unit = {
-        TextButton(onClick = onClear, enabled = readings.hits.isNotEmpty()) {
-            Text(stringResource(R.string.calibration_clear))
-        }
+    val restart: @Composable () -> Unit = {
+        TextButton(onClick = onRestart) { Text(stringResource(R.string.calibration_restart)) }
     }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         HitStrip(shown, average, method)
-        // At large text sizes the line takes the width and Clear hits goes under it, at its end.
+        // At large text sizes the line takes the width and Restart goes under it, at its end.
         if (LocalDensity.current.fontScale > LARGE_TEXT_SCALE) {
             text(Modifier.fillMaxWidth().padding(top = 4.dp))
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) { clear() }
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) { restart() }
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 text(Modifier.weight(1f))
-                clear()
+                restart()
             }
         }
     }
@@ -603,6 +630,7 @@ private fun HitStrip(errorsMs: List<Double>, averageMs: Double?, method: InputSo
  * The two values, each on a panel, then the help: Audio latency with its slots, its value with steps and a slider, Name
  * and the output the clicks play on; Input latency with the method chosen, the slot that method uses, its value with
  * steps and a slider, and Name. Each panel says what its value moves. Every change goes straight to the settings store.
+ * [compact], on a phone held sideways, sets each slider between its steps and Name and spaces the panels closer.
  */
 @Composable
 private fun Controls(
@@ -612,10 +640,10 @@ private fun Controls(
     onMethod: (InputSource) -> Unit,
     onChange: ((PlaySettings) -> PlaySettings) -> Unit,
     onName: (SlotNaming) -> Unit,
-    modifier: Modifier,
+    compact: Boolean,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Panel {
+    Column(verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)) {
+        Panel(compact) {
             val active = settings.audioLatency.active
             val what = stringResource(R.string.settings_audio_latency_value, latencySlotLabel(active, settings.audioLatency.slots[active]))
             PanelTitle(R.string.settings_audio_latency)
@@ -624,6 +652,15 @@ private fun Controls(
                 onChoose = { slot -> onChange { CalibrationEdits.audioSlot(it, slot) } },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = PANEL_TEXT_INSET),
             )
+            val slider: @Composable (Modifier) -> Unit = { sliderModifier ->
+                LatencySlider(
+                    value = settings.audioLatencyMs,
+                    what = what,
+                    onValue = { ms -> onChange { CalibrationEdits.audioMs(it, ms) } },
+                    onStep = { step -> onChange { CalibrationEdits.audioStep(it, step) } },
+                    modifier = sliderModifier,
+                )
+            }
             LatencyStepper(
                 value = settings.audioLatencyMs,
                 what = what,
@@ -632,18 +669,13 @@ private fun Controls(
                 onName = { onName(SlotNaming(LatencyKind.AUDIO, active)) },
                 modifier = Modifier.fillMaxWidth(),
                 valueStyle = MaterialTheme.typography.headlineSmall,
+                between = if (compact) ({ slider(Modifier.weight(1f)) }) else null,
             )
-            LatencySlider(
-                value = settings.audioLatencyMs,
-                what = what,
-                onValue = { ms -> onChange { CalibrationEdits.audioMs(it, ms) } },
-                onStep = { step -> onChange { CalibrationEdits.audioStep(it, step) } },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = PANEL_TEXT_INSET),
-            )
+            if (!compact) slider(Modifier.fillMaxWidth().padding(horizontal = PANEL_TEXT_INSET))
             PanelNote(stringResource(R.string.calibration_audio_help))
             PanelNote(stringResource(R.string.settings_sound_now, route.name))
         }
-        Panel {
+        Panel(compact) {
             val slot = CalibrationEdits.inputSlot(settings.inputLatency, method)
             val methodName = stringResource(if (method == InputSource.KEYBOARD) R.string.settings_input_keyboard else R.string.settings_input_touch)
             val what = stringResource(R.string.settings_input_latency_value, methodName, latencySlotLabel(slot, settings.inputLatency.slots[slot]))
@@ -664,6 +696,15 @@ private fun Controls(
                     ),
                 )
             }
+            val slider: @Composable (Modifier) -> Unit = { sliderModifier ->
+                LatencySlider(
+                    value = CalibrationEdits.inputMs(settings, method),
+                    what = what,
+                    onValue = { ms -> onChange { CalibrationEdits.inputMs(it, method, ms) } },
+                    onStep = { step -> onChange { CalibrationEdits.inputStep(it, method, step) } },
+                    modifier = sliderModifier,
+                )
+            }
             LatencyStepper(
                 value = CalibrationEdits.inputMs(settings, method),
                 what = what,
@@ -672,14 +713,9 @@ private fun Controls(
                 onName = { onName(SlotNaming(LatencyKind.INPUT, slot)) },
                 modifier = Modifier.fillMaxWidth(),
                 valueStyle = MaterialTheme.typography.headlineSmall,
+                between = if (compact) ({ slider(Modifier.weight(1f)) }) else null,
             )
-            LatencySlider(
-                value = CalibrationEdits.inputMs(settings, method),
-                what = what,
-                onValue = { ms -> onChange { CalibrationEdits.inputMs(it, method, ms) } },
-                onStep = { step -> onChange { CalibrationEdits.inputStep(it, method, step) } },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = PANEL_TEXT_INSET),
-            )
+            if (!compact) slider(Modifier.fillMaxWidth().padding(horizontal = PANEL_TEXT_INSET))
             PanelNote(stringResource(R.string.calibration_input_help))
         }
         // What the screen is for, in full, after the values it is about.
@@ -710,9 +746,9 @@ private fun MethodChoice(method: InputSource, onMethod: (InputSource) -> Unit, m
     }
 }
 
-/** A panel in the brand's card shape, as the game's other panels are (design.md, Visual language). */
+/** A panel in the brand's card shape, as the game's other panels are (design.md, Visual language); closer set when [compact]. */
 @Composable
-private fun Panel(content: @Composable ColumnScope.() -> Unit) {
+private fun Panel(compact: Boolean, content: @Composable ColumnScope.() -> Unit) {
     Surface(
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomEnd = 20.dp, bottomStart = 8.dp),
         color = Brand.Panel,
@@ -720,7 +756,11 @@ private fun Panel(content: @Composable ColumnScope.() -> Unit) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         // Icon buttons carry their own 12 dp: the steps' symbols line up with the text beside them.
-        Column(Modifier.padding(horizontal = 4.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
+        Column(
+            Modifier.padding(horizontal = 4.dp, vertical = if (compact) 8.dp else 12.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 8.dp),
+            content = content,
+        )
     }
 }
 

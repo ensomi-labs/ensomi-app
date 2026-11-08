@@ -407,7 +407,7 @@
 
     <!-- Calibration: one screen (docs/latency.md, Timing calibration). -->
     <string name="calibration_title">Timing calibration</string>
-    <string name="calibration_help">A note falls onto the line with each click. Move Audio latency until they meet. Press with the clicks to see where your presses land, and move Input latency until they gather at the middle. Do either, both, in any order. Changes are kept as you make them.</string>
+    <string name="calibration_help">A note falls onto the line with each click. Move Audio latency until they meet. Press with the clicks to see where your presses land, and move Input latency until they gather at the middle. Do either, both, in any order. Changes are kept as you make them. Restart clears your hits and starts the clicks over after a second of silence, so the first note to fall goes with the first click you hear.</string>
     <!-- TalkBack: the field is one element; a double tap on it is not timed, so it is no press. -->
     <string name="calibration_field_description">Calibration field: a note falls onto the line with each click.</string>
     <string name="calibration_paused">Paused. Tap the field or press a key to go on.</string>
@@ -416,7 +416,8 @@
     <!-- Both methods on one input slot: a change to it is a change to the other method's too. -->
     <string name="calibration_shared_with_keyboard">The keyboard uses this slot too, so it changes with it.</string>
     <string name="calibration_shared_with_touch">Touch uses this slot too, so it changes with it.</string>
-    <string name="calibration_clear">Clear hits</string>
+    <!-- Empties the readings and starts the clicks and the falling notes over, as the pause panel's Restart starts a game over. -->
+    <string name="calibration_restart">Restart</string>
     <!-- The readings line, for the method chosen: "Last 16 touch hits: 6 ms early on average." -->
     <string name="calibration_no_touch_hits">No touch hits yet. Tap the field with the clicks.</string>
     <string name="calibration_no_key_hits">No key hits yet. Press a lane key with the clicks.</string>

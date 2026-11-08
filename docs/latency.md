@@ -234,7 +234,8 @@ limits](diagnostics.md#traces-privacy-and-limits)).
 
 In the game's dark presentation, from Settings › Calibrate timing. The top bar holds Back and "Timing calibration".
 In portrait the field is at the top and the controls under it; wider than tall, the field is on the left and the
-controls on the right, as the picture step is laid out now.
+controls on the right, as the picture step is laid out now. On a phone held sideways the readings scroll with the
+controls, which are set closer, each slider between its steps and Name.
 
 - **The field.** The play renderer, with the player's lean and lane width, draws a note onto the line on every click
   of the click track (`SampleCharts.CALIBRATION`), and judges. The clicks play from the moment the screen opens until it
@@ -251,10 +252,14 @@ controls on the right, as the picture step is laid out now.
 - **Readings,** for the method chosen: the strip of the last 16 hits from early to late, and "Last 16 hits: 6 ms early
   on average." Each error is the runtime's (`JudgementEvent.offsetMs`), shown as it would be judged with the values now:
   a hit made before a change of A or I moves by that change (its error less the rise in A + I), as the sound step's
-  strip shows taps at the offset now. **Clear hits** empties the readings and changes no value.
+  strip shows taps at the offset now. **Restart** empties the readings and starts the clicks and the falling notes over
+  on a new track, whose first click comes after the click track's second of silence; the old track's unplayed sound is
+  flushed, so the first note to fall goes with the first click heard, whatever the output's latency. It changes no
+  value.
 - **Help:** "A note falls onto the line with each click. Move Audio latency until they meet. Press with the clicks to
   see where your presses land, and move Input latency until they gather at the middle. Do either, both, in any order.
-  Changes are kept as you make them."
+  Changes are kept as you make them. Restart clears your hits and starts the clicks over after a second of silence, so
+  the first note to fall goes with the first click you hear."
 - **Nothing to confirm.** No Use, no Done, no suggestion. Back or Up leaves, and nothing else: the field keeps the back
   gesture off its lower outer edges, as play does. Every change was written when it was made.
 
@@ -697,6 +702,14 @@ nothing clipped. The line after a real change of output is checklist row 5.
 L5 changed design.md, gameplay.md, plan.md and phone-checks.md where their text had become wrong, each change a few
 lines linking here or to keyboard.md: the per-output audio offset, the visual offset and the two-step calibration in
 all four; Results' suggestion; touch-only input; key bindings "not carried over"; phone-checks.md's row 4.
+
+### After the K90 round (owner, 2026-11-08)
+
+The owner's first round on the Redmi K90 Ultra changed three things on the calibration screen, in place of what L3
+built: **Restart** in place of Clear hits ([Timing calibration](#timing-calibration-one-screen)), logged as "Restart:
+hits cleared; the clicks and the notes start over"; on a phone held sideways the readings scroll with the controls,
+which are closer set, and the readings no longer go under the field at large text there; and the field keeps the back
+gesture off its lower outer edges, as play does.
 
 ## Open questions, decided (owner, 2026-11-07)
 

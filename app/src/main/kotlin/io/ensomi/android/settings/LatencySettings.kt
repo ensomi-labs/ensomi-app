@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -301,9 +302,10 @@ internal fun InputSlotMenu(
 
 /**
  * A slot's value in whole milliseconds, "+120 ms", nudged a millisecond at a time within the range ([onStep] hears how
- * many milliseconds, −1 or +1 for a tap), and its Name button at the row's end. A step held down repeats, faster the
- * longer it is held ([StepRepeat]), so a Bluetooth output's 150 ms or more is about two seconds away; a tap then puts it
- * on the millisecond. [what] names the value for TalkBack, which hears each new value as it changes.
+ * many milliseconds, −1 or +1 for a tap), and its Name button at the row's end; [between] fills the room before Name,
+ * as the calibration's slider does on a phone held sideways. A step held down repeats, faster the longer it is held
+ * ([StepRepeat]), so a Bluetooth output's 150 ms or more is about two seconds away; a tap then puts it on the
+ * millisecond. [what] names the value for TalkBack, which hears each new value as it changes.
  */
 @Composable
 internal fun LatencyStepper(
@@ -314,6 +316,7 @@ internal fun LatencyStepper(
     onName: () -> Unit,
     modifier: Modifier = Modifier,
     valueStyle: TextStyle = MaterialTheme.typography.titleMedium,
+    between: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val decrease = stringResource(R.string.settings_offset_decrease)
     val increase = stringResource(R.string.settings_offset_increase)
@@ -328,7 +331,7 @@ internal fun LatencyStepper(
                 .semantics { liveRegion = LiveRegionMode.Polite },
         )
         StepButton(R.drawable.ic_add, "$increase $what", enabled = value < Latency.RANGE.last) { steps -> onStep(steps) }
-        Spacer(Modifier.weight(1f))
+        if (between != null) between() else Spacer(Modifier.weight(1f))
         IconButton(onClick = onName) {
             Icon(painterResource(R.drawable.ic_edit), contentDescription = nameLabel)
         }

@@ -404,6 +404,11 @@
     <string name="settings_preview_help">A sample chart that plays itself, without sound.</string>
     <string name="settings_diagnostics_help">What this phone is, and whether the runtime loads.</string>
     <string name="settings_version">Version</string>
+    <!-- The dedication: the last line of About, and the page it opens. The owner's words, exactly, in every locale. -->
+    <string name="settings_for_lucky" translatable="false">For Lucky</string>
+    <string name="lucky_title" translatable="false">Lucky</string>
+    <string name="lucky_in_memory" translatable="false">In Memory</string>
+    <string name="lucky_dedication" translatable="false">In loving memory of Lucky — thank you for your companionship, encouragement, and for believing in ensomi.</string>
 
     <!-- Calibration: one screen (docs/latency.md, Timing calibration). -->
     <string name="calibration_title">Timing calibration</string>

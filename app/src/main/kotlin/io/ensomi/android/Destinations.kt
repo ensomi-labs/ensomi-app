@@ -36,6 +36,10 @@ data object Calibration : NavKey
 @Serializable
 data object Diagnostics : NavKey
 
+/** The dedication's page, In Memory, opened only by the For Lucky line at the end of Settings › About. */
+@Serializable
+data object Lucky : NavKey
+
 /** Listen & Play: the public guide, shared-song session and its game (docs/recognition.md). */
 @Serializable
 data object RecognitionSession : NavKey

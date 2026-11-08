@@ -43,7 +43,7 @@ SCENARIOS=(
   make-chart-making:3 make-chart-made:3 make-chart-stopped:3 make-chart-failed:3
   results:3 settings:3 settings-playfield:4 settings-playfield-portrait:4 settings-downloading:3
   settings-update-pending:3 notices:3 notice-text:4
-  calibration:4 calibration-hits:4 diagnostics:6
+  calibration:4 calibration-hits:4 diagnostics:6 settings-about:3 lucky:3
 )
 
 # A freshly booted emulator under load can show "System UI isn't responding" over every screen. Keep error
@@ -289,7 +289,7 @@ fi
 if wanted dumps; then
 # What TalkBack reads: the UI hierarchy of every kind of screen.
 for name in first-run library make-chart make-chart-made make-chart-failed play-paused results settings notices \
-  notice-text calibration calibration-hits diagnostics; do
+  notice-text calibration calibration-hits diagnostics settings-about lucky; do
   launch "$name"
   if [ "$name" = play-paused ]; then sleep 15; else sleep 3; fi
   adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 && adb pull /sdcard/window.xml "$OUT/window-$name.xml" >/dev/null || echo "no dump for $name"

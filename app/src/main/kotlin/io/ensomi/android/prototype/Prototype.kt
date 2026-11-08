@@ -7,6 +7,7 @@ import io.ensomi.android.Calibration
 import io.ensomi.android.Diagnostics
 import io.ensomi.android.KeyboardSettings
 import io.ensomi.android.Library
+import io.ensomi.android.Lucky
 import io.ensomi.android.AppStores
 import io.ensomi.android.MakeChart
 import io.ensomi.android.NoticeText
@@ -455,6 +456,9 @@ data class Scenario(
                 calibrationNaming = SlotNaming(LatencyKind.AUDIO, 1),
             ),
             "diagnostics" to Scenario(listOf(Library, Settings, Diagnostics)),
+            // The dedication: the last line of About, and the page it opens.
+            "settings-about" to Scenario(listOf(Library, Settings), settingsSection = SettingsSection.ABOUT),
+            "lucky" to Scenario(listOf(Library, Settings, Lucky)),
         )
 
         /** The scenario and debug options [intent] asks for, when [debugTools] ([DebugTools]); else [DEFAULT]. */

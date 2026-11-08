@@ -57,6 +57,7 @@ and forwards to the main activity. Library is home; everything else is pushed on
 | Timing calibration | Settings | Settings |
 | Playfield preview | Settings › About | Settings |
 | Diagnostics | Settings › About | Settings |
+| Lucky | For Lucky, the last line of Settings › About | Settings |
 
 - **No navigation bar.** Material's navigation bar is for three to five top-level destinations
   ([M3 navigation bar](https://m3.material.io/components/navigation-bar/guidelines)); this app has one place to be,

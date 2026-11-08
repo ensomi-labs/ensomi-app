@@ -63,6 +63,7 @@ import io.ensomi.android.prototype.AppGraph
 import io.ensomi.android.prototype.Scenario
 import io.ensomi.android.recognition.RecognitionEntry
 import io.ensomi.android.settings.CalibrationScreen
+import io.ensomi.android.settings.LuckyScreen
 import io.ensomi.android.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
@@ -254,6 +255,7 @@ fun EnsomiApp(scenario: Scenario, graph: AppGraph) {
                         onCalibrate = { backStack.add(Calibration) },
                         onPreview = { backStack.add(Play(null, loop = true)) },
                         onDiagnostics = { context.startActivity(DiagnosticsActivity.intent(context)) },
+                        onLucky = { backStack.add(Lucky) },
                         onDownloadModel = graph.model::download,
                         onRetryModelOpen = graph.model::retryOpen,
                         onShareModelDiagnostics = { context.startActivity(DiagnosticsActivity.intent(context)) },
@@ -306,6 +308,7 @@ fun EnsomiApp(scenario: Scenario, graph: AppGraph) {
                     )
                 }
                 entry<Diagnostics> { DiagnosticsScreen(onBack = { backStack.removeLastOrNull() }) }
+                entry<Lucky> { LuckyScreen(onBack = { backStack.removeLastOrNull() }) }
                 entry<RecognitionSession> {
                     RecognitionEntry.Content(
                         settings = settings,

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -41,6 +42,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -64,12 +66,13 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 /** Where the Settings list opens: at its top, or at one of its sections (the prototype's scenarios). */
-enum class SettingsSection { TOP, PLAYFIELD, KEYBOARD, SOUND }
+enum class SettingsSection { TOP, PLAYFIELD, KEYBOARD, SOUND, ABOUT }
 
 /**
  * Settings, reached from the library, never during a game, so nothing here changes while one is
  * in progress. Sections: gameplay, the playfield, the keyboard (a row that opens Settings › Keyboard), sound and timing
- * (the latency slots, with calibration), the chart model, and about (the playfield preview and Diagnostics).
+ * (the latency slots, with calibration), the chart model, and about (the playfield preview, Diagnostics, the version and
+ * the dedication).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,6 +90,8 @@ fun SettingsScreen(
     onCalibrate: () -> Unit,
     onPreview: () -> Unit,
     onDiagnostics: () -> Unit,
+    /** The dedication's line, the last of About: it opens the Lucky page. */
+    onLucky: () -> Unit,
     onDownloadModel: () -> Unit,
     onCancelDownload: () -> Unit,
     onRemoveModel: () -> Unit,
@@ -120,11 +125,15 @@ fun SettingsScreen(
             val wideWindow = maxWidth > maxHeight
             // The playfield section is one item beside its preview in a wide window, four under each other otherwise.
             val playfieldItems = if (wideWindow) 1 else 4
+            // The model's licence row is there only while the model is installed.
+            val licenceItems = if (model is ModelState.Installed) 1 else 0
             val firstIndex = when (firstSection) {
                 SettingsSection.TOP -> 0
                 SettingsSection.PLAYFIELD -> PLAYFIELD_HEADER
                 SettingsSection.KEYBOARD -> PLAYFIELD_HEADER + 1 + playfieldItems
                 SettingsSection.SOUND -> PLAYFIELD_HEADER + 3 + playfieldItems
+                // About is last, so the list opens at its end.
+                SettingsSection.ABOUT -> PLAYFIELD_HEADER + 12 + playfieldItems + licenceItems
             }
             val listState = rememberLazyListState(initialFirstVisibleItemIndex = firstIndex)
             // Landscape puts the navigation bar or a cutout at a side: the list keeps clear of it.
@@ -298,6 +307,7 @@ fun SettingsScreen(
                         supportingContent = { Text(versionName) },
                     )
                 }
+                item { DedicationLine(onLucky) }
             }
         }
     }
@@ -443,6 +453,30 @@ fun latencySlotLabel(index: Int, slot: LatencySlot): String = if (slot.name.isEm
     stringResource(R.string.latency_slot, index)
 } else {
     stringResource(R.string.latency_slot_named, index, slot.name)
+}
+
+/**
+ * The dedication, the last line of About: words in About's secondary text style, with no colour, chevron or row of their
+ * own, that open the Lucky page. Only a press shows it can be pressed (Material's ripple); it takes a key's focus with
+ * Material's focus state, and TalkBack offers it to activate, as any row.
+ */
+@Composable
+private fun DedicationLine(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 8.dp)
+            .clip(MaterialTheme.shapes.small)
+            .clickable(onClick = onClick)
+            .defaultMinSize(minHeight = 48.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            stringResource(R.string.settings_for_lucky),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 /** A row that opens a screen (a chevron) or, when [external], a page outside the app. */

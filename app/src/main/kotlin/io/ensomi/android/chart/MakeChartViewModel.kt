@@ -18,7 +18,10 @@ class MakeChartViewModel(
     private val maker: ChartMaker,
     initialSections: List<SectionDraft>,
     sectionsOpen: Boolean,
-    /** Debug launches only: stars the controls do not offer, sent as they are (the runtime takes any finite star). */
+    /**
+     * A debug launch's stars, which may be stars the controls do not offer and are sent as they are (the runtime takes
+     * any finite star), or the stars a screenshot scenario's chart was asked for.
+     */
     initialStars: Double? = null,
     /** The song's screen has closed for good. */
     private val onClosed: () -> Unit = {},

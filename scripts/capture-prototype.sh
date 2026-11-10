@@ -139,6 +139,8 @@ sleep 8; shot play-3
 sleep 16; shot play-end-results
 launch play-paused; sleep 15; shot play-paused
 launch play-countdown; sleep 15; shot play-countdown
+# The HUD's line for a chart whose star differs from the one asked for.
+launch play-stars; sleep 6; shot play-stars
 # Results in both modes, so the game screens' system bars can be checked.
 for mode in light dark; do
   if [ "$mode" = dark ]; then adb shell cmd uimode night yes; else adb shell cmd uimode night no; fi

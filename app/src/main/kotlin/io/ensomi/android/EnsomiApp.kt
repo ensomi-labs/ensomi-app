@@ -194,7 +194,7 @@ fun EnsomiApp(scenario: Scenario, graph: AppGraph) {
                             graph.charts,
                             scenario.sections,
                             scenario.sectionsOpen,
-                            initialStars = graph.debug.stars,
+                            initialStars = graph.debug.stars ?: scenario.stars,
                             onClosed = { graph.playAudio?.drop(song.id) },
                         )
                     }
@@ -223,7 +223,8 @@ fun EnsomiApp(scenario: Scenario, graph: AppGraph) {
                     } else {
                         PlayScreen(
                             title = song?.title ?: stringResource(R.string.play_preview_title),
-                            detail = stringResource(R.string.play_sample_detail),
+                            detail = scenario.playStars?.let { chartDetail(it, settings) }
+                                ?: stringResource(R.string.play_sample_detail),
                             settings = settings,
                             loop = key.loop,
                             onFinished = { result -> backStack.replaceLast(Results(key.songId, result)) },
@@ -345,17 +346,10 @@ private fun SongPlay(
         GameLoad.Loading -> GameLoading(song.title, failure = null, onBack = { backStack.removeLastOrNull() })
         is GameLoad.Failed -> GameLoading(song.title, current.message, onBack = { backStack.removeLastOrNull() })
         is GameLoad.Ready -> {
-            // The star the chart came out at, with the star asked for beside it when they differ.
             val display = StarDisplay.of(current.record.stars, current.record.measuredStars)
-            val stars = formatStars(display.stars)
-            val asked = display.asked?.let { formatStars(it) }
             PlayScreen(
                 title = song.title,
-                detail = if (asked != null) {
-                    stringResource(R.string.play_detail_asked, stars, asked, settings.judge.name)
-                } else {
-                    stringResource(R.string.play_detail, stars, settings.judge.name)
-                },
+                detail = chartDetail(display, settings),
                 settings = settings,
                 loop = false,
                 onFinished = { result -> backStack.replaceLast(Results(song.id, result.copy(
@@ -373,6 +367,18 @@ private fun SongPlay(
                 ),
             )
         }
+    }
+}
+
+/** The HUD's line for a chart: the star it came out at, the star asked for beside it when they differ, the judge. */
+@Composable
+private fun chartDetail(display: StarDisplay, settings: PlaySettings): String {
+    val stars = formatStars(display.stars)
+    val asked = display.asked?.let { formatStars(it) }
+    return if (asked != null) {
+        stringResource(R.string.play_detail_asked, stars, asked, settings.judge.name)
+    } else {
+        stringResource(R.string.play_detail, stars, settings.judge.name)
     }
 }
 

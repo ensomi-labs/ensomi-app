@@ -23,6 +23,7 @@ import io.ensomi.android.chart.PreciseProgress
 import io.ensomi.android.chart.PreciseSearch
 import io.ensomi.android.chart.SectionDraft
 import io.ensomi.android.chart.SectionKind
+import io.ensomi.android.chart.StarDisplay
 import io.ensomi.android.keyboard.CaptureNote
 import io.ensomi.android.keyboard.KeyCapture
 import io.ensomi.android.keyboard.KeyTest
@@ -95,6 +96,13 @@ data class Scenario(
     val make: MakeState = MakeState.Idle,
     val sections: List<SectionDraft> = emptyList(),
     val sectionsOpen: Boolean = false,
+    /** The stars the song's screen opens with, where [make] shows a chart asked for at other than the default. */
+    val stars: Double? = null,
+    /**
+     * The chart whose star the game's HUD names, as a game of the player's song does; without it the sample game says
+     * it is the sample.
+     */
+    val playStars: StarDisplay? = null,
     val pauseAfterMs: Long? = null,
     val holdCountdown: Boolean = false,
     /** The pause after [pauseAfterMs] is as after a change of output, to this one. */
@@ -279,6 +287,7 @@ data class Scenario(
             "make-chart-made-far" to Scenario(
                 listOf(Library, MakeChart(SONG)),
                 make = MakeState.Made(SONG, FakeChartMaker.MADE_FAR),
+                stars = FakeChartMaker.MADE_FAR.stars,
             ),
             "make-chart-stopped" to Scenario(listOf(Library, MakeChart(SONG)), make = MakeState.Stopped(SONG)),
             "make-chart-failed" to Scenario(
@@ -287,6 +296,11 @@ data class Scenario(
                 make = MakeState.Failed(SONG, "No chart was made."),
             ),
             "play" to Scenario(listOf(Library, MakeChart(SONG), Play(SONG, loop = false))),
+            // The HUD's line for a chart that came out at another star than the one asked for.
+            "play-stars" to Scenario(
+                listOf(Library, MakeChart(SONG), Play(SONG, loop = false)),
+                playStars = StarDisplay.of(FakeChartMaker.MADE_FAR.stars, FakeChartMaker.MADE_FAR.measuredStars),
+            ),
             "play-flat" to Scenario(listOf(Library, MakeChart(SONG), Play(SONG, loop = false)), settings = FLAT),
             "play-lean-max" to Scenario(listOf(Library, MakeChart(SONG), Play(SONG, loop = false)), settings = MOST_LEAN),
             "play-portrait" to Scenario(listOf(Library, MakeChart(SONG), Play(SONG, loop = false)), settings = PORTRAIT),

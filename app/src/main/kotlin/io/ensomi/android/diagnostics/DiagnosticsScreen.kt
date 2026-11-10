@@ -113,7 +113,7 @@ fun DiagnosticsContent(uiState: DiagnosticsUiState, modifier: Modifier = Modifie
         when (uiState) {
             DiagnosticsUiState.Loading -> Loading(Modifier.padding(innerPadding))
             is DiagnosticsUiState.Failed -> Text(
-                text = stringResource(R.string.diagnostics_failed, uiState.message),
+                text = stringResource(R.string.diagnostics_failed),
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(innerPadding).padding(16.dp),
             )
@@ -195,7 +195,7 @@ private fun ValueRow(row: DiagnosticsRow) {
     val value = when (val rowValue = row.value) {
         is DiagnosticsValue.Text -> rowValue.text
         is DiagnosticsValue.Label -> stringResource(rowValue.resource)
-        is DiagnosticsValue.Problem -> rowValue.text
+        is DiagnosticsValue.Problem -> stringResource(rowValue.resource)
         is DiagnosticsValue.Flag -> stringResource(if (rowValue.on) R.string.value_yes else R.string.value_no)
         DiagnosticsValue.None -> stringResource(R.string.value_none)
         DiagnosticsValue.Unknown -> stringResource(R.string.value_unknown)

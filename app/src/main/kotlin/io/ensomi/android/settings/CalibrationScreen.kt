@@ -51,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -666,7 +667,7 @@ private fun Controls(
             )
             if (!sliderBeside) slider(Modifier.fillMaxWidth().padding(horizontal = PANEL_TEXT_INSET))
             PanelNote(stringResource(R.string.calibration_audio_help))
-            PanelNote(stringResource(R.string.settings_sound_now, route.name))
+            PanelNote(stringResource(R.string.settings_sound_now, route.localizedName(LocalResources.current)))
         }
         Panel(compact) {
             val slot = CalibrationEdits.inputSlot(settings.inputLatency, method)

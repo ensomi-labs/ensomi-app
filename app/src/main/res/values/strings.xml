@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="chart_decode_memory">Not enough memory to decode this song.</string>
-    <string name="app_name">Ensomi</string>
+    <string name="app_name" translatable="false">Ensomi</string>
 
     <string name="diagnostics_title">Diagnostics</string>
     <string name="diagnostics_copy_json">Copy JSON</string>
     <string name="diagnostics_clip_label">Ensomi diagnostics</string>
     <string name="diagnostics_loading">Reading the device</string>
-    <string name="diagnostics_failed">Diagnostics failed: %1$s</string>
+    <string name="diagnostics_failed">Diagnostics could not be read or shared. Try again.</string>
 
     <string name="value_yes">Yes</string>
     <string name="value_no">No</string>
@@ -103,12 +103,12 @@
     <string name="model_update_pending">An update to package %1$s is pending. This model stays in use until it arrives.</string>
     <string name="model_failure_network">The connection was lost.</string>
     <string name="model_failure_http">Hugging Face answered with HTTP %1$d.</string>
-    <string name="model_failure_refused">This version of Ensomi cannot use the package: %1$s</string>
+    <string name="model_failure_refused">This version of Ensomi cannot use this model package. Download it again or share diagnostics.</string>
     <string name="model_failure_mismatch">%1$s did not match the package’s manifest.</string>
     <string name="model_failure_not_pinned">These are not the files of the Ensomi R2 package %1$s, the one this version of Ensomi uses.</string>
     <string name="model_failure_no_manifest">The folder has no ensomi-package.json. Pick the folder that holds the package’s files.</string>
     <string name="model_failure_missing">%1$s is not in the folder. The package needs every file its manifest lists.</string>
-    <string name="model_failure_unreadable">The files could not be read. %1$s</string>
+    <string name="model_failure_unreadable">The files could not be read. Choose the package’s folder again.</string>
     <string name="model_download_failed">The download from Hugging Face failed. %1$s</string>
     <string name="model_install_files">Install from files</string>
     <string name="model_install_files_hint">Can’t reach Hugging Face? If you have the package’s files, pick the folder that holds them (ensomi-package.json and the files it lists).</string>
@@ -457,10 +457,10 @@
     <string name="model_failure_committing">Installing the checked model failed: %1$s</string>
     <string name="model_opening">Opening the model on this phone…</string>
     <string name="model_open_blocked">Ensomi closed while opening the model on this phone.</string>
-    <string name="model_open_failed">Opening the model failed: %1$s</string>
+    <string name="model_open_failed">The model could not be opened on this phone. Try again or share diagnostics.</string>
     <string name="model_share_diagnostics">Share diagnostics</string>
     <string name="model_chart_blocked">Ensomi closed while opening the model. Choose Try again on the model card.</string>
-    <string name="model_chart_open_failed">The model could not open: %1$s. Choose Try again on the model card.</string>
+    <string name="model_chart_open_failed">The model could not open. Choose Try again on the model card.</string>
     <string name="model_chart_wait">Wait for the chart model to finish installing and opening.</string>
     <!-- Crash reports -->
     <string name="crash_contents">Share device and CPU facts, recent process exits, the last three runs of the event journal, and up to three redacted crash traces. Song audio and titles are excluded. Nothing is uploaded by Ensomi.</string>
@@ -474,4 +474,25 @@
     <string name="crash_test_accepted">Unexpectedly accepted</string>
     <string name="crash_test_failed">Self-test failed</string>
     <string name="model_inference_blocked">Ensomi closed during the first model preparation or chart. Choose Try again on the model card.</string>
+
+    <!-- Localized failure summaries and thermal states. Technical details stay in diagnostics. -->
+    <string name="model_failure_unexpected">The model operation failed. Try again or share diagnostics.</string>
+    <string name="make_failure_stars">The requested stars are outside the model’s range. Choose stars within the supported range.</string>
+    <string name="make_failure_controls">The model cannot use these section settings. Check the sections and try again.</string>
+    <string name="make_failure_retry">Try again. If it keeps failing, share diagnostics from Settings.</string>
+    <string name="make_failure_missing">The song’s file could not be found. Find it again in the library.</string>
+    <string name="make_failure_decode">The song could not be decoded. Choose another audio file.</string>
+    <string name="thermal_none">Normal</string>
+    <string name="thermal_light">Light</string>
+    <string name="thermal_moderate">Moderate</string>
+    <string name="thermal_severe">Severe</string>
+    <string name="thermal_critical">Critical</string>
+    <string name="thermal_emergency">Emergency</string>
+    <string name="thermal_shutdown">Shutdown</string>
+    <string name="kind_jumpstream_hint">Single-note streams mixed with two-note chords.</string>
+    <string name="kind_chordstream_hint">Single-note streams mixed with chords of three or more notes.</string>
+    <string name="kind_stream_hint">Sequences of single notes across lanes.</string>
+    <string name="kind_jack_hint">Repeated notes in the same lane.</string>
+    <string name="kind_chordjack_hint">Repeated chords.</string>
+    <string name="kind_star_hint">Target a difficulty for this section.</string>
 </resources>

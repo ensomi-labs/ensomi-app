@@ -149,25 +149,6 @@ class SystemOutputRoute(context: Context) : PlayOutputs {
         return OutputRoute(OutputRoutes.key(device), name(device))
     }
 
-    private fun name(device: OutputDevice): String {
-        val product = device.productName.trim()
-        val kind = OutputRoutes.kind(device.type)
-        // The product name of a speaker or a headphone jack is the phone's own model name.
-        if (product.isNotEmpty() && kind in NAMED_BY_PRODUCT) return product
-        return appContext.getString(
-            when (kind) {
-                OutputKind.SPEAKER -> R.string.output_speaker
-                OutputKind.WIRED -> R.string.output_wired
-                OutputKind.USB -> R.string.output_usb
-                OutputKind.BLUETOOTH -> R.string.output_bluetooth
-                OutputKind.HEARING_AID -> R.string.output_hearing_aid
-                OutputKind.HDMI -> R.string.output_hdmi
-                OutputKind.OTHER -> R.string.output_other
-            },
-        )
-    }
-
-    private companion object {
-        val NAMED_BY_PRODUCT = setOf(OutputKind.BLUETOOTH, OutputKind.HEARING_AID, OutputKind.USB)
-    }
+    private fun name(device: OutputDevice): String =
+        OutputRoute(OutputRoutes.key(device), device.productName).localizedName(appContext.resources)
 }

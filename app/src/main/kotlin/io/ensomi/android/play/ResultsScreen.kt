@@ -105,7 +105,11 @@ fun ResultsScreen(
                             modifier = Modifier.semantics { heading() },
                         )
                         Text(result.title, style = MaterialTheme.typography.headlineSmall, color = Brand.Text)
-                        Text(result.detail, style = MaterialTheme.typography.bodyMedium, color = Brand.MutedText)
+                        val detail = result.chart?.let { chart ->
+                            listOfNotNull(chart.artist, stringResource(R.string.results_detail,
+                                String.format(java.util.Locale.ROOT, "%.1f", chart.stars), chart.seed)).joinToString(" · ")
+                        } ?: if (result.sample) stringResource(R.string.play_sample_detail) else result.detail
+                        Text(detail, style = MaterialTheme.typography.bodyMedium, color = Brand.MutedText)
                     }
                 }
                 val accuracy: @Composable (Modifier) -> Unit = { modifier ->

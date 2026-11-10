@@ -18,8 +18,8 @@ sealed interface ModelState {
     data class Absent(
         val downloadBytes: Long,
         val freeBytes: Long,
-        val filesFailure: String? = null,
-        val failure: String? = null,
+        val filesFailure: ModelFailure? = null,
+        val failure: ModelFailure? = null,
     ) : ModelState {
         val fits: Boolean get() = freeBytes >= downloadBytes
     }
@@ -34,8 +34,8 @@ sealed interface ModelState {
     data class Stopped(
         val doneBytes: Long,
         val totalBytes: Long,
-        val failure: String?,
-        val filesFailure: String? = null,
+        val failure: ModelFailure?,
+        val filesFailure: ModelFailure? = null,
     ) : ModelState
 
     data class Installed(
@@ -62,7 +62,7 @@ sealed interface ModelUpdate {
      * The install is not the pinned tag, or misses files, and the download to fix it stopped or has not run:
      * [failure] says why, [resumable] whether files are kept for a resume.
      */
-    data class Pending(val pinnedRevision: String, val failure: String?, val resumable: Boolean) : ModelUpdate
+    data class Pending(val pinnedRevision: String, val failure: ModelFailure?, val resumable: Boolean) : ModelUpdate
 }
 
 /**

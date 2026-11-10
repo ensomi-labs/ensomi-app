@@ -162,8 +162,8 @@ private fun SectionCard(
                     }
                 }
             }
-            selected?.note?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            selected?.let {
+                Text(stringResource(it.kind.hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (section.kind == SectionKind.STAR) {
                 val range = capabilities?.selectableStars ?: (2.0..5.9)
@@ -248,6 +248,16 @@ private val SectionKind.title: Int
         SectionKind.JACK -> R.string.kind_jack
         SectionKind.CHORDJACK -> R.string.kind_chordjack
         SectionKind.STAR -> R.string.kind_star
+    }
+
+private val SectionKind.hint: Int
+    get() = when (this) {
+        SectionKind.JUMPSTREAM -> R.string.kind_jumpstream_hint
+        SectionKind.CHORDSTREAM -> R.string.kind_chordstream_hint
+        SectionKind.STREAM -> R.string.kind_stream_hint
+        SectionKind.JACK -> R.string.kind_jack_hint
+        SectionKind.CHORDJACK -> R.string.kind_chordjack_hint
+        SectionKind.STAR -> R.string.kind_star_hint
     }
 
 private val SectionProblem.message: Int

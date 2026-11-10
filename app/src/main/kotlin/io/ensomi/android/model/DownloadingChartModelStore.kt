@@ -7,7 +7,6 @@ import io.ensomi.android.diagnostics.ExitRecords
 import android.net.Uri
 import android.os.storage.StorageManager
 import android.util.Log
-import io.ensomi.android.R
 import io.ensomi.android.json.Json
 import io.ensomi.runtime.GeneratorException
 import io.ensomi.runtime.RuntimeWorker
@@ -236,7 +235,7 @@ class DownloadingChartModelStore(
             mutableState.value = stoppedState(failure = null)
         } catch (e: ModelDownloadException) {
             Log.w(TAG, "Download stopped: ${e.failure}", e)
-            logInstall(InstallRecord.SOURCE_HUGGING_FACE, "stopped", started, failure = describe(e.failure))
+            logInstall(InstallRecord.SOURCE_HUGGING_FACE, "stopped", started, failure = e.failure.toString())
             events.record("download", "stop", mapOf("reason" to e.failure.javaClass.simpleName, "stage" to phase.name.lowercase()))
             val failure = e.failure
             mutableState.value = if (failure is ModelFailure.NoSpace && synchronized(lock) { installed } == null) {
@@ -248,7 +247,7 @@ class DownloadingChartModelStore(
             Log.e(TAG, "Install failed during $phase", e)
             val failure = stageFailure(e.message ?: e.javaClass.simpleName)
             events.record("download", "stop", mapOf("reason" to e.javaClass.simpleName, "stage" to phase.name.lowercase()))
-            logInstall(InstallRecord.SOURCE_HUGGING_FACE, "stopped", started, failure = failure)
+            logInstall(InstallRecord.SOURCE_HUGGING_FACE, "stopped", started, failure = failure.toString())
             mutableState.value = stoppedState(failure)
             if (e is VirtualMachineError) throw e
         }
@@ -260,7 +259,7 @@ class DownloadingChartModelStore(
         val started = System.nanoTime()
         logInstall(InstallRecord.SOURCE_FILES, "started", started)
         events.record("download", "begin", mapOf("source" to InstallRecord.SOURCE_FILES, "reason" to "copy"))
-        val failure: String? = try {
+        val failure: ModelFailure? = try {
             val result = installer.installFrom(
                 DocumentTreePackageFiles(appContext.contentResolver, folder),
                 progress = { done, total ->
@@ -285,12 +284,12 @@ class DownloadingChartModelStore(
         } catch (e: ModelDownloadException) {
             Log.w(TAG, "Install from files stopped: ${e.failure}", e)
             events.record("download", "stop", mapOf("reason" to e.failure.javaClass.simpleName, "stage" to phase.name.lowercase()))
-            describeAtStage(e.failure).also { logInstall(InstallRecord.SOURCE_FILES, "stopped", started, failure = it) }
+            describeAtStage(e.failure).also { logInstall(InstallRecord.SOURCE_FILES, "stopped", started, failure = it.toString()) }
         } catch (e: Throwable) {
             Log.e(TAG, "Install from files failed during $phase", e)
             val detail = stageFailure(e.message ?: e.javaClass.simpleName)
             events.record("download", "stop", mapOf("reason" to e.javaClass.simpleName, "stage" to phase.name.lowercase()))
-            logInstall(InstallRecord.SOURCE_FILES, "stopped", started, failure = detail)
+            logInstall(InstallRecord.SOURCE_FILES, "stopped", started, failure = detail.toString())
             if (e is VirtualMachineError) {
                 mutableState.value = stoppedState(detail)
                 throw e
@@ -350,7 +349,7 @@ class DownloadingChartModelStore(
     }
 
     /** A download that stopped: over an install, the install with the update pending; else Stopped, or Absent. */
-    private fun stoppedState(failure: String?): ModelState {
+    private fun stoppedState(failure: ModelFailure?): ModelState {
         val model = synchronized(lock) { installed }
         if (model != null) {
             val pending = ModelUpdate.Pending(ModelSource.PINNED_REVISION, failure, resumable = installer.staged() != null)
@@ -359,34 +358,16 @@ class DownloadingChartModelStore(
         return idleState(failure)
     }
 
-    private fun idleState(failure: String?, filesFailure: String? = null): ModelState {
+    private fun idleState(failure: ModelFailure?, filesFailure: ModelFailure? = null): ModelState {
         val staged = try { installer.staged() } catch (e: Throwable) {
             if (e is VirtualMachineError) throw e
-            return ModelState.Stopped(0, ModelSource.PACKAGE_BYTES, failure ?: (e.message ?: e.javaClass.simpleName), filesFailure)
+            return ModelState.Stopped(0, ModelSource.PACKAGE_BYTES, failure ?: stageFailure(e.message ?: e.javaClass.simpleName), filesFailure)
         }
         return if (staged != null) {
             ModelState.Stopped(staged.first, staged.second, failure, filesFailure)
         } else {
             ModelState.Absent(ModelSource.PACKAGE_BYTES, freeBytes(), filesFailure, failure)
         }
-    }
-
-    private fun describe(failure: ModelFailure): String = when (failure) {
-        is ModelFailure.Network -> appContext.getString(R.string.model_failure_network)
-        is ModelFailure.Http -> appContext.getString(R.string.model_failure_http, failure.code)
-        is ModelFailure.Refused -> appContext.getString(R.string.model_failure_refused, failure.reason)
-        is ModelFailure.Mismatch -> appContext.getString(R.string.model_failure_mismatch, failure.path)
-        is ModelFailure.Storage -> appContext.getString(R.string.model_failure_storage)
-        is ModelFailure.Stage -> stageFailure(failure.reason, failure.phase)
-        is ModelFailure.NoSpace -> appContext.getString(
-            R.string.model_no_space,
-            megabytes(failure.neededBytes),
-            megabytes(failure.freeBytes),
-        )
-        is ModelFailure.NotPinned -> appContext.getString(R.string.model_failure_not_pinned, ModelSource.PINNED_REVISION)
-        ModelFailure.NoManifest -> appContext.getString(R.string.model_failure_no_manifest)
-        is ModelFailure.Missing -> appContext.getString(R.string.model_failure_missing, failure.path)
-        is ModelFailure.Unreadable -> appContext.getString(R.string.model_failure_unreadable, failure.detail ?: "")
     }
 
     private fun freeBytes(): Long = try {
@@ -421,17 +402,10 @@ class DownloadingChartModelStore(
         throw ModelDownloadException(ModelFailure.Refused(e.message ?: e.javaClass.simpleName), e)
     }
 
-    private fun describeAtStage(failure: ModelFailure): String =
-        if (failure is ModelFailure.Stage) describe(failure) else stageFailure(describe(failure))
+    private fun describeAtStage(failure: ModelFailure): ModelFailure =
+        if (failure is ModelFailure.Stage || failure is ModelFailure.AtStage) failure else ModelFailure.AtStage(phase, failure)
 
-    private fun stageFailure(reason: String, at: InstallPhase = phase): String = appContext.getString(
-        when (at) {
-            InstallPhase.STAGING -> R.string.model_failure_staging
-            InstallPhase.VERIFYING -> R.string.model_failure_verifying
-            InstallPhase.COMMITTING -> R.string.model_failure_committing
-        },
-        reason,
-    )
+    private fun stageFailure(reason: String): ModelFailure = ModelFailure.Stage(phase, reason)
 
     companion object {
         private const val TAG = "EnsomiModel"

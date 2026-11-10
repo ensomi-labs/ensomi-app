@@ -26,6 +26,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -103,7 +104,7 @@ private fun Absent(state: ModelState.Absent, onDownload: () -> Unit, onPickFolde
         } else {
             ActionButton(stringResource(R.string.model_download), onDownload, icon = R.drawable.ic_download, modifier = Modifier.fillMaxWidth())
         }
-        if (state.failure != null) Problem(stringResource(R.string.model_download_failed, state.failure))
+        if (state.failure != null) Problem(stringResource(R.string.model_download_failed, state.failure.description(LocalResources.current)))
     } else {
         Problem(stringResource(R.string.model_no_space, megabytes(state.downloadBytes), megabytes(state.freeBytes)))
         Text(stringResource(R.string.model_no_space_hint), style = MaterialTheme.typography.bodySmall)
@@ -120,13 +121,13 @@ private fun Absent(state: ModelState.Absent, onDownload: () -> Unit, onPickFolde
 
 /** The second way in: the package's files, from a folder the player picks; and why the last try stopped, if it did. */
 @Composable
-private fun FromFiles(failure: String?, onPickFolder: () -> Unit) {
+private fun FromFiles(failure: ModelFailure?, onPickFolder: () -> Unit) {
     Text(
         stringResource(R.string.model_install_files_hint),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    if (failure != null) Problem(failure)
+    if (failure != null) Problem(failure.description(LocalResources.current))
     OutlinedButton(onClick = onPickFolder) { Text(stringResource(R.string.model_install_files)) }
 }
 
@@ -167,7 +168,7 @@ private fun Progress(doneBytes: Long, totalBytes: Long, onCancel: () -> Unit) {
 @Composable
 private fun Stopped(state: ModelState.Stopped, onResume: () -> Unit, onPickFolder: () -> Unit) {
     val stopped = stringResource(R.string.model_stopped, megabytes(state.doneBytes), megabytes(state.totalBytes))
-    Problem(if (state.failure != null) "$stopped ${state.failure}" else stopped)
+    Problem(if (state.failure != null) "$stopped ${state.failure.description(LocalResources.current)}" else stopped)
     Text(stringResource(R.string.model_stopped_hint), style = MaterialTheme.typography.bodySmall)
     Button(onClick = onResume) { Text(stringResource(R.string.model_resume)) }
     FromFiles(state.filesFailure, onPickFolder)
@@ -200,7 +201,7 @@ private fun Installed(
     }
     when (val open = state.openState) {
         is ModelOpenState.Blocked, is ModelOpenState.Failed -> {
-            Problem(if (open is ModelOpenState.Failed) stringResource(R.string.model_open_failed, open.reason)
+            Problem(if (open is ModelOpenState.Failed) stringResource(R.string.model_open_failed)
                 else stringResource(if ((open as ModelOpenState.Blocked).stage == "model_open") R.string.model_open_blocked else R.string.model_inference_blocked))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onRetryOpen) { Text(stringResource(R.string.model_try_again)) }
@@ -232,7 +233,7 @@ private fun Installed(
         }
         is ModelUpdate.Pending -> {
             Text(stringResource(R.string.model_update_pending, update.pinnedRevision), style = MaterialTheme.typography.bodyMedium)
-            if (update.failure != null) Problem(update.failure)
+            if (update.failure != null) Problem(update.failure.description(LocalResources.current))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = onDownloadAgain) {
                     Text(stringResource(if (update.resumable) R.string.model_resume else R.string.model_check_files))

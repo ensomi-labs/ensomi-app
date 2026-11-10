@@ -9,6 +9,14 @@ class GeneratorChoicesTest {
     private val gib = 1L shl 30
 
     @Test
+    fun runtimeRefusalsSelectLocalizedExplanationsWithAFallbackForNewCodes() {
+        assertEquals(MakeFailure.STARS, GeneratorChoices.failure("star_out_of_range"))
+        assertEquals(MakeFailure.CONTROLS, GeneratorChoices.failure("unsupported_control"))
+        assertEquals(MakeFailure.RETRY, GeneratorChoices.failure("generation_failed"))
+        assertEquals(MakeFailure.RETRY, GeneratorChoices.failure("a_future_code"))
+    }
+
+    @Test
     fun lowMemoryBelowSevenGibibytes() {
         // The 4 GB emulator, a 6 GB phone: on. A phone sold with 8 GB reports a little over 7 GiB: off.
         assertTrue(GeneratorChoices.lowMemory(3_900_000_000L, lowRamDevice = false))

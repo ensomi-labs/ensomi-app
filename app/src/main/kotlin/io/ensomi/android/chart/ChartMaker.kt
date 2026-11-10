@@ -23,6 +23,8 @@ data class MadeChart(
     val modelName: String,
 )
 
+enum class MakeFailure { RETRY, STARS, CONTROLS, MODEL_WAIT, MODEL_MISSING, MODEL_BLOCKED, MODEL_INFERENCE_BLOCKED, MODEL_OPEN, MISSING, DECODE }
+
 sealed interface MakeState {
     data object Idle : MakeState
 
@@ -33,8 +35,13 @@ sealed interface MakeState {
     /** Stopped by the player: no chart was made. */
     data class Stopped(val songId: String) : MakeState
 
-    /** The runtime refused or failed: [message] is its own text, such as "star_out_of_range: ...". */
-    data class Failed(val songId: String, val message: String, val audioTooLarge: Boolean = false) : MakeState
+    /** [message] keeps technical detail for diagnostics; [reason] selects the localized explanation. */
+    data class Failed(
+        val songId: String,
+        val message: String,
+        val audioTooLarge: Boolean = false,
+        val reason: MakeFailure = MakeFailure.RETRY,
+    ) : MakeState
 }
 
 /** The last chart made for a song, to play: the app's record and the `.osu` the runtime wrote. */

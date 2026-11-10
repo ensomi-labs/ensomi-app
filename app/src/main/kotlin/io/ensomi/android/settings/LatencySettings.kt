@@ -47,6 +47,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -118,7 +119,7 @@ internal fun AudioLatencySetting(
             modifier = SETTINGS_STEPPER,
         )
         Supporting(stringResource(R.string.settings_audio_latency_help))
-        Supporting(stringResource(R.string.settings_sound_now, route.name), Modifier.padding(top = 4.dp))
+        Supporting(stringResource(R.string.settings_sound_now, route.localizedName(LocalResources.current)), Modifier.padding(top = 4.dp))
     }
 }
 

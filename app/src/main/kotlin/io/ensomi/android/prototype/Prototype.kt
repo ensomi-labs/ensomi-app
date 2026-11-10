@@ -18,6 +18,7 @@ import io.ensomi.android.Settings
 import io.ensomi.android.audio.PlayAudioCache
 import io.ensomi.android.chart.ChartMaker
 import io.ensomi.android.chart.MakePhase
+import io.ensomi.android.chart.MakeFailure
 import io.ensomi.android.chart.MakeState
 import io.ensomi.android.chart.SectionDraft
 import io.ensomi.android.chart.SectionKind
@@ -27,6 +28,7 @@ import io.ensomi.android.keyboard.KeyTest
 import io.ensomi.android.keyboard.Keyboards
 import io.ensomi.android.library.SongLibrary
 import io.ensomi.android.model.ChartModelStore
+import io.ensomi.android.model.ModelFailure
 import io.ensomi.android.model.ModelState
 import io.ensomi.android.model.ModelUpdate
 import io.ensomi.android.model.ONNX_RUNTIME_NOTICES
@@ -220,7 +222,7 @@ data class Scenario(
             "downloading" to Scenario(listOf(Library), model = ModelState.Downloading(50_600_000, PACKAGE), withSongs = false),
             "download-stopped" to Scenario(
                 listOf(Library),
-                model = ModelState.Stopped(50_600_000, PACKAGE, failure = "The connection was lost."),
+                model = ModelState.Stopped(50_600_000, PACKAGE, failure = ModelFailure.Network(null)),
                 withSongs = true,
             ),
             "no-space" to Scenario(listOf(Library), model = ModelState.Absent(PACKAGE, 80_200_000), withSongs = false),
@@ -231,7 +233,7 @@ data class Scenario(
             ),
             "download-failed" to Scenario(
                 listOf(Library),
-                model = ModelState.Absent(PACKAGE, FREE, failure = "The connection was lost."),
+                model = ModelState.Absent(PACKAGE, FREE, failure = ModelFailure.Network(null)),
                 withSongs = false,
             ),
             "install-files-refused" to Scenario(
@@ -239,7 +241,7 @@ data class Scenario(
                 model = ModelState.Absent(
                     PACKAGE,
                     FREE,
-                    filesFailure = "These are not the files of the Ensomi R2 package r2-1.0.1, the one this version of Ensomi uses.",
+                    filesFailure = ModelFailure.NotPinned("prototype"),
                 ),
                 withSongs = false,
             ),
@@ -266,7 +268,7 @@ data class Scenario(
             "make-chart-stopped" to Scenario(listOf(Library, MakeChart(SONG)), make = MakeState.Stopped(SONG)),
             "make-chart-failed" to Scenario(
                 listOf(Library, MakeChart(SONG)),
-                make = MakeState.Failed(SONG, "star_out_of_range: star must be in [2, 6)"),
+                make = MakeState.Failed(SONG, "star_out_of_range: star must be in [2, 6)", reason = MakeFailure.STARS),
             ),
             "play" to Scenario(listOf(Library, MakeChart(SONG), Play(SONG, loop = false))),
             "play-flat" to Scenario(listOf(Library, MakeChart(SONG), Play(SONG, loop = false)), settings = FLAT),
@@ -425,7 +427,7 @@ data class Scenario(
                     revision = "r2-1.0",
                     sizeBytes = PACKAGE,
                     license = "MIT",
-                    update = ModelUpdate.Pending(FakeChartModelStore.PINNED_REVISION, "The connection was lost.", resumable = true),
+                    update = ModelUpdate.Pending(FakeChartModelStore.PINNED_REVISION, ModelFailure.Network(null), resumable = true),
                 ),
             ),
             "notices" to Scenario(listOf(Library, Settings, Notices)),

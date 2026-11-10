@@ -17,7 +17,14 @@ object GeneratorChoices {
     /** The measured K Pad setting; leave other devices to the runtime until they are measured. */
     fun beatthisThreads(model: String): UInt? = if (model == "25079RPDCC") 8u else null
 
-    /** The runtime's refusal as the status card shows it: its code, then its message, without the code twice. */
+    /** Known runtime codes select an explanation; new codes still get a localized retry action. */
+    fun failure(code: String): MakeFailure = when (code) {
+        "star_out_of_range" -> MakeFailure.STARS
+        "unsupported_control" -> MakeFailure.CONTROLS
+        else -> MakeFailure.RETRY
+    }
+
+    /** The runtime's refusal for diagnostics: its code, then its message, without the code twice. */
     fun refusal(code: String, message: String): String =
         if (message.startsWith(code)) message else "$code: $message"
 }

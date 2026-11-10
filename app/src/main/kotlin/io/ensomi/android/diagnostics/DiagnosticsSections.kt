@@ -22,7 +22,7 @@ sealed interface DiagnosticsValue {
     data class Flag(val on: Boolean) : DiagnosticsValue
 
     /** Text shown as an error. */
-    data class Problem(val text: String) : DiagnosticsValue
+    data class Problem(@param:StringRes val resource: Int) : DiagnosticsValue
 
     /** An empty list. */
     data object None : DiagnosticsValue
@@ -58,7 +58,7 @@ fun DiagnosticsReport.sections(): List<DiagnosticsSection> = listOf(
                 "error" -> R.string.crash_test_failed
                 else -> R.string.crash_test_not_run
             })))
-            runtime.error?.let { add(DiagnosticsRow(R.string.label_runtime_error, DiagnosticsValue.Problem(it))) }
+            runtime.error?.let { add(DiagnosticsRow(R.string.label_runtime_error, DiagnosticsValue.Problem(R.string.crash_test_failed))) }
         },
     ),
     DiagnosticsSection(
@@ -89,7 +89,16 @@ fun DiagnosticsReport.sections(): List<DiagnosticsSection> = listOf(
         listOf(
             DiagnosticsRow(
                 R.string.label_thermal_status,
-                text(thermal.status.replaceFirstChar { it.titlecase(Locale.ROOT) }),
+                DiagnosticsValue.Label(when (thermal.status) {
+                    "none" -> R.string.thermal_none
+                    "light" -> R.string.thermal_light
+                    "moderate" -> R.string.thermal_moderate
+                    "severe" -> R.string.thermal_severe
+                    "critical" -> R.string.thermal_critical
+                    "emergency" -> R.string.thermal_emergency
+                    "shutdown" -> R.string.thermal_shutdown
+                    else -> R.string.value_unknown
+                }),
             ),
             DiagnosticsRow(R.string.label_thermal_headroom, text(thermal.headroom10s?.let(Format::headroom))),
         ),

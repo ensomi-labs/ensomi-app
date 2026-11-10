@@ -2,7 +2,7 @@
 
 [versions]
 appVersionCode = "7"
-appVersionName = "0.3.0"
+appVersionName = "0.2.2"
 agp = "9.4.1"
 kotlin = "2.4.21"
 compileSdk = "37"

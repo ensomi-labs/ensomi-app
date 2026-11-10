@@ -1,5 +1,5 @@
 ---
-commit: 3050c59b00e52c736fcabb4da275c6e85b12c622
+commit: ad6faaa11ffe2ba9b884c9cd8af118d6218f60c9
 ---
 
 # Ensomi for Android

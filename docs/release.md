@@ -1,5 +1,5 @@
 ---
-commit: 3050c59b00e52c736fcabb4da275c6e85b12c622
+commit: ad6faaa11ffe2ba9b884c9cd8af118d6218f60c9
 ---
 
 # Android CI and release: proposed design
@@ -7,7 +7,7 @@ commit: 3050c59b00e52c736fcabb4da275c6e85b12c622
 ## Public demo: the current process
 
 The Android play demo is built on the owner's Mac from a committed tree, then signed by the owner with one
-release key made by hand and published as a GitHub release of `ensomi-labs/ensomi-app`. The current build uses `versionName` **0.3.0**,
+release key made by hand and published as a GitHub release of `ensomi-labs/ensomi-app`. The current build uses `versionName` **0.2.2**,
 `versionCode` **7**, owned by `gradle/libs.versions.toml`; Swift's `v0.1.0` stays separate. The build produces an unsigned,
 R8-optimized arm64-v8a APK, with JNA keep rules and the runtime AAR's UniFFI keep rules. The runtime is the local AAR
 whose SHA-256 is `606034d0be3123d0238843e263a6aac97e22362076cf0c422add69075e03cb1a`.
@@ -26,17 +26,30 @@ in memory and exports up to 512 KiB of redacted evidence. Install over
 0.1.2 without uninstalling so earlier exit records survive. The candidate has not run on a CPU
 with SME, and the suspected affected-phone fix still needs a tester rerun.
 
-0.3.0 offers 1.0 to 9.0 stars on the song's slider, on a section's star target and on Listen & Play's stepper,
-where 0.2.1 offered 2.0 to 5.9. The runtime now takes any finite star; a notice under the slider says the model is
-at its best from 2 to 6. Each chart is measured as it is made, and the chart-ready card, the game's HUD and the
-results show the star it came out at, with the star asked for beside it when they differ.
-An install over 0.2.1 keeps the charts stored for each song; they have no measured star and show the star asked
-for alone. That rests on a unit test reading a record in 0.2.1's shape; the install itself has not been tried.
-The candidate has not run on a phone. At `1be61bd`, before the last prototype and warning fixes and this version
-change, the four builds, 608 unit tests and lint passed on the owner's Mac against this AAR, and the debug app
-launched on the 16 KB emulator; no chart was generated there. No chart asked for outside 2 to 6 stars has been made
-or played on any device, so how close such a chart comes to the star asked for is not known. This build remains
-unsigned until the owner signs it; no tag or publication is part of this.
+0.2.2 keeps the stars 0.2.1 offers, 2.0 to 5.9, and shows what was made. Each chart is measured as it is made, and
+the chart-ready card, the game's HUD and the results show the star it came out at, with the star asked for beside
+it when they differ. An experiment on twelve songs with two starting seeds (ensomi-runtime `codex/star-reach` at
+`6dfc2a2`; measured stars on a computer, nobody played a chart) found that a first chart for a target from 2.5 to 5.5
+stars misses by a median of 0.43 stars. It also found that every request at or below 2.125 stars makes one chart for
+a song and seed, and every request at or above 5.875 another, measuring about 2.5 and 5.3 stars at the centre: stars
+beyond this range would ask for the same charts as its ends, which is why the range stays. An install over 0.2.1 keeps the charts stored for each song; they have
+no measured star and show the star asked for alone. That rests on a unit test reading a record in 0.2.1's shape; the
+install itself has not been tried.
+
+Precise difficulty is a switch on the song's screen, off by default: it makes up to six charts, asking only for stars
+the slider offers, and keeps the one closest to the star asked for. In the same experiment the search brought the
+median miss from 0.43 stars to 0.08, with about two thirds of its charts within 0.15 stars; that was measured with
+requests allowed three stars from the target, and again, no worse, with requests held to 2 to 6, not with the
+slider's own 2.0 to 5.9 that the app uses.
+
+<!-- 0.2.2 GAP: the sentence about this release's library fix goes here once its facts are known. The runtime commit,
+AAR hash and build ID above are those of the build at `1d11232` and may change with it. -->
+
+No chart has been generated on an Android device with this build, and nothing has run on a phone. The last build on
+the owner's Mac was at `1d11232`, before the range went back to 2.0 to 5.9, before the search was bounded and before
+this version: there the four builds, 608 unit tests and lint passed against this AAR and the debug app launched on the
+16 KB emulator. This tree is built only when a later Mac build says so. This build remains unsigned until the owner
+signs it; no tag or publication is part of this.
 
 The owner keeps the keystore outside all repositories and signs separately with `apksigner`. CI has not run, so its
 duration is unknown. The remaining sections are the original proposal, including its future release prerequisites;

@@ -1,3 +1,7 @@
+---
+commit: 0af740cc23e3295300ad3cdfa8ebe43468d38ce8
+---
+
 # Ensomi for Android: Listen & Play
 
 Listen & Play ships in the public APK. It follows music playing in the room; Ensomi plays no audio of its own on this
@@ -13,7 +17,7 @@ downloaded MP3. Each missing permission has an Allow button using Android’s pe
 available if permission was blocked. A share with a missing model points back to the Library. After fixing a missing
 prerequisite, the person shares the song again, so the new session gets a fresh audio wait once indexing is ready.
 
-There is one launch path and three steps, in English and Simplified Chinese:
+There is one launch path and three steps, in the selected app language (English, Simplified Chinese or Japanese):
 
 1. **Open NetEase Cloud Music.** The person taps the guide’s button. It calls `getLaunchIntentForPackage` for
    `com.netease.cloudmusic`, with `FLAG_ACTIVITY_NEW_TASK`, preserving the page already open. Nothing else launches it.
@@ -23,7 +27,6 @@ There is one launch path and three steps, in English and Simplified Chinese:
 
 After the steps, a short conditional note says: if Ensomi says this song is not on your phone, download it as MP3 in
 NetEase, let it finish, then share again. Only MP3 works; NetEase’s protected format (.ncm) cannot be used.
-The Chinese note says the same: 如果 Ensomi 提示手机上还没有这首歌，请在网易云音乐中下载为 MP3，等下载完成后再分享。仅支持 MP3；无法使用网易云音乐的受保护格式（.ncm）。
 
 NetEase’s recognition results and download rights belong to its own UI. Ensomi waits for the person’s share. If NetEase
 is absent or cannot open, the guide explains that plainly. It does not attempt another launch path.
@@ -94,11 +97,7 @@ already decoding can finish. The one-second tick stops the session at or after t
 checks when Android runs it again; an explicitly resumed snapshot retains the same clock but cannot time out until its fresh index finishes. Re-sharing after process death starts a fresh session and re-arms its wait after indexing.
 
 A person who shares while the download grows gets this allowance where a source can see that growth. When no source
-can see it and there is no match, offer or probe, the explanation appears immediately after indexing, even with unrelated held MP3s. It remains after the stop at fifteen seconds unless a more specific failure applies: a chosen file’s decode failure remains, a visible protected file gets its refusal, and a bare link gets its own text asking for the song name and artist. The missing-song explanation is, in both languages:
-
-> This song is not on this phone yet. Download the MP3 in NetEase, let it finish, then share again. Only MP3 works.
->
-> 这部手机上还没有这首歌。请在网易云音乐中下载 MP3，等下载完成后再分享。仅支持 MP3。
+can see it and there is no match, offer or probe, the explanation appears immediately after indexing, even with unrelated held MP3s. It remains after the stop at fifteen seconds unless a more specific failure applies: a chosen file’s decode failure remains, a visible protected file gets its refusal, and a bare link gets its own text asking for the song name and artist. The missing-song explanation asks the person to download the MP3 in NetEase, wait for it to finish, then share again. It states that only MP3 works, in the selected app language.
 
 `.ncm` files are never opened, decoded, converted or read. A matching filename, if visible, records the protected
 format and gives a more specific refusal at timeout; a later MP3 can still proceed before that deadline. Such files

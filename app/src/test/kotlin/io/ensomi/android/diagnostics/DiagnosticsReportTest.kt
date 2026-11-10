@@ -97,7 +97,7 @@ class DiagnosticsReportTest {
         )
         val failed = report.copy(runtime = RuntimeFacts(false, null, null, null, "java.lang.UnsatisfiedLinkError: x"))
             .sections().single { it.title == R.string.section_runtime }
-        assertEquals(DiagnosticsValue.Problem("java.lang.UnsatisfiedLinkError: x"), failed.rows.last().value)
+        assertEquals(DiagnosticsValue.Problem(R.string.crash_test_failed), failed.rows.last().value)
     }
 
     @Test

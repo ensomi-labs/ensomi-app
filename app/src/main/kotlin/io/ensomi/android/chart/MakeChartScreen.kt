@@ -270,7 +270,18 @@ private fun StatusCard(state: MakeState, onUseSeed: (ULong) -> Unit) {
                 }
                 is MakeState.Failed -> {
                     Problem(stringResource(R.string.make_failed))
-                    Text(state.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(if (state.audioTooLarge) R.string.chart_decode_memory else when (state.reason) {
+                        MakeFailure.RETRY -> R.string.make_failure_retry
+                        MakeFailure.STARS -> R.string.make_failure_stars
+                        MakeFailure.CONTROLS -> R.string.make_failure_controls
+                        MakeFailure.MODEL_WAIT -> R.string.model_chart_wait
+                        MakeFailure.MODEL_MISSING -> R.string.make_needs_model
+                        MakeFailure.MODEL_BLOCKED -> R.string.model_chart_blocked
+                        MakeFailure.MODEL_INFERENCE_BLOCKED -> R.string.model_inference_blocked
+                        MakeFailure.MODEL_OPEN -> R.string.model_chart_open_failed
+                        MakeFailure.MISSING -> R.string.make_failure_missing
+                        MakeFailure.DECODE -> R.string.make_failure_decode
+                    }), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

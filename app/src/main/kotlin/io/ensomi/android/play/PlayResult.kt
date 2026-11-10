@@ -22,6 +22,8 @@ data class PlayResult(
     val methodMeans: MethodMeans? = null,
     /** The game was the playfield preview's sample chart, not a chart of the player's song. */
     val sample: Boolean,
+    /** Chart facts stay separate from display text so restored results follow the current language. */
+    val chart: ResultChart? = null,
 ) {
     companion object {
         const val BIN_MS = 10
@@ -56,6 +58,9 @@ data class PlayResult(
         }
     }
 }
+
+@Serializable
+data class ResultChart(val artist: String?, val stars: Double, val seed: String)
 
 /** One method's part in a game: whether it pressed, and its hits timed with the sum of their errors. */
 data class MethodHits(val pressed: Boolean = false, val hits: Int = 0, val errorSumMs: Double = 0.0)

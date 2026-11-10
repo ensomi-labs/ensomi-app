@@ -232,7 +232,7 @@ private fun SectionTitle(@StringRes text: Int) {
     )
 }
 
-/** What the person must do now: in both languages, large enough to read with the tablet on a table. */
+/** What the person must do now, in the selected app language. */
 @Composable
 private fun AsksCard(asks: List<Ask>) {
     Card(
@@ -242,10 +242,7 @@ private fun AsksCard(asks: List<Ask>) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             asks.forEachIndexed { index, ask ->
                 val prefix = if (asks.size > 1) "${index + 1}. " else ""
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(prefix + stringResource(ask.chinese()), fontSize = 34.sp, lineHeight = 42.sp, style = MaterialTheme.typography.headlineMedium)
-                    Text(stringResource(ask.english()), fontSize = 22.sp, lineHeight = 28.sp, style = MaterialTheme.typography.titleLarge)
-                }
+                Text(prefix + stringResource(ask.words()), fontSize = 34.sp, lineHeight = 42.sp, style = MaterialTheme.typography.headlineMedium)
             }
         }
     }
@@ -262,9 +259,7 @@ private fun FailureCard(failure: Failure, canRetry: Boolean, onRetry: () -> Unit
                 Icon(painterResource(R.drawable.ic_warning), contentDescription = null, modifier = Modifier.size(24.dp))
                 if (DebugTools.enabled(LocalContext.current)) Text(stringResource(R.string.recognition_failed_at, stringResource(failure.stage.label())), style = MaterialTheme.typography.titleMedium)
             }
-            val (chinese, english) = failure.kind.words()
-            Text(stringResource(chinese), fontSize = 24.sp, lineHeight = 30.sp, style = MaterialTheme.typography.titleLarge)
-            Text(stringResource(english), fontSize = 18.sp, lineHeight = 24.sp, style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(failure.kind.words()), fontSize = 24.sp, lineHeight = 30.sp, style = MaterialTheme.typography.titleLarge)
             if (DebugTools.enabled(LocalContext.current)) failure.detail?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
             if (canRetry) {
                 OutlinedButton(onClick = onRetry) {
@@ -478,37 +473,29 @@ private fun CaptureChoice.label(): Int = when (this) {
 }
 
 @StringRes
-private fun Ask.chinese(): Int = when (this) {
-    Ask.WAIT_FOR_DOWNLOAD -> R.string.recognition_ask_wait_zh
-    Ask.DOWNLOAD_HELP -> R.string.recognition_failure_no_file_zh
-    Ask.RETURN_TO_ENSOMI -> R.string.recognition_ask_return_zh
-    Ask.MICROPHONE_SILENT -> R.string.recognition_ask_silent_zh
+private fun Ask.words(): Int = when (this) {
+    Ask.WAIT_FOR_DOWNLOAD -> R.string.recognition_ask_wait
+    Ask.DOWNLOAD_HELP -> R.string.recognition_failure_no_file
+    Ask.RETURN_TO_ENSOMI -> R.string.recognition_ask_return
+    Ask.MICROPHONE_SILENT -> R.string.recognition_ask_silent
 }
 
 @StringRes
-private fun Ask.english(): Int = when (this) {
-    Ask.WAIT_FOR_DOWNLOAD -> R.string.recognition_ask_wait_en
-    Ask.DOWNLOAD_HELP -> R.string.recognition_failure_no_file_en
-    Ask.RETURN_TO_ENSOMI -> R.string.recognition_ask_return_en
-    Ask.MICROPHONE_SILENT -> R.string.recognition_ask_silent_en
-}
-
-/** The failure in Chinese and in English. */
-private fun FailureKind.words(): Pair<Int, Int> = when (this) {
-    FailureKind.NOT_A_SONG -> R.string.recognition_failure_not_song_zh to R.string.recognition_failure_not_song_en
-    FailureKind.AUDIO_TOO_LARGE -> R.string.recognition_failure_memory_zh to R.string.recognition_failure_memory_en
-    FailureKind.NAME_NEEDED -> R.string.recognition_failure_name_zh to R.string.recognition_failure_name_en
-    FailureKind.NO_FILE -> R.string.recognition_failure_no_file_zh to R.string.recognition_failure_no_file_en
-    FailureKind.PROTECTED_TRACK -> R.string.recognition_failure_protected_zh to R.string.recognition_failure_protected_en
-    FailureKind.MODEL_MISSING -> R.string.recognition_failure_no_model_zh to R.string.recognition_failure_no_model_en
-    FailureKind.CHART_FAILED -> R.string.recognition_failure_chart_zh to R.string.recognition_failure_chart_en
-    FailureKind.SYNC_FAILED -> R.string.recognition_failure_sync_zh to R.string.recognition_failure_sync_en
-    FailureKind.SYNC_NEVER_LOCKED -> R.string.recognition_failure_no_lock_zh to R.string.recognition_failure_no_lock_en
-    FailureKind.CAPTURE_FAILED -> R.string.recognition_failure_capture_zh to R.string.recognition_failure_capture_en
-    FailureKind.SONG_ENDED -> R.string.recognition_failure_song_ended_zh to R.string.recognition_failure_song_ended_en
-    FailureKind.GAME_FAILED -> R.string.recognition_failure_game_zh to R.string.recognition_failure_game_en
-    FailureKind.GAME_QUIT -> R.string.recognition_failure_quit_zh to R.string.recognition_failure_quit_en
-    FailureKind.AUDIO_UNREADABLE -> R.string.recognition_failure_unreadable_zh to R.string.recognition_failure_unreadable_en
+private fun FailureKind.words(): Int = when (this) {
+    FailureKind.NOT_A_SONG -> R.string.recognition_failure_not_song
+    FailureKind.AUDIO_TOO_LARGE -> R.string.recognition_failure_memory
+    FailureKind.NAME_NEEDED -> R.string.recognition_failure_name
+    FailureKind.NO_FILE -> R.string.recognition_failure_no_file
+    FailureKind.PROTECTED_TRACK -> R.string.recognition_failure_protected
+    FailureKind.MODEL_MISSING -> R.string.recognition_failure_no_model
+    FailureKind.CHART_FAILED -> R.string.recognition_failure_chart
+    FailureKind.SYNC_FAILED -> R.string.recognition_failure_sync
+    FailureKind.SYNC_NEVER_LOCKED -> R.string.recognition_failure_no_lock
+    FailureKind.CAPTURE_FAILED -> R.string.recognition_failure_capture
+    FailureKind.SONG_ENDED -> R.string.recognition_failure_song_ended
+    FailureKind.GAME_FAILED -> R.string.recognition_failure_game
+    FailureKind.GAME_QUIT -> R.string.recognition_failure_quit
+    FailureKind.AUDIO_UNREADABLE -> R.string.recognition_failure_unreadable
 }
 
 /** Where the session can start again from. */

@@ -237,7 +237,8 @@ class FakeKeyboards(connected: List<FakeKeyboard>, settings: StateFlow<PlaySetti
 /** Fixed numbers for the results scenario of the prototype. */
 val SAMPLE_RESULT = PlayResult(
     title = "Lantern Walk",
-    detail = "Mira Sato · 3.5 stars · seed 2914",
+    detail = "Mira Sato",
+    chart = io.ensomi.android.play.ResultChart("Mira Sato", 3.5, "2914"),
     accuracy = 0.9784,
     perfect = 1102,
     good = 119,

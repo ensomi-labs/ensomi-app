@@ -264,7 +264,7 @@ class RuntimeChartMaker(
                 val ready = awaitModelReady(model.state, mutableCapabilities.map { it != null })
                 when {
                     making.stopped.get() -> MakeState.Stopped(songId)
-                    !ready || !modelReady() -> MakeState.Failed(songId, unavailableModel())
+                    !ready || !modelReady() -> MakeState.Failed(songId, "Model unavailable", reason = unavailableModel())
                     else -> makeChart(songId, request, making, input)
                 }
             } catch (failure: Throwable) {
@@ -325,8 +325,8 @@ class RuntimeChartMaker(
     }
 
     private suspend fun makeChart(songId: String, request: ChartRequest, making: Making, input: DecodedInput?): MakeState {
-        val song = songs.song(songId) ?: return MakeState.Failed(songId, "The song is no longer in the library.")
-        val directory = model.directory ?: return MakeState.Failed(songId, "The chart model is not installed.")
+        val song = songs.song(songId) ?: return MakeState.Failed(songId, "The song is no longer in the library.", reason = MakeFailure.MISSING)
+        val directory = model.directory ?: return MakeState.Failed(songId, "The chart model is not installed.", reason = MakeFailure.MODEL_MISSING)
         // The song's audio stages: the background preparation's, once it is done, or a new one.
         var key: String? = null
         var sha256: String? = null
@@ -334,7 +334,7 @@ class RuntimeChartMaker(
         val runtimeRequest = request.toRuntime(song)
         for (attempt in 0 until 2) {
             val preparation = synchronized(lock) { startPreparation(songId, input)?.also { it.wanted = true } }
-                ?: return MakeState.Failed(songId, "The chart model is not installed.")
+                ?: return MakeState.Failed(songId, "The chart model is not installed.", reason = MakeFailure.MODEL_MISSING)
             preparation.wanted = true
             preparation.finishChart = { stages ->
                 preparation.chartStartedNanos = System.nanoTime()
@@ -356,7 +356,7 @@ class RuntimeChartMaker(
             if (key != null || !preparation.stopped.get()) break
         }
         making.preparation = null
-        val preparedKey = key ?: return MakeState.Failed(songId, "The song's audio could not be prepared.")
+        val preparedKey = key ?: return MakeState.Failed(songId, "The song's audio could not be prepared.", reason = MakeFailure.DECODE)
         setState(songId, MakeState.Making(songId, MakePhase.ROWS))
         val started = completed?.chartStartedNanos?.takeIf { it != 0L } ?: System.nanoTime()
         val result = if (completed?.chartAttempted == true) completed.chart else {
@@ -414,11 +414,12 @@ class RuntimeChartMaker(
         making.stopped.get() -> MakeState.Stopped(songId)
         failure is GeneratorException.Cancelled || failure is kotlinx.coroutines.CancellationException -> MakeState.Stopped(songId)
         failure is GeneratorException.Generation ->
-            MakeState.Failed(songId, GeneratorChoices.refusal(failure.code, failure.message))
-        failure is GeneratorException -> MakeState.Failed(songId, failure.message ?: failure.javaClass.simpleName)
+            MakeState.Failed(songId, GeneratorChoices.refusal(failure.code, failure.message), reason = GeneratorChoices.failure(failure.code))
+        failure is GeneratorException -> MakeState.Failed(songId, failure.message ?: failure.javaClass.simpleName,
+            reason = if (failure is GeneratorException.Model) MakeFailure.MODEL_OPEN else MakeFailure.RETRY)
         failure is DecodeException -> {
             if (failure.missing) songs.markMissing(songId)
-            MakeState.Failed(songId, failure.message ?: "The song could not be decoded.", audioTooLarge = failure.cause is OutOfMemoryError)
+            MakeState.Failed(songId, failure.message ?: "The song could not be decoded.", audioTooLarge = failure.cause is OutOfMemoryError, reason = if (failure.missing) MakeFailure.MISSING else MakeFailure.DECODE)
         }
         else -> {
             Log.w(TAG, "Making a chart failed", failure)
@@ -551,10 +552,10 @@ class RuntimeChartMaker(
             (model.openGuard?.state?.value ?: installed.openState) is ModelOpenState.Ready
     }
 
-    private fun unavailableModel(): String = when (val state = model.openGuard?.state?.value) {
-        is ModelOpenState.Blocked -> appContext.getString(if (state.stage == "model_open") R.string.model_chart_blocked else R.string.model_inference_blocked)
-        is ModelOpenState.Failed -> appContext.getString(R.string.model_chart_open_failed, state.reason)
-        else -> appContext.getString(R.string.model_chart_wait)
+    private fun unavailableModel(): MakeFailure = when (val state = model.openGuard?.state?.value) {
+        is ModelOpenState.Blocked -> if (state.stage == "model_open") MakeFailure.MODEL_BLOCKED else MakeFailure.MODEL_INFERENCE_BLOCKED
+        is ModelOpenState.Failed -> MakeFailure.MODEL_OPEN
+        else -> MakeFailure.MODEL_WAIT
     }
 
     private suspend fun readCapabilities(): ChartCapabilities? = model.access.withLock {

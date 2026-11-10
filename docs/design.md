@@ -1,3 +1,7 @@
+---
+commit: 0af740cc23e3295300ad3cdfa8ebe43468d38ce8
+---
+
 # Ensomi for Android: UI and UX design, drop-in play
 
 This is the design of the app's first real round, built as it stands here. The gameplay side (playfield, clock, input,
@@ -7,6 +11,24 @@ fakes.
 
 The Swift app on `dev/swift` (at `623feaa`) is the reference for what to build: its features, flows, look and timing
 care. This document designs how, with Android's own conventions and APIs; it ports no Swift code.
+
+## Languages
+
+Application text, gameplay judgements, accessibility descriptions and failure explanations use English,
+Simplified Chinese or Japanese. Android selects resources from the device language list unless the person
+chooses an app language in Android’s system settings. The app declares `en`, `zh-Hans` and `ja` in
+`locales_config.xml`; English is the fallback for unsupported languages. The minimum API is 33, so the
+system app-language selector needs no compatibility library or separate in-app preference.
+
+`res/values/strings.xml` holds the default text in each source set (`main` and `recognition`);
+`values-b+zh+Hans` and `values-ja` hold complete translations. Prompts and failures show one selected language.
+Retained model failures and chart results store their facts separately from display text, and resolve text
+when displayed. Section hints use app-owned translations; the model still controls availability and experimental
+status, while its raw capability notes remain in capability data. Native error
+messages remain technical diagnostic data rather than untranslated user instructions. Song metadata,
+key characters, identifiers, units and third-party licence documents retain their source content; their
+labels and surrounding controls are localized. The Ensomi name and the For Lucky dedication keep their
+exact wording in every language.
 
 ## Who it is for and the core loop
 
@@ -21,7 +43,7 @@ Drop-in play and Listen & Play both ship in the public app. Once the model is in
 beside Add songs, whether the library is empty or has songs. It returns to a live session, or opens a short guide: live microphone and music access
 status, reasons for those permissions, and four steps to open NetEase, recognise the song, finish downloading its MP3,
 and share it to Ensomi. The guide rereads access on resume. A share shows progress or a plain explanation of what is
-missing; no setup requires developer tools. English and Simplified Chinese are supported.
+missing; no setup requires developer tools. English, Simplified Chinese and Japanese are supported throughout the app.
 
 Ensomi never operates another app. It uses no Accessibility service, reads no other app's screen, and makes no taps for the person. The person recognises the song, downloads it and shares it to Ensomi themselves; Ensomi explains each step, then waits for the share.
 
@@ -490,7 +512,7 @@ Haptics go through `View.performHapticFeedback`, which honours the player's touc
 | The loop: model, song, generate with stars, seed and sections, play, results | One back stack from a song to its game; no tabs (one top-level place); Settings as a screen, not reachable during a game |
 | Model install from Hugging Face at the pinned tag, `checkPackage`, per-file SHA-256, Range resume, install record, update on start; Choose Folder | Free space checked and reserved with `StorageManager`; files under `noBackupFilesDir`; Choose Folder became Install from files (the owner's decision of 2026-10-29): the picked folder's files are copied into app storage, since the runtime needs a file path and a tree URI is not one; both ways accept only the pinned manifest's SHA-256 |
 | Music folders as the library | Songs picked one by one with the system picker: no permission, nothing scanned |
-| Generation states, phase names, Stop, the core's message on failure, Use Seed | A state bar at the bottom of a phone screen instead of a two-panel setup; no Session tiles or lane preview; no chart-server engine (out of scope); the last chart kept on disk |
+| Generation states, phase names, Stop, Use Seed | A state bar at the bottom of a phone screen instead of a two-panel setup; localized failure explanations, with technical details kept in diagnostics; no Session tiles or lane preview; no chart-server engine (out of scope); the last chart kept on disk |
 | The play look: brand palette, notes by kind, coral line, hit flash and miss tint, "Ready", combo from 2, Reduce Motion rules | Drawn on a `SurfaceView` canvas instead of Metal; touch lanes, with the caps labelled by their keys only while a keyboard is connected; immersive full screen in landscape with leaning lanes (new: the owner's choice, after Malody), portrait as a setting; a lead-in and a count-in after pause; Restart in the pause panel |
 | The timing contract: event timestamps, a 100 ms input allowance, frames drawn for their presentation time, offsets applied once | Android's clocks (`AudioTrack` timestamps, `getEventTimeNanos`, `FrameTimeline`), all on `CLOCK_MONOTONIC` (gameplay.md) |
 | Audio offset per output device, one visual offset, the scroll-speed scale, judge C, music volume 0.8 | Audio latency slots chosen by hand and an input latency slot per method, no visual offset ([latency.md](latency.md)), all 0 ms by default (the Swift −15 ms was tuned on a Mac) |

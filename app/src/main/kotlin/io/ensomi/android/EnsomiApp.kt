@@ -59,6 +59,7 @@ import io.ensomi.android.play.SongGame
 import io.ensomi.android.settings.PlaySettings
 import java.text.NumberFormat
 import io.ensomi.android.play.ResultsScreen
+import io.ensomi.android.play.ResultChart
 import io.ensomi.android.prototype.AppGraph
 import io.ensomi.android.prototype.Scenario
 import io.ensomi.android.recognition.RecognitionEntry
@@ -344,16 +345,15 @@ private fun SongPlay(
         is GameLoad.Failed -> GameLoading(song.title, current.message, onBack = { backStack.removeLastOrNull() })
         is GameLoad.Ready -> {
             val stars = formatStars(current.record.stars)
-            val resultDetail = listOfNotNull(
-                song.artist,
-                stringResource(R.string.results_detail, stars, current.record.seed),
-            ).joinToString(" · ")
             PlayScreen(
                 title = song.title,
                 detail = stringResource(R.string.play_detail, stars, settings.judge.name),
                 settings = settings,
                 loop = false,
-                onFinished = { result -> backStack.replaceLast(Results(song.id, result.copy(detail = resultDetail))) },
+                onFinished = { result -> backStack.replaceLast(Results(song.id, result.copy(
+                    detail = song.artist.orEmpty(),
+                    chart = ResultChart(song.artist, current.record.stars, current.record.seed),
+                ))) },
                 onQuit = { backStack.removeLastOrNull() },
                 keyboards = graph.keyboards,
                 game = SongGame(

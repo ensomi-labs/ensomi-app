@@ -1,3 +1,7 @@
+---
+commit: 0af740cc23e3295300ad3cdfa8ebe43468d38ce8
+---
+
 # Ensomi for Android
 
 Ensomi is a rhythm game whose charts are generated from music. This branch holds its native Android app,
@@ -259,10 +263,16 @@ adb logcat -d -s EnsomiDiagnostics:I -v raw
 JSON that fits in one logcat line is printed as is. Longer JSON is split into lines that start with
 `part i/n `; remove that prefix and join the pieces in order.
 
+## App language
+
+The interface supports English, Simplified Chinese and Japanese, following the device language by default.
+Choose a language for Ensomi in Android’s system settings under App languages. Unsupported languages fall
+back to English. The Ensomi name and For Lucky dedication keep their original wording.
+
 ## The recognition session
 
 Listen & Play ships in the public APK. Once the model is ready, open it beside Add songs, allow microphone and
-music access, and follow the guide in English or Simplified Chinese. Download the song as MP3, let it finish, then
+music access, and follow the guide in English, Simplified Chinese or Japanese. Download the song as MP3, let it finish, then
 share it to Ensomi. The shared-song session finds the file, makes its chart and lines up locally with the room’s music.
 Every build needs a runtime AAR with the `SyncSession` binding. See [docs/recognition.md](docs/recognition.md).
 

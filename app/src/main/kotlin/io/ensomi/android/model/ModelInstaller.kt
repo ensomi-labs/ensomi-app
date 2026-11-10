@@ -49,6 +49,9 @@ data class InstallRecord(
 
 /** Why a download stopped. */
 sealed interface ModelFailure {
+    /** The stage and its underlying failure, kept until the UI resolves the current language. */
+    data class AtStage(val phase: InstallPhase, val failure: ModelFailure) : ModelFailure
+
     /** The connection failed or dropped. */
     data class Network(val detail: String?) : ModelFailure
 

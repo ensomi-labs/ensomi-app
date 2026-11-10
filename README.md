@@ -13,7 +13,8 @@ The app is an early play demo. It does drop-in play on the app's own stores: the
 with Jetpack DataStore (latency slots for the sound and for each input method); the song library, from the system's document picker; decoding
 songs to PCM; the chart model, downloaded from Hugging Face at a pinned tag or installed from the package's files in a
 folder the player picks, either way only the pinned package and checked file by file; charts made on
-the device by the runtime from the player's songs, each shown with the star it came out at beside the star asked for,
+the device by the runtime from the player's songs, each shown with the star it came out at beside the star asked for
+(an optional precise mode, off by default, makes up to six charts and keeps the closest),
 the last one per song kept; play: the chart on the song's own sound,
 timed by the `AudioTrack`'s timestamps, on a `SurfaceView` render thread with the runtime judging, in landscape with
 the lanes leaning back by default (the orientation and the lean are settings with a live preview); and the timing

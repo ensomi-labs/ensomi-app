@@ -98,6 +98,11 @@
     <string name="make_stars">星级</string>
     <string name="make_stars_range">%1$s 可生成 %2$s 至 %3$s 星的谱面。</string>
     <string name="make_stars_no_model">安装模型后会显示可用的星级范围。</string>
+    <string name="make_precise">精确匹配星级</string>
+    <plurals name="make_precise_help">
+        <item quantity="other">最多生成 %1$d 张谱面，保留最接近目标星级的一张。耗时更长。</item>
+    </plurals>
+    <string name="make_precise_progress">第 %1$d 张谱面（最多 %2$d 张）</string>
     <string name="make_seed">随机种子</string>
     <string name="make_seed_random">随机</string>
     <string name="make_seed_help">留空时每次生成新谱面。同一首歌使用相同星级、区段和种子，会生成相同的谱面。</string>
@@ -128,6 +133,9 @@
     <string name="make_ready_stars_asked">%1$s 星 · 目标 %2$s 星</string>
     <string name="make_ready_easier">生成的谱面比目标星级简单。</string>
     <string name="make_ready_harder">生成的谱面比目标星级难。</string>
+    <plurals name="make_ready_precise">
+        <item quantity="other">共生成 %d 张谱面，保留了最接近目标星级的一张。</item>
+    </plurals>
     <string name="make_ready_notes">共 %1$s 个音符：%2$s 个单键，%3$s 个长按</string>
     <string name="make_ready_seed">种子 %1$s</string>
     <string name="make_use_seed">使用此种子</string>

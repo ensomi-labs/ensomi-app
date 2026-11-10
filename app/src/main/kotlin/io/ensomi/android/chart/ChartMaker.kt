@@ -6,32 +6,46 @@ import kotlinx.coroutines.flow.MutableStateFlow
 /** The five phases a generation reports, in order: the runtime's `GenerationPhase`. */
 enum class MakePhase { LOADING, TIMING, ROWS, ARRANGEMENT, EXPORT }
 
-/** What the player asked for. A null [seed] makes a new chart each time. */
+/**
+ * What the player asked for. A null [seed] makes a new chart each time. With [precise], several charts are made and
+ * the one closest to [stars] is kept ([PreciseSearch]); off unless the player turns it on.
+ */
 data class ChartRequest(
     val stars: Double,
     val seed: ULong?,
     val sections: List<SectionDraft>,
+    val precise: Boolean = false,
 )
 
 /** A chart that was made, as the screen describes it. */
 data class MadeChart(
     val noteCount: Int,
     val holdCount: Int,
-    /** The seed the generator used, from its receipt: the same request with it makes the same chart. */
+    /**
+     * The seed to ask with again: the same request with it makes the same chart. It is the seed the generator used,
+     * from its receipt; for a chart of a precise search, the seed the search began with, since the search, and not
+     * the kept chart's own seed, is what the same request repeats.
+     */
     val seed: ULong,
     /** The star asked for. */
     val stars: Double,
     val modelName: String,
     /** The star the chart came out at, the runtime's `starRating` of it; null for a chart kept without one. */
     val measuredStars: Double? = null,
+    /** How many charts a precise search made to find this one; null for a chart made in one pass. */
+    val preciseCharts: Int? = null,
 )
+
+/** Where a precise search is: making chart [number], counted from 1, of at most [limit]. */
+data class PreciseProgress(val number: Int, val limit: Int)
 
 enum class MakeFailure { RETRY, STARS, CONTROLS, MODEL_WAIT, MODEL_MISSING, MODEL_BLOCKED, MODEL_INFERENCE_BLOCKED, MODEL_OPEN, MISSING, DECODE }
 
 sealed interface MakeState {
     data object Idle : MakeState
 
-    data class Making(val songId: String, val phase: MakePhase) : MakeState
+    /** [precise] is set while a precise search makes its charts, all within [MakePhase.ROWS]. */
+    data class Making(val songId: String, val phase: MakePhase, val precise: PreciseProgress? = null) : MakeState
 
     data class Made(val songId: String, val chart: MadeChart) : MakeState
 

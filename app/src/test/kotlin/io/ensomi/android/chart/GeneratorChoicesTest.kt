@@ -10,6 +10,7 @@ class GeneratorChoicesTest {
 
     @Test
     fun runtimeRefusalsSelectLocalizedExplanationsWithAFallbackForNewCodes() {
+        // The runtime refuses only a star that is not a number, still under this code.
         assertEquals(MakeFailure.STARS, GeneratorChoices.failure("star_out_of_range"))
         assertEquals(MakeFailure.CONTROLS, GeneratorChoices.failure("unsupported_control"))
         assertEquals(MakeFailure.RETRY, GeneratorChoices.failure("generation_failed"))
@@ -28,8 +29,8 @@ class GeneratorChoicesTest {
     @Test
     fun theRefusalNamesItsCodeOnce() {
         assertEquals(
-            "star_out_of_range: star must be in [2, 6)",
-            GeneratorChoices.refusal("star_out_of_range", "star_out_of_range: star must be in [2, 6)"),
+            "star_out_of_range: star must be finite",
+            GeneratorChoices.refusal("star_out_of_range", "star_out_of_range: star must be finite"),
         )
         assertEquals(
             "unsupported_control: sections overlap",

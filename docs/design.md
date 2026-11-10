@@ -229,16 +229,27 @@ is an open question for the owner: it would show every song at once, at the pric
 
 One screen per song. The top app bar has Back and the song's title; under it, the artist, length and file name.
 
-- **Stars**: a slider in 0.1 steps over the model's range `[min_star, max_star_exclusive)` (2.0 to 5.9 for R2), the
-  value beside it, and a line naming the model and its range.
+- **Stars**: a slider from 1.0 to 9.0 in 0.1 steps, 3.5 at first. The range is the app's own (`StarRange`), the same
+  on every control that asks for stars (a section's star target, Listen & Play's stepper): the runtime takes any finite
+  star and places no range on it, and the range offered and the notice belong to the interfaces (the owner's decision
+  of 2026-11-10). The value sits beside the title between − and + buttons, a tenth each: 81 values across a phone's
+  width are hard to land on by dragging, so the slider takes the value most of the way and a button puts it on the
+  tenth. A tap is one tenth; the buttons do not repeat when held, since the slider is there for distance. On a hardware
+  keyboard the focused slider is meant to take the arrow keys, a tenth each, as Material's slider does with steps, and
+  the buttons take Tab and Enter (phone-checks.md, row 23, not yet run). TalkBack hears the value after each change.
+  Under the slider, the notice of where the model is at its best, from its capabilities' `min_star` and
+  `max_star_exclusive`, which now mean the range it was fitted on: "Ensomi R2 r2-1.0.1 is at its best from 2 to 6
+  stars." Outside that range the generator uses its nearest fitted settings. The recommended span is not marked on the
+  track in this round: a mark has to follow the thumb's travel inside Material's track, which was written without a
+  build to look at, and a mark a few dp off the thumb would mislead; the words carry it.
 - **Seed**: a number field with the placeholder "Random" and the Swift app's explanation ("Blank makes a new chart
   each time. The same song, stars, sections and seed make the same chart again."). Anything but a 64-bit unsigned
   number shows its error under the field.
 - **Sections**, collapsed by default ("Optional. Without any, the whole song follows the stars."). Expanded, each
   section is a card: start and end in `mm:ss`, a kind menu from the model's capabilities (experimental kinds labelled,
   kinds marked not working left out, the capability's note under the menu), then a strength slider from 0 to 1 or, for
-  a star target, a star slider. Problems show under the section in words with a symbol, with the runtime's own rules:
-  8 to 32 seconds, inside the song, no overlap (sections may touch).
+  a star target, a star slider over the same 1.0 to 9.0. Problems show under the section in words with a symbol, with
+  the runtime's own rules: 8 to 32 seconds, inside the song, no overlap (sections may touch).
 - **A status card at the top and the actions at the bottom.** The bar at the bottom holds only the screen's actions,
   so the primary action is always in the same place and the bar stays small at large text sizes and in landscape;
   what happened shows in a card above the stars:

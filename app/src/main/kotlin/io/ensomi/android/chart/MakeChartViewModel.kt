@@ -18,7 +18,7 @@ class MakeChartViewModel(
     private val maker: ChartMaker,
     initialSections: List<SectionDraft>,
     sectionsOpen: Boolean,
-    /** Debug launches only: stars outside the slider's range, to see the runtime refuse them. */
+    /** Debug launches only: stars the controls do not offer, sent as they are (the runtime takes any finite star). */
     initialStars: Double? = null,
     /** The song's screen has closed for good. */
     private val onClosed: () -> Unit = {},
@@ -28,18 +28,18 @@ class MakeChartViewModel(
         .map { it[song.id] ?: MakeState.Idle }
         .stateIn(viewModelScope, SharingStarted.Eagerly, maker.states.value[song.id] ?: MakeState.Idle)
 
-    var stars by mutableDoubleStateOf(initialStars ?: 3.5)
+    var stars by mutableDoubleStateOf(initialStars ?: StarRange.DEFAULT)
     var seedText by mutableStateOf("")
     var sections by mutableStateOf(initialSections)
         private set
     var sectionsOpen by mutableStateOf(sectionsOpen)
     private var nextSectionId = (initialSections.maxOfOrNull { it.id } ?: 0L) + 1
 
-    fun issues(capabilities: ChartCapabilities): List<SectionIssue> =
-        ChartRequestRules.check(sections, song.durationMs, capabilities.selectableStars)
+    /** What keeps the sections from being sent; a section's star is checked against the stars the app offers. */
+    fun issues(): List<SectionIssue> = ChartRequestRules.check(sections, song.durationMs, StarRange.OFFERED)
 
     fun canMake(capabilities: ChartCapabilities?): Boolean =
-        capabilities != null && ChartRequestRules.isSeedValid(seedText) && issues(capabilities).isEmpty()
+        capabilities != null && ChartRequestRules.isSeedValid(seedText) && issues().isEmpty()
 
     fun addSection() {
         sections = sections + SectionDraft(id = nextSectionId++, star = stars.toFloat())

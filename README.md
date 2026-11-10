@@ -198,7 +198,7 @@ output starting the readings over.
 A debuggable build takes these extras on a normal launch, for checks on an emulator:
 
 ```sh
-adb shell am start -n io.ensomi.android/.MainActivity --ef stars 7         # stars outside the slider: the runtime refuses
+adb shell am start -n io.ensomi.android/.MainActivity --ef stars 12        # stars the slider does not offer (it offers 1.0 to 9.0); the runtime takes any finite star
 adb shell am start -n io.ensomi.android/.MainActivity --ez autoplay true   # games played by the autoplay
 adb shell am start -n io.ensomi.android/.MainActivity --ez low-memory true # the generator's lowMemory option
 ```

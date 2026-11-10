@@ -100,8 +100,8 @@ class FakeChartMaker(initial: MakeState, capabilities: ChartCapabilities?) : Cha
 
     companion object {
         /**
-         * Sample capabilities. The star range is R2's (`[2, 6)`); the statuses and notes stand in for what the model
-         * reports and are not R2's own.
+         * Sample capabilities. The star range is the one R2 was fitted on (`[2, 6)`), which the screen shows as the
+         * stars it is best at; the statuses and notes stand in for what the model reports and are not R2's own.
          */
         val CAPABILITIES = ChartCapabilities(
             modelName = "Ensomi R2 r2-1.0",

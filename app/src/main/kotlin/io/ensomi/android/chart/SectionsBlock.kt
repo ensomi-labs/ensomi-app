@@ -82,7 +82,7 @@ fun SectionsBlock(viewModel: MakeChartViewModel, capabilities: ChartCapabilities
         }
         if (viewModel.sectionsOpen) {
             Text(stringResource(R.string.make_sections_help), style = MaterialTheme.typography.bodySmall)
-            val issues = capabilities?.let(viewModel::issues).orEmpty()
+            val issues = viewModel.issues()
             sections.forEachIndexed { index, section ->
                 SectionCard(
                     number = index + 1,
@@ -94,7 +94,7 @@ fun SectionsBlock(viewModel: MakeChartViewModel, capabilities: ChartCapabilities
                     onRemove = { viewModel.removeSection(section.id) },
                 )
             }
-            issues.filter { it.index == null }.forEach { Problem(stringResource(it.problem.message)) }
+            issues.filter { it.index == null }.forEach { Problem(problemText(it.problem)) }
             TextButton(onClick = viewModel::addSection, enabled = enabled) {
                 Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(18.dp))
                 Text(stringResource(R.string.make_add_section), modifier = Modifier.padding(start = 8.dp))
@@ -166,15 +166,15 @@ private fun SectionCard(
                 Text(stringResource(it.kind.hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (section.kind == SectionKind.STAR) {
-                val range = capabilities?.selectableStars ?: (2.0..5.9)
+                // The same stars as the whole song's slider offers.
                 LabelledSlider(
                     label = stringResource(R.string.make_section_star),
                     valueText = String.format(Locale.ROOT, "%.1f", section.star),
                     value = section.star,
-                    range = range.start.toFloat()..range.endInclusive.toFloat(),
-                    steps = capabilities?.starSliderSteps ?: 0,
+                    range = StarRange.OFFERED.start.toFloat()..StarRange.OFFERED.endInclusive.toFloat(),
+                    steps = StarRange.SLIDER_STEPS,
                     enabled = enabled,
-                ) { onChange(section.copy(star = (it * 10).roundToInt() / 10f)) }
+                ) { onChange(section.copy(star = StarRange.snap(it.toDouble()).toFloat())) }
             } else {
                 LabelledSlider(
                     label = stringResource(R.string.make_section_strength),
@@ -185,7 +185,7 @@ private fun SectionCard(
                     enabled = enabled,
                 ) { onChange(section.copy(strength = (it * 20).roundToInt() / 20f)) }
             }
-            problems.forEach { Problem(stringResource(it.message)) }
+            problems.forEach { Problem(problemText(it)) }
         }
     }
 }
@@ -259,6 +259,17 @@ private val SectionKind.hint: Int
         SectionKind.CHORDJACK -> R.string.kind_chordjack_hint
         SectionKind.STAR -> R.string.kind_star_hint
     }
+
+/** A problem in words; the star problem names the stars the app offers. */
+@Composable
+private fun problemText(problem: SectionProblem): String = when (problem) {
+    SectionProblem.STAR_RANGE -> stringResource(
+        R.string.section_problem_star,
+        StarRange.bound(StarRange.MIN),
+        StarRange.bound(StarRange.MAX),
+    )
+    else -> stringResource(problem.message)
+}
 
 private val SectionProblem.message: Int
     get() = when (this) {

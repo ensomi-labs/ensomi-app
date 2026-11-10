@@ -18,7 +18,6 @@ import io.ensomi.android.Settings
 import io.ensomi.android.audio.PlayAudioCache
 import io.ensomi.android.chart.ChartMaker
 import io.ensomi.android.chart.MakePhase
-import io.ensomi.android.chart.MakeFailure
 import io.ensomi.android.chart.MakeState
 import io.ensomi.android.chart.SectionDraft
 import io.ensomi.android.chart.SectionKind
@@ -70,9 +69,9 @@ class AppGraph(
 )
 
 /**
- * What a debuggable build's launch intent may ask of a normal launch, for checks on the emulator: `--ef stars 7` for
- * stars outside the slider's range, `--ez autoplay true` for games played by the autoplay, `--ez low-memory true` for
- * the generator's `lowMemory`.
+ * What a debuggable build's launch intent may ask of a normal launch, for checks on the emulator: `--ef stars 12` for
+ * stars the slider does not offer (the runtime takes any finite star, so a chart is made), `--ez autoplay true` for
+ * games played by the autoplay, `--ez low-memory true` for the generator's `lowMemory`.
  */
 data class DebugOptions(
     val stars: Double? = null,
@@ -268,7 +267,8 @@ data class Scenario(
             "make-chart-stopped" to Scenario(listOf(Library, MakeChart(SONG)), make = MakeState.Stopped(SONG)),
             "make-chart-failed" to Scenario(
                 listOf(Library, MakeChart(SONG)),
-                make = MakeState.Failed(SONG, "star_out_of_range: star must be in [2, 6)", reason = MakeFailure.STARS),
+                // The maker's own failure when the runtime returns no chart; no star is refused for its size any more.
+                make = MakeState.Failed(SONG, "No chart was made."),
             ),
             "play" to Scenario(listOf(Library, MakeChart(SONG), Play(SONG, loop = false))),
             "play-flat" to Scenario(listOf(Library, MakeChart(SONG), Play(SONG, loop = false)), settings = FLAT),

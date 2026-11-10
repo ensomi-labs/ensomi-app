@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.ensomi.android.R
+import io.ensomi.android.chart.StarRange
 import io.ensomi.android.prototype.DebugTools
 import io.ensomi.android.settings.PlaySettings
 import java.util.Locale
@@ -404,8 +405,9 @@ private fun OptionsCard(controller: RecognitionController, options: SessionOptio
             Stepper(
                 label = stringResource(R.string.recognition_stars),
                 value = String.format(Locale.ROOT, "%.1f", options.stars),
-                onMinus = { controller.updateOptions { it.copy(stars = stepStars(it.stars, -1)) } },
-                onPlus = { controller.updateOptions { it.copy(stars = stepStars(it.stars, 1)) } },
+                // The stars the app offers everywhere, a tenth at a time (StarRange).
+                onMinus = { controller.updateOptions { it.copy(stars = StarRange.step(it.stars, -1)) } },
+                onPlus = { controller.updateOptions { it.copy(stars = StarRange.step(it.stars, 1)) } },
             )
             if (controller.replayAvailable) {
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
@@ -422,9 +424,6 @@ private fun OptionsCard(controller: RecognitionController, options: SessionOptio
         }
     }
 }
-
-private fun stepStars(stars: Double, steps: Int): Double =
-    (Math.round(stars * 10) + steps).coerceIn(MIN_STARS_TENTHS, MAX_STARS_TENTHS) / 10.0
 
 @Composable
 private fun Stepper(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit) {
@@ -503,5 +502,3 @@ private val RETRY_STAGES = setOf(Stage.AUDIO, Stage.CHART, Stage.SYNC, Stage.PLA
 
 private const val CLOCK_TICK_MS = 500L
 private const val OFFSET_STEP_MS = 5
-private const val MIN_STARS_TENTHS = 20L
-private const val MAX_STARS_TENTHS = 59L

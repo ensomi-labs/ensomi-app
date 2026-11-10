@@ -67,7 +67,6 @@ import io.ensomi.android.ui.ActionButton
 import io.ensomi.android.ui.sliderColorsWithoutTicks
 import java.text.NumberFormat
 import java.util.Locale
-import kotlin.math.roundToInt
 
 /** The song a state belongs to, or null for [MakeState.Idle]. */
 val MakeState.songId: String?
@@ -121,7 +120,7 @@ fun MakeChartScreen(
         model is ModelState.Installed && !model.ready -> R.string.model_chart_wait
         !model.ready -> R.string.make_needs_model
         !ChartRequestRules.isSeedValid(viewModel.seedText) -> R.string.make_blocked_seed
-        capabilities?.let(viewModel::issues)?.isNotEmpty() == true -> R.string.make_blocked_sections
+        viewModel.issues().isNotEmpty() -> R.string.make_blocked_sections
         else -> null
     }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -184,11 +183,16 @@ fun MakeChartScreen(
     }
 }
 
+/**
+ * The stars asked for: the value with − and + beside it, a tenth each, and the slider over the stars the app offers
+ * ([StarRange]). The slider takes the value most of the way; the buttons, or the arrow keys on the slider, put it on
+ * the tenth, which 81 values on a phone's width make hard to land on by dragging. Under them, the notice of the stars
+ * the model is best at, from its capabilities.
+ */
 @Composable
 private fun StarsCard(viewModel: MakeChartViewModel, capabilities: ChartCapabilities?, enabled: Boolean) {
-    val range = capabilities?.selectableStars ?: DEFAULT_STARS
-    val stars = viewModel.stars.coerceIn(range)
-    // The value sent, even outside the slider's range (a debug launch's --ef stars), so the screen never shows
+    val range = StarRange.OFFERED
+    // The value sent, even outside the offered range (a debug launch's --ef stars), so the screen never shows
     // another number than the request carries.
     val starsText = String.format(Locale.ROOT, "%.1f", viewModel.stars)
     val starsLabel = stringResource(R.string.make_stars)
@@ -200,15 +204,34 @@ private fun StarsCard(viewModel: MakeChartViewModel, capabilities: ChartCapabili
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f).semantics { heading() },
                 )
-                Text(starsText, style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"))
+                IconButton(
+                    onClick = { viewModel.stars = StarRange.step(viewModel.stars, -1) },
+                    enabled = enabled && viewModel.stars > range.start,
+                ) {
+                    Icon(painterResource(R.drawable.ic_remove), contentDescription = stringResource(R.string.make_stars_less))
+                }
+                Text(
+                    starsText,
+                    style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .widthIn(min = 48.dp)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
+                )
+                IconButton(
+                    onClick = { viewModel.stars = StarRange.step(viewModel.stars, 1) },
+                    enabled = enabled && viewModel.stars < range.endInclusive,
+                ) {
+                    Icon(painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.make_stars_more))
+                }
             }
             Slider(
-                value = stars.toFloat(),
-                onValueChange = { viewModel.stars = (it * 10).roundToInt() / 10.0 },
+                value = viewModel.stars.coerceIn(range).toFloat(),
+                onValueChange = { viewModel.stars = StarRange.snap(it.toDouble()) },
                 valueRange = range.start.toFloat()..range.endInclusive.toFloat(),
-                steps = capabilities?.starSliderSteps ?: 0,
+                steps = StarRange.SLIDER_STEPS,
                 colors = sliderColorsWithoutTicks(),
-                enabled = enabled && capabilities != null,
+                enabled = enabled,
                 modifier = Modifier.semantics {
                     contentDescription = starsLabel
                     stateDescription = starsText
@@ -217,10 +240,10 @@ private fun StarsCard(viewModel: MakeChartViewModel, capabilities: ChartCapabili
             Text(
                 if (capabilities != null) {
                     stringResource(
-                        R.string.make_stars_range,
+                        R.string.make_stars_best,
                         capabilities.modelName,
-                        String.format(Locale.ROOT, "%.1f", range.start),
-                        String.format(Locale.ROOT, "%.1f", range.endInclusive),
+                        StarRange.bound(capabilities.recommendedStars.start),
+                        StarRange.bound(capabilities.recommendedStars.endInclusive),
                     )
                 } else {
                     stringResource(R.string.make_stars_no_model)
@@ -420,6 +443,3 @@ val MakePhase.title: Int
         MakePhase.ARRANGEMENT -> R.string.phase_arrangement
         MakePhase.EXPORT -> R.string.phase_export
     }
-
-/** The range shown before the model has answered. */
-private val DEFAULT_STARS = 2.0..5.9

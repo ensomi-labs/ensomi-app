@@ -83,6 +83,7 @@ class ModelCheck {
                 "hashSeconds" to PhoneCheck.round(hashSeconds, 2),
                 "hashMBps" to PhoneCheck.round(model.pkg.totalBytes / 1e6 / hashSeconds, 1),
                 "openMs" to PhoneCheck.round(openMs, 1),
+                // The range the model was fitted on: recommended, no longer the only stars accepted.
                 "starRange" to listOf(capabilities.minStar, capabilities.maxStarExclusive),
                 "ok" to (pinned && wrong.isEmpty() && model.complete),
             ),

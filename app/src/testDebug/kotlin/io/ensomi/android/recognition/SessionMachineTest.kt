@@ -564,7 +564,7 @@ class SessionMachineTest {
         val bench = Bench()
         bench.listening()
         bench.audioReady()
-        bench.on(SessionEvent.ChartFailed("star_out_of_range"))
+        bench.on(SessionEvent.ChartFailed("unsupported_control"))
         assertEquals(FailureKind.CHART_FAILED, bench.state.failure?.kind)
         val again = bench.on(SessionEvent.Retry(Stage.CHART))
         assertTrue(again.any { it is SessionEffect.MakeChart })

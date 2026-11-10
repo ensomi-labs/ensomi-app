@@ -117,8 +117,10 @@
 
     <!-- Making a chart -->
     <string name="make_stars">Stars</string>
-    <string name="make_stars_range">%1$s makes charts from %2$s to %3$s stars.</string>
-    <string name="make_stars_no_model">The star range comes from the model once it is installed.</string>
+    <string name="make_stars_best">%1$s is at its best from %2$s to %3$s stars.</string>
+    <string name="make_stars_no_model">The stars the model is best at show here once it is installed.</string>
+    <string name="make_stars_less">Lower the stars by 0.1</string>
+    <string name="make_stars_more">Raise the stars by 0.1</string>
     <string name="make_seed">Seed</string>
     <string name="make_seed_random">Random</string>
     <string name="make_seed_help">Blank makes a new chart each time. The same song, stars, sections and seed make the same chart again.</string>
@@ -171,7 +173,7 @@
     <string name="section_problem_order">The end must come after the start.</string>
     <string name="section_problem_outside">Keep the section inside the song.</string>
     <string name="section_problem_length">A section lasts 8 to 32 seconds.</string>
-    <string name="section_problem_star">Use stars within the model’s range.</string>
+    <string name="section_problem_star">Use stars from %1$s to %2$s.</string>
     <string name="section_problem_overlap">Sections must not overlap. One may start where another ends.</string>
 
     <!-- Play -->
@@ -477,7 +479,7 @@
 
     <!-- Localized failure summaries and thermal states. Technical details stay in diagnostics. -->
     <string name="model_failure_unexpected">The model operation failed. Try again or share diagnostics.</string>
-    <string name="make_failure_stars">The requested stars are outside the model’s range. Choose stars within the supported range.</string>
+    <string name="make_failure_stars">The stars are not a number the model can use. Choose the stars again.</string>
     <string name="make_failure_controls">The model cannot use these section settings. Check the sections and try again.</string>
     <string name="make_failure_retry">Try again. If it keeps failing, share diagnostics from Settings.</string>
     <string name="make_failure_missing">The song’s file could not be found. Find it again in the library.</string>

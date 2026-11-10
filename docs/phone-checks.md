@@ -141,7 +141,7 @@ What the script cannot do. Use the app normally (it is the debug build the scrip
 kit (copy `songs/` to the phone first), make a chart, play. Before you start, run `adb logcat -G 16M` so the phone keeps
 enough log; afterwards run `sh phone-checks.sh -n -g manual` to collect the app's logs and its last game's clock,
 frame, touch and key files, and send that archive too. Write the answers in a text file named `checklist.txt`, one line
-per item. Rows 14 to 21 need a hardware keyboard, a Bluetooth one on the Redmi K Pad first, then on the Redmi K80
+per item. Rows 14 to 21 and row 23 need a hardware keyboard, a Bluetooth one on the Redmi K Pad first, then on the Redmi K80
 ([keyboard.md](keyboard.md#on-a-phone-or-tablet)); a second keyboard, where one is at hand, goes in the notes of 17.
 
 | # | Check | What to do | What to record |
@@ -167,6 +167,9 @@ per item. Rows 14 to 21 need a hardware keyboard, a Bluetooth one on the Redmi K
 | 19 | Key to light | Film a lane key press with the lane light in frame at 240 fps or more; then a finger tap on the glass the same way | Both videos |
 | 20 | What stands before the app | Play with the phone's usual input method, and with a Chinese input method that supports physical keyboards (the phone's own, Sogou or Baidu) where one is installed; try Meta shortcuts and Game Turbo if present; with TalkBack on, press lane keys in the preview | Each input method's name; any lost key, composing text or candidate bar; any key the system took; whether lane keys played with TalkBack on |
 | 21 | Keys around the game | Without touching: Library → song → Play → Escape → Escape → finish → Play again → Escape back to the song, with Tab, the arrows and Enter; Tab through Settings and the Keyboard screen; give lane 1 Space, then in a game tap the screen once and press Space; then give Pause another key and press Escape in a game and on its pause panel | Anything unreachable, or focused without a visible focus state (Resume when the panel opens after Escape, Play again when the results open after a key); whether the Space after the tap played lane 1; what Escape did with Pause elsewhere |
+| 22 | Stars by touch (design.md, Making a chart) | On a song's screen drag the Stars slider from one end to the other; set 4.7 with the slider and the − and + buttons; go to each end with the buttons; repeat with the system font at its largest; add a section with a Star target and drag its slider; in Listen & Play step the stars to both ends; with TalkBack on, tap + twice | Whether the slider and every stepper ran from 1.0 to 9.0; whether − and + each moved one tenth and went grey at the ends; whether 4.7 was easy to set; whether the value jumped or the row broke at the largest font; what TalkBack said after each tap; the notice under the slider, word for word |
+| 23 | Stars by keyboard | With a hardware keyboard and no touch: Tab to the Stars slider and press Left, Right, Up, Down, Page Up, Page Down, Home and End; Tab to − and + and press Enter and Space | What each key did to the value (a tenth for an arrow is the aim); whether the slider, − and + each showed focus; whether Up or Down moved the value or the focus; anything unreachable |
+| 24 | Charts at the ends | Make a chart of one song at 1.0 stars and one at 9.0 stars, then one at 2.0 and one at 6.0, each with seed 1 | Whether each was made, and any failure's words |
 
 ## What to send back
 

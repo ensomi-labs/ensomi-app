@@ -139,11 +139,11 @@
     <string name="phase_rows">正在放置音符</string>
     <string name="phase_arrangement">正在编排轨道</string>
     <string name="phase_export">正在完成谱面</string>
-    <string name="kind_jumpstream">跳键流（Jumpstream）</string>
-    <string name="kind_chordstream">多押流（Chordstream）</string>
-    <string name="kind_stream">单键流（Stream）</string>
-    <string name="kind_jack">同键连打（Jack）</string>
-    <string name="kind_chordjack">多押连打（Chordjack）</string>
+    <string name="kind_jumpstream">双切（Jumpstream）</string>
+    <string name="kind_chordstream">多押切（Chordstream）</string>
+    <string name="kind_stream">切（Stream）</string>
+    <string name="kind_jack">叠（Jack）</string>
+    <string name="kind_chordjack">多押叠（Chordjack）</string>
     <string name="kind_star">目标星级</string>
     <string name="section_problem_time">请以 分:秒 输入开始和结束时间，秒数须为 00 至 59。</string>
     <string name="section_problem_order">结束时间须晚于开始时间。</string>
@@ -425,8 +425,8 @@
     <string name="thermal_critical">危急</string>
     <string name="thermal_emergency">紧急</string>
     <string name="thermal_shutdown">即将关机</string>
-    <string name="kind_jumpstream_hint">单键流中混合双键。</string>
-    <string name="kind_chordstream_hint">单键流中混合三键或四键。</string>
+    <string name="kind_jumpstream_hint">在切中混合双押。</string>
+    <string name="kind_chordstream_hint">在切中混合三押或四押。</string>
     <string name="kind_stream_hint">在各轨道间连续排列单键。</string>
     <string name="kind_jack_hint">在同一轨道连续按键。</string>
     <string name="kind_chordjack_hint">连续排列多押。</string>

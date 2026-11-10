@@ -30,6 +30,10 @@ key characters, identifiers, units and third-party licence documents retain thei
 labels and surrounding controls are localized. The Ensomi name and the For Lucky dedication keep their
 exact wording in every language.
 
+Chinese terminology uses 谱面 for beatmap/chart, 叠 for Jack, 切 for Stream and 乱 for Tech.
+The offered compound patterns are 双切 (Jumpstream), 多押切 (Chordstream) and 多押叠 (Chordjack).
+This glossary does not add a pattern that the model does not offer.
+
 ## Who it is for and the core loop
 
 Ensomi is for someone who plays 4-key rhythm games (osu!mania 4K and the like) and wants to play their own music. They

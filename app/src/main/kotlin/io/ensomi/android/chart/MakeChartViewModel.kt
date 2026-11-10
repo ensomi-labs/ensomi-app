@@ -30,6 +30,9 @@ class MakeChartViewModel(
 
     var stars by mutableDoubleStateOf(initialStars ?: StarRange.DEFAULT)
     var seedText by mutableStateOf("")
+
+    /** Precise difficulty: off until the player turns it on, and kept with the screen like the stars and the seed. */
+    var precise by mutableStateOf(false)
     var sections by mutableStateOf(initialSections)
         private set
     var sectionsOpen by mutableStateOf(sectionsOpen)
@@ -54,7 +57,7 @@ class MakeChartViewModel(
     }
 
     fun make() {
-        maker.make(song.id, ChartRequest(stars, ChartRequestRules.parseSeed(seedText), sections))
+        maker.make(song.id, ChartRequest(stars, ChartRequestRules.parseSeed(seedText), sections, precise = precise))
     }
 
     fun stop() = maker.stop(song.id)

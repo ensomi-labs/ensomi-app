@@ -123,6 +123,12 @@ class FakeChartMaker(initial: MakeState, capabilities: ChartCapabilities?) : Cha
             measuredStars = 3.6,
         )
 
+        /** The chart a precise search kept, the closest of four. */
+        val MADE_PRECISE = MadeChart(
+            noteCount = 1764, holdCount = 281, seed = 2914u, stars = 4.5, modelName = "Ensomi R2 r2-1.0",
+            measuredStars = 4.52, preciseCharts = 4,
+        )
+
         /** A chart asked for above the stars the model is best at, which came out well below the star asked for. */
         val MADE_FAR = MadeChart(
             noteCount = 2104, holdCount = 318, seed = 2914u, stars = 8.0, modelName = "Ensomi R2 r2-1.0",

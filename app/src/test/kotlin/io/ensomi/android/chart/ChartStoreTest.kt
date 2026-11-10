@@ -89,6 +89,35 @@ class ChartStoreTest {
         assertEquals(StarDisplay(4.5, null, StarGap.NONE), StarDisplay.of(kept.stars, kept.measuredStars))
     }
 
+    @Test
+    fun keepsWhatAPreciseSearchDid() {
+        val root = root()
+        // The person asked for 4.5 with seed 2914; the search kept its fourth chart, asked for at 4.37 with seed 2915.
+        val precise = PreciseRecord(charts = 4, startSeed = "2914", requestStars = 4.37)
+        ChartStore(root).save(
+            chart("song-6", seed = 2915u).copy(stars = 4.5, measuredStars = 4.52, precise = precise),
+            osu = "osu",
+            receiptJson = "{}",
+        )
+        val kept = ChartStore(root).chart("song-6")!!
+        assertEquals(precise, kept.precise)
+        assertEquals("2915", kept.seed)
+        assertEquals(4.5, kept.stars, 0.0)
+        // The seed to ask with again is the one the search began with: it repeats the search.
+        assertEquals("2914", kept.seedToReuse)
+        assertEquals(2914uL, kept.toMade().seed)
+        assertEquals(4, kept.toMade().preciseCharts)
+    }
+
+    @Test
+    fun aChartMadeInOnePassHasNoSearchToTell() {
+        val one = chart("song-7", seed = 7u)
+        assertNull(one.precise)
+        assertEquals("7", one.seedToReuse)
+        assertEquals(7uL, one.toMade().seed)
+        assertNull(one.toMade().preciseCharts)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun aSongIdCannotLeaveTheDirectory() {
         ChartStore(root()).chart("../settings")

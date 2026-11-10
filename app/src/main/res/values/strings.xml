@@ -121,6 +121,9 @@
     <string name="make_stars_no_model">The stars the model is best at show here once it is installed.</string>
     <string name="make_stars_less">Lower the stars by 0.1</string>
     <string name="make_stars_more">Raise the stars by 0.1</string>
+    <string name="make_precise">Precise difficulty</string>
+    <string name="make_precise_help">Makes up to %1$d charts and keeps the closest. Slower.</string>
+    <string name="make_precise_progress">Chart %1$d of up to %2$d</string>
     <string name="make_seed">Seed</string>
     <string name="make_seed_random">Random</string>
     <string name="make_seed_help">Blank makes a new chart each time. The same song, stars, sections and seed make the same chart again.</string>
@@ -154,6 +157,10 @@
     <string name="make_ready_harder">This came out harder than asked.</string>
     <string name="make_ready_easier_best">This came out easier than asked. %1$s is at its best from %2$s to %3$s stars.</string>
     <string name="make_ready_harder_best">This came out harder than asked. %1$s is at its best from %2$s to %3$s stars.</string>
+    <plurals name="make_ready_precise">
+        <item quantity="one">Made %d chart: the first was close enough.</item>
+        <item quantity="other">Made %d charts and kept the closest.</item>
+    </plurals>
     <string name="make_ready_notes">%1$s notes: %2$s taps, %3$s long notes</string>
     <string name="make_ready_seed">Seed %1$s</string>
     <string name="make_use_seed">Use seed</string>

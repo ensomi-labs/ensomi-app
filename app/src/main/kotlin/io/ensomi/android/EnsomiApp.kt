@@ -360,7 +360,7 @@ private fun SongPlay(
                 loop = false,
                 onFinished = { result -> backStack.replaceLast(Results(song.id, result.copy(
                     detail = song.artist.orEmpty(),
-                    chart = ResultChart(song.artist, display.stars, current.record.seed, askedStars = display.asked),
+                    chart = ResultChart(song.artist, display.stars, current.record.seedToReuse, askedStars = display.asked),
                 ))) },
                 onQuit = { backStack.removeLastOrNull() },
                 keyboards = graph.keyboards,

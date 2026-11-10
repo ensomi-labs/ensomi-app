@@ -19,6 +19,8 @@ import io.ensomi.android.audio.PlayAudioCache
 import io.ensomi.android.chart.ChartMaker
 import io.ensomi.android.chart.MakePhase
 import io.ensomi.android.chart.MakeState
+import io.ensomi.android.chart.PreciseProgress
+import io.ensomi.android.chart.PreciseSearch
 import io.ensomi.android.chart.SectionDraft
 import io.ensomi.android.chart.SectionKind
 import io.ensomi.android.keyboard.CaptureNote
@@ -263,6 +265,15 @@ data class Scenario(
                 listOf(Library, MakeChart(SONG)),
                 make = MakeState.Made(SONG, FakeChartMaker.MADE),
                 sections = ONE_SECTION,
+            ),
+            // Precise difficulty: the second chart of a search under way, and the chart a search kept.
+            "make-chart-precise-making" to Scenario(
+                listOf(Library, MakeChart(SONG)),
+                make = MakeState.Making(SONG, MakePhase.ROWS, PreciseProgress(2, PreciseSearch.MAX_CHARTS)),
+            ),
+            "make-chart-precise-made" to Scenario(
+                listOf(Library, MakeChart(SONG)),
+                make = MakeState.Made(SONG, FakeChartMaker.MADE_PRECISE),
             ),
             // Asked for 8.0 stars and came out at 6.2: the chart-ready state says so in words.
             "make-chart-made-far" to Scenario(

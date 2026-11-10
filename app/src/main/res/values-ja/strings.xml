@@ -100,6 +100,9 @@
     <string name="make_stars_no_model">モデルをインストールすると、得意な星の範囲が表示されます。</string>
     <string name="make_stars_less">難易度を 0.1 下げる</string>
     <string name="make_stars_more">難易度を 0.1 上げる</string>
+    <string name="make_precise">難易度を正確に合わせる</string>
+    <string name="make_precise_help">最大 %1$d 個の譜面を生成し、目標に最も近いものを残します。時間がかかります。</string>
+    <string name="make_precise_progress">譜面 %1$d（最大 %2$d）</string>
     <string name="make_seed">シード</string>
     <string name="make_seed_random">ランダム</string>
     <string name="make_seed_help">空欄にすると毎回新しい譜面を生成します。同じ曲、難易度、区間、シードでは同じ譜面になります。</string>
@@ -132,6 +135,9 @@
     <string name="make_ready_harder">目標より難しい譜面になりました。</string>
     <string name="make_ready_easier_best">目標より易しい譜面になりました。%1$s は星 %2$s ～ %3$s の譜面が最も得意です。</string>
     <string name="make_ready_harder_best">目標より難しい譜面になりました。%1$s は星 %2$s ～ %3$s の譜面が最も得意です。</string>
+    <plurals name="make_ready_precise">
+        <item quantity="other">%d 個の譜面を生成し、目標に最も近いものを残しました。</item>
+    </plurals>
     <string name="make_ready_notes">%1$s ノーツ：タップ %2$s、ロングノーツ %3$s</string>
     <string name="make_ready_seed">シード %1$s</string>
     <string name="make_use_seed">このシードを使用</string>

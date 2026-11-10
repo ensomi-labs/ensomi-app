@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ChartRequestRulesTest {
-    private val stars = StarRange.OFFERED
+    private val stars = 2.0..5.9
     private val song = 133_000L
 
     @Test
@@ -59,61 +59,17 @@ class ChartRequestRulesTest {
     }
 
     @Test
-    fun aStarSectionUsesTheStarsTheAppOffers() {
-        fun problems(star: Float) = ChartRequestRules
-            .check(listOf(SectionDraft(1, "00:10", "00:20", kind = SectionKind.STAR, star = star)), song)
-            .map { it.problem }
-        // Outside the range the model was fitted on, and offered all the same.
-        assertEquals(emptyList<SectionProblem>(), problems(1.0f))
-        assertEquals(emptyList<SectionProblem>(), problems(6.5f))
-        assertEquals(emptyList<SectionProblem>(), problems(9.0f))
-        assertEquals(listOf(SectionProblem.STAR_RANGE), problems(0.9f))
-        assertEquals(listOf(SectionProblem.STAR_RANGE), problems(9.1f))
-        // A pattern section's star is not looked at.
-        val pattern = SectionDraft(1, "00:10", "00:20", kind = SectionKind.STREAM, star = 12f)
-        assertEquals(emptyList<SectionIssue>(), ChartRequestRules.check(listOf(pattern), song))
+    fun aStarSectionUsesTheModelsRange() {
+        val section = SectionDraft(1, "00:10", "00:20", kind = SectionKind.STAR, star = 6.5f)
+        assertEquals(listOf(SectionIssue(0, SectionProblem.STAR_RANGE)), ChartRequestRules.check(listOf(section), song, stars))
     }
 
     @Test
-    fun theAppOffersOneToNineStarsInTenths() {
-        assertEquals(1.0, StarRange.OFFERED.start, 0.0)
-        assertEquals(9.0, StarRange.OFFERED.endInclusive, 0.0)
-        assertEquals(StarRange.MIN, StarRange.MIN_TENTHS / 10.0, 0.0)
-        assertEquals(StarRange.MAX, StarRange.MAX_TENTHS / 10.0, 0.0)
-        assertEquals(3.5, StarRange.DEFAULT, 0.0)
-        assertTrue(StarRange.DEFAULT in StarRange.OFFERED)
-        // 1.0, 1.1, ... 9.0 is 81 values: a slider with 79 steps between its ends.
-        assertEquals(79, StarRange.SLIDER_STEPS)
-    }
-
-    @Test
-    fun aStepIsATenthAndStopsAtTheEnds() {
-        assertEquals(3.6, StarRange.step(3.5, 1), 0.0)
-        assertEquals(3.4, StarRange.step(3.5, -1), 0.0)
-        assertEquals(6.0, StarRange.step(5.9, 1), 0.0)
-        assertEquals(1.0, StarRange.step(1.0, -1), 0.0)
-        assertEquals(9.0, StarRange.step(9.0, 1), 0.0)
-        // Eighty steps from one end reach the other, each on its tenth.
-        var stars = StarRange.MIN
-        repeat(80) { stars = StarRange.step(stars, 1) }
-        assertEquals(9.0, stars, 0.0)
-        // A slider's float lands on the tenth, and a value from outside comes inside.
-        assertEquals(3.7, StarRange.snap(3.7f.toDouble()), 0.0)
-        assertEquals(4.3, StarRange.snap(4.26), 0.0)
-        assertEquals(9.0, StarRange.snap(12.0), 0.0)
-        assertEquals(1.0, StarRange.snap(0.2), 0.0)
-    }
-
-    @Test
-    fun theNoticeNamesTheRangeTheModelWasFittedOn() {
+    fun starsComeInTenthsBelowTheExclusiveTop() {
         val capabilities = ChartCapabilities("Ensomi R2", minStar = 2.0, maxStarExclusive = 6.0, kinds = emptyList())
-        // The capabilities no longer bound what can be asked for: they say what is recommended.
-        assertEquals(2.0, capabilities.recommendedStars.start, 0.0)
-        assertEquals(6.0, capabilities.recommendedStars.endInclusive, 0.0)
-        assertEquals("2", StarRange.bound(capabilities.recommendedStars.start))
-        assertEquals("6", StarRange.bound(capabilities.recommendedStars.endInclusive))
-        assertEquals("2.5", StarRange.bound(2.5))
-        assertEquals("1", StarRange.bound(StarRange.MIN))
-        assertEquals("9", StarRange.bound(StarRange.MAX))
+        assertEquals(2.0, capabilities.selectableStars.start, 1e-9)
+        assertEquals(5.9, capabilities.selectableStars.endInclusive, 1e-9)
+        // 2.0, 2.1, ... 5.9 is 40 values: a slider with 38 steps between its ends.
+        assertEquals(38, capabilities.starSliderSteps)
     }
 }

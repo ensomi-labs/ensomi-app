@@ -17,10 +17,7 @@ object GeneratorChoices {
     /** The measured K Pad setting; leave other devices to the runtime until they are measured. */
     fun beatthisThreads(model: String): UInt? = if (model == "25079RPDCC") 8u else null
 
-    /**
-     * Known runtime codes select an explanation; new codes still get a localized retry action. The runtime takes any
-     * finite star, so `star_out_of_range` now means a star that is not a number, which no control of the app sends.
-     */
+    /** Known runtime codes select an explanation; new codes still get a localized retry action. */
     fun failure(code: String): MakeFailure = when (code) {
         "star_out_of_range" -> MakeFailure.STARS
         "unsupported_control" -> MakeFailure.CONTROLS

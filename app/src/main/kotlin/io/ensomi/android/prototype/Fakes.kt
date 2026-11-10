@@ -100,8 +100,8 @@ class FakeChartMaker(initial: MakeState, capabilities: ChartCapabilities?) : Cha
 
     companion object {
         /**
-         * Sample capabilities. The star range is the one R2 was fitted on (`[2, 6)`), which the screen shows as the
-         * stars it is best at; the statuses and notes stand in for what the model reports and are not R2's own.
+         * Sample capabilities. The star range is R2's (`[2, 6)`); the statuses and notes stand in for what the model
+         * reports and are not R2's own.
          */
         val CAPABILITIES = ChartCapabilities(
             modelName = "Ensomi R2 r2-1.0",
@@ -123,10 +123,10 @@ class FakeChartMaker(initial: MakeState, capabilities: ChartCapabilities?) : Cha
             measuredStars = 3.6,
         )
 
-        /** A chart asked for above the stars the model is best at, which came out well below the star asked for. */
+        /** A chart that came out well below the star asked for: more than half a star. */
         val MADE_FAR = MadeChart(
-            noteCount = 2104, holdCount = 318, seed = 2914u, stars = 8.0, modelName = "Ensomi R2 r2-1.0",
-            measuredStars = 6.2,
+            noteCount = 1687, holdCount = 274, seed = 2914u, stars = 5.5, modelName = "Ensomi R2 r2-1.0",
+            measuredStars = 4.6,
         )
     }
 }

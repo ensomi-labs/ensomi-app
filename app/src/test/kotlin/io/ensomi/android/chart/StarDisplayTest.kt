@@ -30,9 +30,9 @@ class StarDisplayTest {
         assertEquals(StarGap.NONE, StarDisplay.of(4.0, 3.5).gap)
         assertEquals(StarGap.HARDER, StarDisplay.of(4.0, 4.6).gap)
         assertEquals(StarGap.EASIER, StarDisplay.of(4.0, 3.4).gap)
-        // The ends of what the app offers, as today's model is expected to answer them.
-        assertEquals(StarGap.EASIER, StarDisplay.of(9.0, 6.1).gap)
-        assertEquals(StarGap.HARDER, StarDisplay.of(1.0, 2.2).gap)
+        // The ends of the slider, about where the model's hardest and easiest charts were measured.
+        assertEquals(StarGap.EASIER, StarDisplay.of(5.9, 5.3).gap)
+        assertEquals(StarGap.HARDER, StarDisplay.of(2.0, 2.6).gap)
     }
 
     @Test

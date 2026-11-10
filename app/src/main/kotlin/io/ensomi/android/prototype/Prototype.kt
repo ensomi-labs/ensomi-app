@@ -18,6 +18,7 @@ import io.ensomi.android.Settings
 import io.ensomi.android.audio.PlayAudioCache
 import io.ensomi.android.chart.ChartMaker
 import io.ensomi.android.chart.MakePhase
+import io.ensomi.android.chart.MakeFailure
 import io.ensomi.android.chart.MakeState
 import io.ensomi.android.chart.SectionDraft
 import io.ensomi.android.chart.SectionKind
@@ -70,9 +71,9 @@ class AppGraph(
 )
 
 /**
- * What a debuggable build's launch intent may ask of a normal launch, for checks on the emulator: `--ef stars 12` for
- * stars the slider does not offer (the runtime takes any finite star, so a chart is made), `--ez autoplay true` for
- * games played by the autoplay, `--ez low-memory true` for the generator's `lowMemory`.
+ * What a debuggable build's launch intent may ask of a normal launch, for checks on the emulator: `--ef stars 7` for
+ * stars outside the slider's range, `--ez autoplay true` for games played by the autoplay, `--ez low-memory true` for
+ * the generator's `lowMemory`.
  */
 data class DebugOptions(
     val stars: Double? = null,
@@ -272,7 +273,7 @@ data class Scenario(
                 make = MakeState.Made(SONG, FakeChartMaker.MADE),
                 sections = ONE_SECTION,
             ),
-            // Asked for 8.0 stars and came out at 6.2: the chart-ready state says so in words.
+            // Asked for 5.5 stars and came out at 4.6: the chart-ready state says so in words.
             "make-chart-made-far" to Scenario(
                 listOf(Library, MakeChart(SONG)),
                 make = MakeState.Made(SONG, FakeChartMaker.MADE_FAR),
@@ -281,8 +282,7 @@ data class Scenario(
             "make-chart-stopped" to Scenario(listOf(Library, MakeChart(SONG)), make = MakeState.Stopped(SONG)),
             "make-chart-failed" to Scenario(
                 listOf(Library, MakeChart(SONG)),
-                // The maker's own failure when the runtime returns no chart; no star is refused for its size any more.
-                make = MakeState.Failed(SONG, "No chart was made."),
+                make = MakeState.Failed(SONG, "star_out_of_range: star must be in [2, 6)", reason = MakeFailure.STARS),
             ),
             "play" to Scenario(listOf(Library, MakeChart(SONG), Play(SONG, loop = false))),
             // The HUD's line for a chart that came out at another star than the one asked for.

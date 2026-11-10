@@ -59,12 +59,12 @@ class ChartStoreTest {
     @Test
     fun keepsTheStarAChartCameOutAt() {
         val root = root()
-        ChartStore(root).save(chart("song-4").copy(stars = 8.0, measuredStars = 6.2), osu = "osu", receiptJson = "{}")
+        ChartStore(root).save(chart("song-4").copy(stars = 5.5, measuredStars = 4.6), osu = "osu", receiptJson = "{}")
         val kept = ChartStore(root).chart("song-4")!!
-        assertEquals(8.0, kept.stars, 0.0)
-        assertEquals(6.2, kept.measuredStars!!, 0.0)
-        assertEquals(6.2, kept.toMade().measuredStars!!, 0.0)
-        assertEquals(8.0, kept.toMade().stars, 0.0)
+        assertEquals(5.5, kept.stars, 0.0)
+        assertEquals(4.6, kept.measuredStars!!, 0.0)
+        assertEquals(4.6, kept.toMade().measuredStars!!, 0.0)
+        assertEquals(5.5, kept.toMade().stars, 0.0)
     }
 
     @Test

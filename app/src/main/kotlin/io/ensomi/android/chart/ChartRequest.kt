@@ -2,6 +2,7 @@ package io.ensomi.android.chart
 
 import kotlinx.serialization.Serializable
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /** The section kinds the request can carry; which are offered comes from the model's capabilities. */
 @Serializable
@@ -20,45 +21,7 @@ enum class SectionKind {
 @Serializable
 data class KindOption(val kind: SectionKind, val experimental: Boolean, val note: String)
 
-/**
- * The stars the app offers, on every control that asks for them (the whole-song slider and its − and +, a section's
- * star target, Listen & Play's stepper): 1.0 to 9.0 in tenths. The runtime takes any finite star, so the range is the
- * app's own choice, not the model's; what the model is best at is [ChartCapabilities.recommendedStars].
- */
-object StarRange {
-    const val MIN = 1.0
-    const val MAX = 9.0
-    const val DEFAULT = 3.5
-
-    /** [MIN] and [MAX] in tenths, the unit the controls move by. */
-    const val MIN_TENTHS = 10
-    const val MAX_TENTHS = 90
-
-    val OFFERED: ClosedFloatingPointRange<Double> = MIN..MAX
-
-    /** Steps between the ends of [OFFERED], for a Material slider: 81 values, so 79 between the first and the last. */
-    const val SLIDER_STEPS = MAX_TENTHS - MIN_TENTHS - 1
-
-    /** [stars] on the nearest offered tenth. */
-    fun snap(stars: Double): Double = step(stars, 0)
-
-    /** [stars] moved by [tenths] tenths and kept on an offered tenth: what − and + do. */
-    fun step(stars: Double, tenths: Int): Double =
-        (Math.round(stars * 10) + tenths).coerceIn(MIN_TENTHS.toLong(), MAX_TENTHS.toLong()) / 10.0
-
-    /** A bound as a notice says it: "2" for a whole number of stars, "2.5" otherwise. */
-    fun bound(stars: Double): String {
-        val tenths = Math.round(stars * 10)
-        return if (tenths % 10 == 0L) (tenths / 10).toString() else String.format(Locale.ROOT, "%.1f", tenths / 10.0)
-    }
-}
-
-/**
- * What the model says of itself: the runtime's `ModelCapabilities`, with the kinds whose status is not "not working".
- * [minStar] and [maxStarExclusive] are the range the model was fitted on. The runtime accepts stars outside it and then
- * uses its nearest fitted settings, so the range is a recommendation, shown as a notice; the stars offered are
- * [StarRange].
- */
+/** What the model accepts: the runtime's `ModelCapabilities`, with the kinds whose status is not "not working". */
 @Serializable
 data class ChartCapabilities(
     val modelName: String,
@@ -66,9 +29,17 @@ data class ChartCapabilities(
     val maxStarExclusive: Double,
     val kinds: List<KindOption>,
 ) {
-    /** The stars the model is at its best at: the range it was fitted on, `[minStar, maxStarExclusive)`. */
-    val recommendedStars: ClosedFloatingPointRange<Double>
-        get() = minStar..maxOf(minStar, maxStarExclusive)
+    /** The stars a player can choose, in 0.1 steps: `[minStar, maxStarExclusive)`. */
+    val selectableStars: ClosedFloatingPointRange<Double>
+        get() = minStar..maxOf(minStar, maxStarExclusive - STAR_STEP)
+
+    /** Steps between the ends of [selectableStars], for a Material slider. */
+    val starSliderSteps: Int
+        get() = ((selectableStars.endInclusive - selectableStars.start) / STAR_STEP).roundToInt() - 1
+
+    companion object {
+        const val STAR_STEP = 0.1
+    }
 }
 
 /** One section as the player edits it: times as typed text, so a half-typed value stays on screen. */
@@ -94,10 +65,7 @@ enum class SectionProblem {
 /** A problem and the section it belongs to, by position; [index] is null for one about the set. */
 data class SectionIssue(val index: Int?, val problem: SectionProblem)
 
-/**
- * The request checks the app makes before Generate is enabled: the runtime's rules for sections, and the app's own
- * range for a section's star.
- */
+/** The request checks the app makes before Generate is enabled, the same rules the runtime applies. */
 object ChartRequestRules {
     /** A section lasts 8 to 32 seconds, whatever its target. */
     val SECTION_LENGTH_MS = 8_000..32_000
@@ -129,7 +97,7 @@ object ChartRequestRules {
     fun check(
         sections: List<SectionDraft>,
         songDurationMs: Long,
-        stars: ClosedFloatingPointRange<Double> = StarRange.OFFERED,
+        stars: ClosedFloatingPointRange<Double>,
     ): List<SectionIssue> {
         val issues = mutableListOf<SectionIssue>()
         val spans = mutableListOf<IntRange>()

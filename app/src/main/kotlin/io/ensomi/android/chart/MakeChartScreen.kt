@@ -67,6 +67,7 @@ import io.ensomi.android.ui.ActionButton
 import io.ensomi.android.ui.sliderColorsWithoutTicks
 import java.text.NumberFormat
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /** The song a state belongs to, or null for [MakeState.Idle]. */
 val MakeState.songId: String?
@@ -120,7 +121,7 @@ fun MakeChartScreen(
         model is ModelState.Installed && !model.ready -> R.string.model_chart_wait
         !model.ready -> R.string.make_needs_model
         !ChartRequestRules.isSeedValid(viewModel.seedText) -> R.string.make_blocked_seed
-        viewModel.issues().isNotEmpty() -> R.string.make_blocked_sections
+        capabilities?.let(viewModel::issues)?.isNotEmpty() == true -> R.string.make_blocked_sections
         else -> null
     }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -173,7 +174,7 @@ fun MakeChartScreen(
                         onShareDiagnostics = onShareModelDiagnostics,
                     )
                 }
-                StatusCard(state, capabilities, onUseSeed = viewModel::useSeed)
+                StatusCard(state, onUseSeed = viewModel::useSeed)
                 StarsCard(viewModel, capabilities, enabled = !making)
                 SeedField(viewModel, enabled = !making)
                 SectionsBlock(viewModel, capabilities, enabled = !making)
@@ -183,16 +184,11 @@ fun MakeChartScreen(
     }
 }
 
-/**
- * The stars asked for: the value with − and + beside it, a tenth each, and the slider over the stars the app offers
- * ([StarRange]). The slider takes the value most of the way; the buttons, or the arrow keys on the slider, put it on
- * the tenth, which 81 values on a phone's width make hard to land on by dragging. Under them, the notice of the stars
- * the model is best at, from its capabilities.
- */
 @Composable
 private fun StarsCard(viewModel: MakeChartViewModel, capabilities: ChartCapabilities?, enabled: Boolean) {
-    val range = StarRange.OFFERED
-    // The value sent, even outside the offered range (a debug launch's --ef stars), so the screen never shows
+    val range = capabilities?.selectableStars ?: DEFAULT_STARS
+    val stars = viewModel.stars.coerceIn(range)
+    // The value sent, even outside the slider's range (a debug launch's --ef stars), so the screen never shows
     // another number than the request carries.
     val starsText = String.format(Locale.ROOT, "%.1f", viewModel.stars)
     val starsLabel = stringResource(R.string.make_stars)
@@ -204,34 +200,15 @@ private fun StarsCard(viewModel: MakeChartViewModel, capabilities: ChartCapabili
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f).semantics { heading() },
                 )
-                IconButton(
-                    onClick = { viewModel.stars = StarRange.step(viewModel.stars, -1) },
-                    enabled = enabled && viewModel.stars > range.start,
-                ) {
-                    Icon(painterResource(R.drawable.ic_remove), contentDescription = stringResource(R.string.make_stars_less))
-                }
-                Text(
-                    starsText,
-                    style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .widthIn(min = 48.dp)
-                        .semantics { liveRegion = LiveRegionMode.Polite },
-                )
-                IconButton(
-                    onClick = { viewModel.stars = StarRange.step(viewModel.stars, 1) },
-                    enabled = enabled && viewModel.stars < range.endInclusive,
-                ) {
-                    Icon(painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.make_stars_more))
-                }
+                Text(starsText, style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"))
             }
             Slider(
-                value = viewModel.stars.coerceIn(range).toFloat(),
-                onValueChange = { viewModel.stars = StarRange.snap(it.toDouble()) },
+                value = stars.toFloat(),
+                onValueChange = { viewModel.stars = (it * 10).roundToInt() / 10.0 },
                 valueRange = range.start.toFloat()..range.endInclusive.toFloat(),
-                steps = StarRange.SLIDER_STEPS,
+                steps = capabilities?.starSliderSteps ?: 0,
                 colors = sliderColorsWithoutTicks(),
-                enabled = enabled,
+                enabled = enabled && capabilities != null,
                 modifier = Modifier.semantics {
                     contentDescription = starsLabel
                     stateDescription = starsText
@@ -240,10 +217,10 @@ private fun StarsCard(viewModel: MakeChartViewModel, capabilities: ChartCapabili
             Text(
                 if (capabilities != null) {
                     stringResource(
-                        R.string.make_stars_best,
+                        R.string.make_stars_range,
                         capabilities.modelName,
-                        StarRange.bound(capabilities.recommendedStars.start),
-                        StarRange.bound(capabilities.recommendedStars.endInclusive),
+                        String.format(Locale.ROOT, "%.1f", range.start),
+                        String.format(Locale.ROOT, "%.1f", range.endInclusive),
                     )
                 } else {
                     stringResource(R.string.make_stars_no_model)
@@ -279,14 +256,14 @@ private fun SeedField(viewModel: MakeChartViewModel, enabled: Boolean) {
  * failure. Nothing before the first Make chart.
  */
 @Composable
-private fun StatusCard(state: MakeState, capabilities: ChartCapabilities?, onUseSeed: (ULong) -> Unit) {
+private fun StatusCard(state: MakeState, onUseSeed: (ULong) -> Unit) {
     if (state == MakeState.Idle) return
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             when (state) {
                 MakeState.Idle -> Unit
                 is MakeState.Making -> Phases(state.phase)
-                is MakeState.Made -> Made(state.chart, capabilities, onUseSeed)
+                is MakeState.Made -> Made(state.chart, onUseSeed)
                 is MakeState.Stopped -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(painterResource(R.drawable.ic_stop), contentDescription = null, modifier = Modifier.size(20.dp))
                     Text(stringResource(R.string.make_stopped), style = MaterialTheme.typography.bodyMedium)
@@ -405,11 +382,11 @@ private fun Phases(current: MakePhase) {
 
 /**
  * The chart that was made. Its star is the one it came out at, with the star asked for beside it when they differ
- * ([StarDisplay]); far apart, a line says so in plain words, and names the stars the model is best at when the star
- * asked for lies outside them. A chart kept without a measurement shows no star here, as before.
+ * ([StarDisplay]); far apart, a line says so in plain words. A chart kept without a measurement shows no star here,
+ * as before.
  */
 @Composable
-private fun Made(chart: MadeChart, capabilities: ChartCapabilities?, onUseSeed: (ULong) -> Unit) {
+private fun Made(chart: MadeChart, onUseSeed: (ULong) -> Unit) {
     val format = NumberFormat.getIntegerInstance()
     val display = StarDisplay.of(chart.stars, chart.measuredStars)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -434,20 +411,10 @@ private fun Made(chart: MadeChart, capabilities: ChartCapabilities?, onUseSeed: 
             )
         }
         if (display.gap != StarGap.NONE) {
-            val easier = display.gap == StarGap.EASIER
-            // The stars the model is best at explain the gap only when the star asked for lies outside them.
-            val best = capabilities?.takeIf { chart.stars !in it.recommendedStars }
             Text(
-                if (best != null) {
-                    stringResource(
-                        if (easier) R.string.make_ready_easier_best else R.string.make_ready_harder_best,
-                        best.modelName,
-                        StarRange.bound(best.recommendedStars.start),
-                        StarRange.bound(best.recommendedStars.endInclusive),
-                    )
-                } else {
-                    stringResource(if (easier) R.string.make_ready_easier else R.string.make_ready_harder)
-                },
+                stringResource(
+                    if (display.gap == StarGap.EASIER) R.string.make_ready_easier else R.string.make_ready_harder,
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -480,3 +447,6 @@ val MakePhase.title: Int
         MakePhase.ARRANGEMENT -> R.string.phase_arrangement
         MakePhase.EXPORT -> R.string.phase_export
     }
+
+/** The range shown before the model has answered. */
+private val DEFAULT_STARS = 2.0..5.9

@@ -96,10 +96,8 @@
     <string name="model_installing_files">ファイルから Ensomi R2 モデルをインストール中</string>
     <string name="model_installing_files_hint">Ensomi が各ファイルをコピーし、パッケージと照合します。完了するまで Ensomi を開いたままにしてください。</string>
     <string name="make_stars">難易度（星）</string>
-    <string name="make_stars_best">%1$s は星 %2$s ～ %3$s の譜面が最も得意です。</string>
-    <string name="make_stars_no_model">モデルをインストールすると、得意な星の範囲が表示されます。</string>
-    <string name="make_stars_less">難易度を 0.1 下げる</string>
-    <string name="make_stars_more">難易度を 0.1 上げる</string>
+    <string name="make_stars_range">%1$s は星 %2$s ～ %3$s の譜面を生成できます。</string>
+    <string name="make_stars_no_model">モデルをインストールすると、対応する星の範囲が表示されます。</string>
     <string name="make_seed">シード</string>
     <string name="make_seed_random">ランダム</string>
     <string name="make_seed_help">空欄にすると毎回新しい譜面を生成します。同じ曲、難易度、区間、シードでは同じ譜面になります。</string>
@@ -130,8 +128,6 @@
     <string name="make_ready_stars_asked">星 %1$s · 目標 %2$s</string>
     <string name="make_ready_easier">目標より易しい譜面になりました。</string>
     <string name="make_ready_harder">目標より難しい譜面になりました。</string>
-    <string name="make_ready_easier_best">目標より易しい譜面になりました。%1$s は星 %2$s ～ %3$s の譜面が最も得意です。</string>
-    <string name="make_ready_harder_best">目標より難しい譜面になりました。%1$s は星 %2$s ～ %3$s の譜面が最も得意です。</string>
     <string name="make_ready_notes">%1$s ノーツ：タップ %2$s、ロングノーツ %3$s</string>
     <string name="make_ready_seed">シード %1$s</string>
     <string name="make_use_seed">このシードを使用</string>
@@ -157,7 +153,7 @@
     <string name="section_problem_order">終了は開始より後にしてください。</string>
     <string name="section_problem_outside">区間を曲の範囲内に収めてください。</string>
     <string name="section_problem_length">各区間は 8 ～ 32 秒にしてください。</string>
-    <string name="section_problem_star">星 %1$s ～ %2$s の範囲で指定してください。</string>
+    <string name="section_problem_star">モデルが対応する難易度の範囲内で指定してください。</string>
     <string name="section_problem_overlap">区間は重ならないようにしてください。前の区間の終了時刻から次の区間を開始できます。</string>
     <string name="play_ready">準備</string>
     <string name="play_combo">コンボ</string>
@@ -423,7 +419,7 @@
     <string name="crash_test_failed">自己テスト失敗</string>
     <string name="model_inference_blocked">モデルの初回準備または譜面生成中に Ensomi が終了しました。モデルのカードで「再試行」を選んでください。</string>
     <string name="model_failure_unexpected">モデルの処理に失敗しました。再試行するか、診断情報を共有してください。</string>
-    <string name="make_failure_stars">指定した難易度が有効な数値ではありません。もう一度選んでください。</string>
+    <string name="make_failure_stars">指定した難易度はモデルの対応範囲外です。対応範囲内で選んでください。</string>
     <string name="make_failure_controls">この区間設定はモデルで使用できません。区間を確認して再試行してください。</string>
     <string name="make_failure_retry">再試行してください。繰り返し失敗する場合は、設定から診断情報を共有してください。</string>
     <string name="make_failure_missing">曲のファイルが見つかりません。ライブラリで探し直してください。</string>

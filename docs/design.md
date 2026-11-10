@@ -229,27 +229,16 @@ is an open question for the owner: it would show every song at once, at the pric
 
 One screen per song. The top app bar has Back and the song's title; under it, the artist, length and file name.
 
-- **Stars**: a slider from 1.0 to 9.0 in 0.1 steps, 3.5 at first. The range is the app's own (`StarRange`), the same
-  on every control that asks for stars (a section's star target, Listen & Play's stepper): the runtime takes any finite
-  star and places no range on it, and the range offered and the notice belong to the interfaces (the owner's decision
-  of 2026-11-10). The value sits beside the title between − and + buttons, a tenth each: 81 values across a phone's
-  width are hard to land on by dragging, so the slider takes the value most of the way and a button puts it on the
-  tenth. A tap is one tenth; the buttons do not repeat when held, since the slider is there for distance. On a hardware
-  keyboard the focused slider is meant to take the arrow keys, a tenth each, as Material's slider does with steps, and
-  the buttons take Tab and Enter (phone-checks.md, row 23, not yet run). TalkBack hears the value after each change.
-  Under the slider, the notice of where the model is at its best, from its capabilities' `min_star` and
-  `max_star_exclusive`, which now mean the range it was fitted on: "Ensomi R2 r2-1.0.1 is at its best from 2 to 6
-  stars." Outside that range the generator uses its nearest fitted settings. The recommended span is not marked on the
-  track in this round: a mark has to follow the thumb's travel inside Material's track, which was written without a
-  build to look at, and a mark a few dp off the thumb would mislead; the words carry it.
+- **Stars**: a slider in 0.1 steps over the model's range `[min_star, max_star_exclusive)` (2.0 to 5.9 for R2), the
+  value beside it, and a line naming the model and its range.
 - **Seed**: a number field with the placeholder "Random" and the Swift app's explanation ("Blank makes a new chart
   each time. The same song, stars, sections and seed make the same chart again."). Anything but a 64-bit unsigned
   number shows its error under the field.
 - **Sections**, collapsed by default ("Optional. Without any, the whole song follows the stars."). Expanded, each
   section is a card: start and end in `mm:ss`, a kind menu from the model's capabilities (experimental kinds labelled,
   kinds marked not working left out, the capability's note under the menu), then a strength slider from 0 to 1 or, for
-  a star target, a star slider over the same 1.0 to 9.0. Problems show under the section in words with a symbol, with
-  the runtime's own rules: 8 to 32 seconds, inside the song, no overlap (sections may touch).
+  a star target, a star slider. Problems show under the section in words with a symbol, with the runtime's own rules:
+  8 to 32 seconds, inside the song, no overlap (sections may touch).
 - **A status card at the top and the actions at the bottom.** The bar at the bottom holds only the screen's actions,
   so the primary action is always in the same place and the bar stays small at large text sizes and in landscape;
   what happened shows in a card above the stars:
@@ -271,12 +260,16 @@ One screen per song. The top app bar has Back and the song's title; under it, th
   osu!mania star rating), and that number is the chart's star wherever a star is shown: the chart-ready state, the
   game's HUD and the results. The star asked for is said beside it when the two differ once each is rounded to a
   tenth: "4.6 stars · asked 4.5". When they are more than 0.5 apart the chart-ready state says so in plain words, with
-  no warning symbol, since nothing failed: "This came out easier than asked." (or harder), and, when the star asked
-  for lies outside the stars the model is best at, "Ensomi R2 r2-1.0.1 is at its best from 2 to 6 stars." in the same
-  line. This is what keeps a slider from 1 to 9 honest: with today's model a request far outside 2 to 6 is expected to
-  come out near 2 or near 6. The rule is `StarDisplay`. The measured star is stored as a number beside the star asked
-  for (`chart.json`'s `measuredStars`); a chart made by 0.2.1 has none, is not measured again, and shows the star
-  asked for alone, as it did.
+  no warning symbol, since nothing failed: "This came out easier than asked." (or harder). The rule is `StarDisplay`.
+  The generator answers a request with a chart near it, not on it. In an experiment on twelve songs with two starting
+  seeds (ensomi-runtime `codex/star-reach` at `6dfc2a2`, its `artifacts/star-reach/report.md`; measured stars on a
+  computer, nobody played a chart) a first chart for a target from 2.5 to 5.5 stars missed by a median of 0.43 stars,
+  and by 1.16 at the 90th percentile. The same experiment is why the slider keeps the model's range. Every request at
+  or below 2.125 stars made one chart for a song and seed, and every request at or above 5.875 another, measuring about
+  2.5 and 5.3 stars at the centre; a slider from 1 to 9, built on this branch first, would have offered positions that
+  all ask for the same chart, and the owner took it back on 2026-11-10. The measured star is stored as a number beside
+  the star asked for (`chart.json`'s `measuredStars`); a chart made by 0.2.1 has none, is not measured again, and shows
+  the star asked for alone, as it did.
 - The runtime reports phases, not fractions, so the bar is indeterminate rather than a guessed percentage. The app
   shows Loading audio while it decodes the song, Finding the beat while the runtime's `prepare` runs, Placing notes
   while the whole-chart scheduler works and Finishing while the chart is saved. The scheduler reports no phases of its

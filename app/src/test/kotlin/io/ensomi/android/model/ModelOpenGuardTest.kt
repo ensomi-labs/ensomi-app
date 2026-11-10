@@ -54,7 +54,7 @@ class ModelOpenGuardTest {
     @Test fun cancelledFirstInferenceLeavesTheNextCallGuarded() = failedInferenceRemainsGuarded(GeneratorException.Cancelled())
     @Test fun coroutineCancellationLeavesTheNextCallGuarded() = failedInferenceRemainsGuarded(CancellationException("stop"))
     @Test fun refusedFirstChartLeavesTheNextCallGuarded() =
-        failedInferenceRemainsGuarded(GeneratorException.Generation("unsupported_control", "refused"))
+        failedInferenceRemainsGuarded(GeneratorException.Generation("star_out_of_range", "refused"))
     @Test fun otherFailureLeavesTheNextCallGuarded() = failedInferenceRemainsGuarded(IOException("failed"))
 
     private fun failedInferenceRemainsGuarded(failure: Throwable) = runBlocking {

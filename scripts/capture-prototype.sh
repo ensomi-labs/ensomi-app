@@ -40,7 +40,7 @@ SCENARIOS=(
   first-run:3 downloading:3 download-stopped:3 no-space:3 download-failed:3 installing-files:3 install-files-refused:3
   library:3 library-missing:3
   make-chart:3 make-chart-sections:3 make-chart-section-problem:3 make-chart-no-model:3
-  make-chart-making:3 make-chart-made:3 make-chart-stopped:3 make-chart-failed:3
+  make-chart-making:3 make-chart-made:3 make-chart-made-far:3 make-chart-stopped:3 make-chart-failed:3
   results:3 settings:3 settings-playfield:4 settings-playfield-portrait:4 settings-downloading:3
   settings-update-pending:3 notices:3 notice-text:4
   calibration:4 calibration-hits:4 diagnostics:6 settings-about:3 lucky:3

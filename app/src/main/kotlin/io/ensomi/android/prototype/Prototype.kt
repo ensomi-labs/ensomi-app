@@ -264,6 +264,11 @@ data class Scenario(
                 make = MakeState.Made(SONG, FakeChartMaker.MADE),
                 sections = ONE_SECTION,
             ),
+            // Asked for 8.0 stars and came out at 6.2: the chart-ready state says so in words.
+            "make-chart-made-far" to Scenario(
+                listOf(Library, MakeChart(SONG)),
+                make = MakeState.Made(SONG, FakeChartMaker.MADE_FAR),
+            ),
             "make-chart-stopped" to Scenario(listOf(Library, MakeChart(SONG)), make = MakeState.Stopped(SONG)),
             "make-chart-failed" to Scenario(
                 listOf(Library, MakeChart(SONG)),

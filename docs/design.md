@@ -265,8 +265,18 @@ One screen per song. The top app bar has Back and the song's title; under it, th
 | Open failed | "Opening the model failed:" and the reason | Try again; Remove model; Share diagnostics |
 | Stopped | "Stopped. No chart was made." | Make chart |
 | Failed | "The chart could not be made." with a warning symbol, the runtime's message under it | Try again |
-| Ready to play | "Chart ready", "1,229 notes: 999 taps, 230 long notes", the seed with **Use seed** | **Play** (primary) and Make another, side by side, stacked at large text sizes |
+| Ready to play | "Chart ready", the star the chart came out at ("3.6 stars · asked 3.5"), "1,229 notes: 999 taps, 230 long notes", the seed with **Use seed** | **Play** (primary) and Make another, side by side, stacked at large text sizes |
 
+- **The star a chart came out at.** Each chart is measured once it is made, with the runtime's `starRating` (the
+  osu!mania star rating), and that number is the chart's star wherever a star is shown: the chart-ready state, the
+  game's HUD and the results. The star asked for is said beside it when the two differ once each is rounded to a
+  tenth: "4.6 stars · asked 4.5". When they are more than 0.5 apart the chart-ready state says so in plain words, with
+  no warning symbol, since nothing failed: "This came out easier than asked." (or harder), and, when the star asked
+  for lies outside the stars the model is best at, "Ensomi R2 r2-1.0.1 is at its best from 2 to 6 stars." in the same
+  line. This is what keeps a slider from 1 to 9 honest: with today's model a request far outside 2 to 6 is expected to
+  come out near 2 or near 6. The rule is `StarDisplay`. The measured star is stored as a number beside the star asked
+  for (`chart.json`'s `measuredStars`); a chart made by 0.2.1 has none, is not measured again, and shows the star
+  asked for alone, as it did.
 - The runtime reports phases, not fractions, so the bar is indeterminate rather than a guessed percentage. The app
   shows Loading audio while it decodes the song, Finding the beat while the runtime's `prepare` runs, Placing notes
   while the whole-chart scheduler works and Finishing while the chart is saved. The scheduler reports no phases of its
@@ -299,7 +309,7 @@ turned to the play orientation: **landscape** by default, with the lanes leaning
 Phone sizes and orientation). Before the game, the song's last chart is read and the song decoded for play, with
 "Loading the song…" in the game's dark presentation (instant for Play again, which keeps the sound); a song whose file
 has gone, or with no chart, says so there with Back. Without a panel of its own, the HUD: the song's title and its
-stars and judge on the left, accuracy on the right, then a Pause button; in landscape these sit in the top corners beside the lanes' far
+stars (the star the chart came out at, and "asked 4.5" beside it when they differ) and judge on the left, accuracy on the right, then a Pause button; in landscape these sit in the top corners beside the lanes' far
 end, in portrait in a row above the lanes. The playfield itself, its look and its timing are in
 [gameplay.md](gameplay.md). A game starts with two seconds of lead-in before the song's first frame, so the hands can
 reach the lanes. The lead-in runs only while the play window has focus: the first time an app hides the system bars,
@@ -342,7 +352,7 @@ the game cannot rewind instead.
 ### Results
 
 In the game's dark presentation, replacing the game, and still in the play orientation, so the end of a song does not
-turn the screen under the player's hands: the song with its stars and seed; accuracy, large; Perfect, Good
+turn the screen under the player's hands: the song with its stars (as on the HUD) and seed; accuracy, large; Perfect, Good
 and Miss counts, each named and coloured (three tiles, or three rows at large text sizes); the longest combo; a timing
 chart of how early or late the hits were, with the mean in words ("Your hits were 6 ms late on average."), each method's
 mean when touch and keys both hit notes, and the latency slots the game used ([latency.md](latency.md#results)); nothing

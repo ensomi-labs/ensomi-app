@@ -39,6 +39,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import io.ensomi.android.chart.MakeChartScreen
 import io.ensomi.android.chart.MakeChartViewModel
+import io.ensomi.android.chart.StarDisplay
 import io.ensomi.android.diagnostics.DiagnosticsScreen
 import io.ensomi.android.diagnostics.DiagnosticsActivity
 import io.ensomi.android.keyboard.KeyboardScreen
@@ -344,15 +345,22 @@ private fun SongPlay(
         GameLoad.Loading -> GameLoading(song.title, failure = null, onBack = { backStack.removeLastOrNull() })
         is GameLoad.Failed -> GameLoading(song.title, current.message, onBack = { backStack.removeLastOrNull() })
         is GameLoad.Ready -> {
-            val stars = formatStars(current.record.stars)
+            // The star the chart came out at, with the star asked for beside it when they differ.
+            val display = StarDisplay.of(current.record.stars, current.record.measuredStars)
+            val stars = formatStars(display.stars)
+            val asked = display.asked?.let { formatStars(it) }
             PlayScreen(
                 title = song.title,
-                detail = stringResource(R.string.play_detail, stars, settings.judge.name),
+                detail = if (asked != null) {
+                    stringResource(R.string.play_detail_asked, stars, asked, settings.judge.name)
+                } else {
+                    stringResource(R.string.play_detail, stars, settings.judge.name)
+                },
                 settings = settings,
                 loop = false,
                 onFinished = { result -> backStack.replaceLast(Results(song.id, result.copy(
                     detail = song.artist.orEmpty(),
-                    chart = ResultChart(song.artist, current.record.stars, current.record.seed),
+                    chart = ResultChart(song.artist, display.stars, current.record.seed, askedStars = display.asked),
                 ))) },
                 onQuit = { backStack.removeLastOrNull() },
                 keyboards = graph.keyboards,

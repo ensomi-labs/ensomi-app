@@ -19,8 +19,11 @@ data class MadeChart(
     val holdCount: Int,
     /** The seed the generator used, from its receipt: the same request with it makes the same chart. */
     val seed: ULong,
+    /** The star asked for. */
     val stars: Double,
     val modelName: String,
+    /** The star the chart came out at, the runtime's `starRating` of it; null for a chart kept without one. */
+    val measuredStars: Double? = null,
 )
 
 enum class MakeFailure { RETRY, STARS, CONTROLS, MODEL_WAIT, MODEL_MISSING, MODEL_BLOCKED, MODEL_INFERENCE_BLOCKED, MODEL_OPEN, MISSING, DECODE }

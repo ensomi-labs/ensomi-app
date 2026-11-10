@@ -56,6 +56,39 @@ class ChartStoreTest {
         assertTrue(store.songIds.value.isEmpty())
     }
 
+    @Test
+    fun keepsTheStarAChartCameOutAt() {
+        val root = root()
+        ChartStore(root).save(chart("song-4").copy(stars = 8.0, measuredStars = 6.2), osu = "osu", receiptJson = "{}")
+        val kept = ChartStore(root).chart("song-4")!!
+        assertEquals(8.0, kept.stars, 0.0)
+        assertEquals(6.2, kept.measuredStars!!, 0.0)
+        assertEquals(6.2, kept.toMade().measuredStars!!, 0.0)
+        assertEquals(8.0, kept.toMade().stars, 0.0)
+    }
+
+    @Test
+    fun aRecordWrittenBeforeChartsWereMeasuredReadsWithoutAMeasuredStar() {
+        val root = root()
+        val directory = File(root, "song-5").apply { mkdirs() }
+        File(directory, "chart.osu").writeText("osu")
+        File(directory, "receipt.json").writeText("{}")
+        // chart.json as 0.2.1 wrote it: every field it had, and no measuredStars.
+        File(directory, "chart.json").writeText(
+            """{"songId":"song-5","modelName":"Ensomi R2 r2-1.0.1","seed":"2914","stars":4.5,"noteCount":1229,""" +
+                """"holdCount":230,"durationMs":222000,"sha256":null,"madeAtMs":1762700000000}""",
+        )
+        val store = ChartStore(root)
+        assertEquals(setOf("song-5"), store.songIds.value)
+        val kept = store.chart("song-5")!!
+        assertNull(kept.measuredStars)
+        assertEquals(4.5, kept.stars, 0.0)
+        assertNull(kept.toMade().measuredStars)
+        assertEquals("osu", store.osu("song-5"))
+        // Such a chart shows the star asked for alone, as 0.2.1 did.
+        assertEquals(StarDisplay(4.5, null, StarGap.NONE), StarDisplay.of(kept.stars, kept.measuredStars))
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun aSongIdCannotLeaveTheDirectory() {
         ChartStore(root()).chart("../settings")

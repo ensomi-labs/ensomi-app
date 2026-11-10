@@ -58,6 +58,8 @@ class GenerationCheck {
                 "deviceChoosesLowMemory" to GeneratorChoices.lowMemory(memory.totalMem, PhoneCheck.lowRamDevice()),
                 "totalMemGiB" to PhoneCheck.round(memory.totalMem / 1073741824.0, 2),
                 "stars" to stars,
+                // The star the chart came out at (the runtime's starRating), beside the star asked for.
+                "measuredStars" to made?.chart?.measuredStars,
                 "seed" to seed.toString(),
                 "result" to run.state.javaClass.simpleName,
                 "failure" to (run.state as? MakeState.Failed)?.message,

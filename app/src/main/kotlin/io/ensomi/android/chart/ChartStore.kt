@@ -16,6 +16,7 @@ data class StoredChart(
     val modelName: String,
     /** The seed, as text: JSON numbers cannot hold every 64-bit unsigned value. */
     val seed: String,
+    /** The star asked for. */
     val stars: Double,
     val noteCount: Int,
     val holdCount: Int,
@@ -24,6 +25,11 @@ data class StoredChart(
     /** The SHA-256 of the song's file it was made from. */
     val sha256: String? = null,
     val madeAtMs: Long = 0,
+    /**
+     * The star the chart came out at, the runtime's `starRating` of it: a number, so each screen words it in its own
+     * language. Null in a record written by 0.2.1, which measured nothing; such a chart shows the star asked for.
+     */
+    val measuredStars: Double? = null,
 ) {
     fun toMade(): MadeChart = MadeChart(
         noteCount = noteCount,
@@ -31,6 +37,7 @@ data class StoredChart(
         seed = seed.toULongOrNull() ?: 0u,
         stars = stars,
         modelName = modelName,
+        measuredStars = measuredStars,
     )
 }
 

@@ -148,6 +148,12 @@
     <string name="make_blocked_sections">A section needs a change before the chart can be made.</string>
     <string name="make_stop">Stop</string>
     <string name="make_ready">Chart ready</string>
+    <string name="make_ready_stars">%1$s stars</string>
+    <string name="make_ready_stars_asked">%1$s stars · asked %2$s</string>
+    <string name="make_ready_easier">This came out easier than asked.</string>
+    <string name="make_ready_harder">This came out harder than asked.</string>
+    <string name="make_ready_easier_best">This came out easier than asked. %1$s is at its best from %2$s to %3$s stars.</string>
+    <string name="make_ready_harder_best">This came out harder than asked. %1$s is at its best from %2$s to %3$s stars.</string>
     <string name="make_ready_notes">%1$s notes: %2$s taps, %3$s long notes</string>
     <string name="make_ready_seed">Seed %1$s</string>
     <string name="make_use_seed">Use seed</string>
@@ -199,6 +205,7 @@
     <string name="play_preview_title">Playfield preview</string>
     <string name="play_sample_detail">Sample chart · no sound</string>
     <string name="play_detail">%1$s stars · Judge %2$s</string>
+    <string name="play_detail_asked">%1$s stars · asked %2$s · Judge %3$s</string>
     <string name="play_output_moved">Sound moved to %1$s. This game keeps audio latency %2$s.</string>
     <!-- A key cap's label for these keys while a keyboard is connected (docs/keyboard.md); other keys show their character. -->
     <string name="key_space">Space</string>
@@ -210,6 +217,7 @@
     <string name="play_failed_chart">The chart could not be read. Make it again.</string>
     <string name="play_failed_decode">The song could not be decoded for play.</string>
     <string name="results_detail">%1$s stars · seed %2$s</string>
+    <string name="results_detail_asked">%1$s stars · asked %2$s · seed %3$s</string>
 
     <!-- Results -->
     <string name="results_title">Results</string>

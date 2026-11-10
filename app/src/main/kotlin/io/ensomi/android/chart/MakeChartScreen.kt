@@ -173,7 +173,7 @@ fun MakeChartScreen(
                         onShareDiagnostics = onShareModelDiagnostics,
                     )
                 }
-                StatusCard(state, onUseSeed = viewModel::useSeed)
+                StatusCard(state, capabilities, onUseSeed = viewModel::useSeed)
                 StarsCard(viewModel, capabilities, enabled = !making)
                 SeedField(viewModel, enabled = !making)
                 SectionsBlock(viewModel, capabilities, enabled = !making)
@@ -279,14 +279,14 @@ private fun SeedField(viewModel: MakeChartViewModel, enabled: Boolean) {
  * failure. Nothing before the first Make chart.
  */
 @Composable
-private fun StatusCard(state: MakeState, onUseSeed: (ULong) -> Unit) {
+private fun StatusCard(state: MakeState, capabilities: ChartCapabilities?, onUseSeed: (ULong) -> Unit) {
     if (state == MakeState.Idle) return
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             when (state) {
                 MakeState.Idle -> Unit
                 is MakeState.Making -> Phases(state.phase)
-                is MakeState.Made -> Made(state.chart, onUseSeed)
+                is MakeState.Made -> Made(state.chart, capabilities, onUseSeed)
                 is MakeState.Stopped -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(painterResource(R.drawable.ic_stop), contentDescription = null, modifier = Modifier.size(20.dp))
                     Text(stringResource(R.string.make_stopped), style = MaterialTheme.typography.bodyMedium)
@@ -403,9 +403,15 @@ private fun Phases(current: MakePhase) {
     }
 }
 
+/**
+ * The chart that was made. Its star is the one it came out at, with the star asked for beside it when they differ
+ * ([StarDisplay]); far apart, a line says so in plain words, and names the stars the model is best at when the star
+ * asked for lies outside them. A chart kept without a measurement shows no star here, as before.
+ */
 @Composable
-private fun Made(chart: MadeChart, onUseSeed: (ULong) -> Unit) {
+private fun Made(chart: MadeChart, capabilities: ChartCapabilities?, onUseSeed: (ULong) -> Unit) {
     val format = NumberFormat.getIntegerInstance()
+    val display = StarDisplay.of(chart.stars, chart.measuredStars)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(painterResource(R.drawable.ic_check_circle), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -413,6 +419,37 @@ private fun Made(chart: MadeChart, onUseSeed: (ULong) -> Unit) {
                 stringResource(R.string.make_ready),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+        if (chart.measuredStars != null) {
+            val stars = String.format(Locale.ROOT, "%.1f", display.stars)
+            val asked = display.asked?.let { String.format(Locale.ROOT, "%.1f", it) }
+            Text(
+                if (asked != null) {
+                    stringResource(R.string.make_ready_stars_asked, stars, asked)
+                } else {
+                    stringResource(R.string.make_ready_stars, stars)
+                },
+                style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = "tnum"),
+            )
+        }
+        if (display.gap != StarGap.NONE) {
+            val easier = display.gap == StarGap.EASIER
+            // The stars the model is best at explain the gap only when the star asked for lies outside them.
+            val best = capabilities?.takeIf { chart.stars !in it.recommendedStars }
+            Text(
+                if (best != null) {
+                    stringResource(
+                        if (easier) R.string.make_ready_easier_best else R.string.make_ready_harder_best,
+                        best.modelName,
+                        StarRange.bound(best.recommendedStars.start),
+                        StarRange.bound(best.recommendedStars.endInclusive),
+                    )
+                } else {
+                    stringResource(if (easier) R.string.make_ready_easier else R.string.make_ready_harder)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Text(

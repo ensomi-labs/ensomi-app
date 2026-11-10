@@ -126,6 +126,12 @@
     <string name="make_blocked_sections">请先修正区段设置，再生成谱面。</string>
     <string name="make_stop">停止</string>
     <string name="make_ready">谱面已就绪</string>
+    <string name="make_ready_stars">%1$s 星</string>
+    <string name="make_ready_stars_asked">%1$s 星 · 目标 %2$s 星</string>
+    <string name="make_ready_easier">生成的谱面比目标星级简单。</string>
+    <string name="make_ready_harder">生成的谱面比目标星级难。</string>
+    <string name="make_ready_easier_best">生成的谱面比目标星级简单。%1$s 最擅长 %2$s 至 %3$s 星的谱面。</string>
+    <string name="make_ready_harder_best">生成的谱面比目标星级难。%1$s 最擅长 %2$s 至 %3$s 星的谱面。</string>
     <string name="make_ready_notes">共 %1$s 个音符：%2$s 个单键，%3$s 个长按</string>
     <string name="make_ready_seed">种子 %1$s</string>
     <string name="make_use_seed">使用此种子</string>
@@ -175,6 +181,7 @@
     <string name="play_preview_title">游玩区预览</string>
     <string name="play_sample_detail">示例谱面 · 无声</string>
     <string name="play_detail">%1$s 星 · 判定 %2$s</string>
+    <string name="play_detail_asked">%1$s 星 · 目标 %2$s 星 · 判定 %3$s</string>
     <string name="play_output_moved">声音已切换到%1$s。本局仍使用音频延迟 %2$s。</string>
     <string name="key_space">空格</string>
     <string name="key_escape">Esc</string>
@@ -185,6 +192,7 @@
     <string name="play_failed_chart">无法读取谱面，请重新生成。</string>
     <string name="play_failed_decode">无法解码歌曲，不能开始游玩。</string>
     <string name="results_detail">%1$s 星 · 种子 %2$s</string>
+    <string name="results_detail_asked">%1$s 星 · 目标 %2$s 星 · 种子 %3$s</string>
     <string name="results_title">成绩</string>
     <string name="results_max_combo">最长连击</string>
     <string name="results_timing">时机</string>

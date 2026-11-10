@@ -1,10 +1,14 @@
+---
+commit: edaf37b722fc75079a4969f0bce8bd3261da4b95
+---
+
 # Android CI and release: proposed design
 
 ## Public demo: the current process
 
 The Android play demo is built on the owner's Mac from a committed tree, then signed by the owner with one
-release key made by hand and published as a GitHub prerelease of `ensomi-labs/ensomi-app`. The current build uses `versionName` **0.2.0**,
-`versionCode` **5**; Swift's `v0.1.0` stays separate. The build produces an unsigned,
+release key made by hand and published as a GitHub release of `ensomi-labs/ensomi-app`. The current build uses `versionName` **0.2.1**,
+`versionCode` **6**, owned by `gradle/libs.versions.toml`; Swift's `v0.1.0` stays separate. The build produces an unsigned,
 R8-optimized arm64-v8a APK, with JNA keep rules and the runtime AAR's UniFFI keep rules. The runtime is the local AAR
 whose SHA-256 is `468a11aa3f53db041b44478fbf8d6e49d57411b72c5d01594f1c6b05a3ec0738`.
 This candidate uses runtime commit `d090374`, with ORT built without KleidiAI. The runtime library now

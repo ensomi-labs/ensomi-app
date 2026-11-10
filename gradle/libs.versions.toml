@@ -1,8 +1,8 @@
 # Every version this project pins lives here.
 
 [versions]
-appVersionCode = "5"
-appVersionName = "0.2.0"
+appVersionCode = "6"
+appVersionName = "0.2.1"
 agp = "9.4.1"
 kotlin = "2.4.21"
 compileSdk = "37"

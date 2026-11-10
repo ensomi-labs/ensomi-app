@@ -101,7 +101,9 @@
     <string name="make_stars_less">星级降低 0.1</string>
     <string name="make_stars_more">星级提高 0.1</string>
     <string name="make_precise">精确匹配星级</string>
-    <string name="make_precise_help">最多生成 %1$d 张谱面，保留最接近目标星级的一张。耗时更长。</string>
+    <plurals name="make_precise_help">
+        <item quantity="other">最多生成 %1$d 张谱面，保留最接近目标星级的一张。耗时更长。</item>
+    </plurals>
     <string name="make_precise_progress">第 %1$d 张谱面（最多 %2$d 张）</string>
     <string name="make_seed">随机种子</string>
     <string name="make_seed_random">随机</string>

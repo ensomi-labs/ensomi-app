@@ -101,7 +101,9 @@
     <string name="make_stars_less">難易度を 0.1 下げる</string>
     <string name="make_stars_more">難易度を 0.1 上げる</string>
     <string name="make_precise">難易度を正確に合わせる</string>
-    <string name="make_precise_help">最大 %1$d 個の譜面を生成し、目標に最も近いものを残します。時間がかかります。</string>
+    <plurals name="make_precise_help">
+        <item quantity="other">最大 %1$d 個の譜面を生成し、目標に最も近いものを残します。時間がかかります。</item>
+    </plurals>
     <string name="make_precise_progress">譜面 %1$d（最大 %2$d）</string>
     <string name="make_seed">シード</string>
     <string name="make_seed_random">ランダム</string>

@@ -122,7 +122,10 @@
     <string name="make_stars_less">Lower the stars by 0.1</string>
     <string name="make_stars_more">Raise the stars by 0.1</string>
     <string name="make_precise">Precise difficulty</string>
-    <string name="make_precise_help">Makes up to %1$d charts and keeps the closest. Slower.</string>
+    <plurals name="make_precise_help">
+        <item quantity="one">Makes up to %1$d chart and keeps the closest. Slower.</item>
+        <item quantity="other">Makes up to %1$d charts and keeps the closest. Slower.</item>
+    </plurals>
     <string name="make_precise_progress">Chart %1$d of up to %2$d</string>
     <string name="make_seed">Seed</string>
     <string name="make_seed_random">Random</string>

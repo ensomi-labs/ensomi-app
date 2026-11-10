@@ -195,6 +195,7 @@ fun EnsomiApp(scenario: Scenario, graph: AppGraph) {
                             scenario.sections,
                             scenario.sectionsOpen,
                             initialStars = graph.debug.stars ?: scenario.stars,
+                            initialPrecise = scenario.precise,
                             onClosed = { graph.playAudio?.drop(song.id) },
                         )
                     }

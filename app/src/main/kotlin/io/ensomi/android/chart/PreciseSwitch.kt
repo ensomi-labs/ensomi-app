@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -37,7 +38,7 @@ fun PreciseSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled:
         Column(Modifier.weight(1f)) {
             Text(stringResource(R.string.make_precise), style = MaterialTheme.typography.titleMedium)
             Text(
-                stringResource(R.string.make_precise_help, PreciseSearch.MAX_CHARTS),
+                pluralStringResource(R.plurals.make_precise_help, PreciseSearch.MAX_CHARTS, PreciseSearch.MAX_CHARTS),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

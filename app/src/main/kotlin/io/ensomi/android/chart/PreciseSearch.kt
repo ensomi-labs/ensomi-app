@@ -99,11 +99,14 @@ object PreciseSearch {
                 break
             }
             // Strictly closer: the earliest wins a tie.
+            val closest: Try
             if (bestSoFar == null || abs(measured - target) < abs(bestSoFar.measured - target)) {
+                closest = current
                 best = current
                 keep(current)
+            } else {
+                closest = bestSoFar
             }
-            val closest = best ?: current
             if (abs(closest.measured - target) <= tolerance || index == maxCharts - 1) break
             if (!saturated) {
                 if (previous != null && abs(measured - previous.measured) < SAME) {

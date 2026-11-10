@@ -1,6 +1,6 @@
 # Ensomi for Android: hardware keyboard play (accepted and built)
 
-This is the design for issue [#29](https://github.com/ensomi-labs/ensomi/issues/29), Bluetooth keyboard input. It was
+This is the design for issue [#29](https://github.com/ensomi-labs/ensomi-app/issues/29), Bluetooth keyboard input. It was
 written against `dev/android` at `8a09ddf`, the shipped `android-v0.1.3`, revised after the owner's decisions of
 2026-11-07 ([Decided](#decided-owner-2026-11-07)) and accepted by the owner the same day, every open question decided as
 recommended, with two amendments ([Open questions, decided](#open-questions-decided-owner-2026-11-07)). It is built

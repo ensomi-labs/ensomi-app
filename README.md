@@ -18,7 +18,7 @@ shares device facts, recovered process exits and a bounded event journal. Loadin
 
 ## Get the demo
 
-Download the signed APK from the [Android 0.1.2 prerelease](https://github.com/ensomi-labs/ensomi/releases/tag/android-v0.1.2), open it on your device, and allow installation from the app you opened it with. It needs Android 13 or
+Download the signed APK from the [Android 0.1.2 prerelease](https://github.com/ensomi-labs/ensomi-app/releases/tag/android-v0.1.2), open it on your device, and allow installation from the app you opened it with. It needs Android 13 or
 later, an arm64-v8a device, an internet connection for the first-run model download from Hugging Face (about 120 MB),
 and a song you select through Android's system file picker. Chart generation runs on your device and needs additional
 storage and memory. This is a prerelease; performance and audio timing vary by device and output.

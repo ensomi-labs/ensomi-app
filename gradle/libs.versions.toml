@@ -24,7 +24,10 @@ androidxTestRunner = "1.7.0"
 androidxTestCore = "1.7.0"
 androidxTestExtJunit = "1.3.0"
 uiautomator = "2.4.0"
-# The runtime comes from a local AAR for now (`ensomi.runtime.aar` in local.properties).
+# The runtime comes from a local AAR for now (`ensomi.runtime.aar` in local.properties), and only this one: the
+# build stops when the selected file's SHA-256 is another (app/build.gradle.kts). Change it on purpose, in one commit
+# with the documents that name it, after scripts/check-no-kleidiai.py passes on the new AAR's library (README.md).
+runtimeAarSha256 = "606034d0be3123d0238843e263a6aac97e22362076cf0c422add69075e03cb1a"
 # Once a runtime release carries the AAR, pin it here, for example: ensomiRuntime = "x.y.z"
 
 [libraries]

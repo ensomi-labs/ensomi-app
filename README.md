@@ -1,5 +1,5 @@
 ---
-commit: ad6faaa11ffe2ba9b884c9cd8af118d6218f60c9
+commit: 26f45aef44f55636c8070db2be6494091c72f67e
 ---
 
 # Ensomi for Android
@@ -36,13 +36,43 @@ storage and memory. This is an early demo; performance and audio timing vary by 
 - Android SDK platform 37, build-tools 37.0.0, NDK 30.0.16248370, platform-tools and the emulator.
 - A device or emulator with an arm64-v8a CPU and Android 13 (API 33) or later. The app is built for
   arm64-v8a only.
-- The runtime AAR, built from ensomi-runtime commit `11da954` (branch `codex/star-open-android`:
-  `codex/android-no-kleidiai` at `d090374` with the finite-star and star-rating change merged; ORT still without
-  KleidiAI) with `scripts/build-android.sh` (see its `android/README.md`). The required AAR SHA-256 is
-  `606034d0be3123d0238843e263a6aac97e22362076cf0c422add69075e03cb1a`.
+- The runtime AAR whose SHA-256 is `606034d0be3123d0238843e263a6aac97e22362076cf0c422add69075e03cb1a`, pinned as `runtimeAarSha256`
+  in `gradle/libs.versions.toml`; the build refuses any other. It is built with `scripts/build-android.sh` (see the
+  runtime's `android/README.md`) from ensomi-runtime commit `ecc4c36`, the head of the branch `claude/android-library`,
+  which is draft pull request [ensomi-labs/runtime#11](https://github.com/ensomi-labs/runtime/pull/11); the commit
+  joins `main` when that merges. The branch is the earlier Android branch at `d090374`, whose ONNX Runtime is built
+  without KleidiAI, with `main` merged in (the finite-star change and `starRating`) and one commit that adds the binary
+  check to `scripts/build-android.sh`. On the owner's Mac the AAR is
+  `~/ensomi/ensomi-runtime/artifacts/android-library-0.2.2/ensomi-runtime-ecc4c36.aar`, with the unstripped library,
+  `SHA256SUMS` and a `README.txt` beside it.
+- `python3` on the PATH, for the binary check below. Its `llvm-objdump` and `llvm-readelf` come from the pinned NDK,
+  under the SDK that `local.properties` names.
 
 The 0.1.3 candidate (code 4) removes KleidiAI kernels from ONNX Runtime to avoid the suspected
 SME-without-SME2 failure. It has not run on a CPU with SME; the affected phone still needs a tester rerun.
+
+**The build guards the runtime it links.** 0.2.1 was built with an older AAR than the one required, and its library
+crashes on CPUs that have SME and not SME2 ([docs/release.md](docs/release.md)). Since 0.2.2:
+
+- **The pin.** `local.properties` selects a file; it is not an exemption. Gradle stops when the selected AAR's SHA-256
+  is not `runtimeAarSha256`: at configuration, and again in the task `verifyRuntimeAar` before `preBuild`. That stops
+  every build type (debug, checks, release, the instrumentation APK), the unit tests and lint. No property turns it
+  off.
+- **The binary check.** `scripts/check-no-kleidiai.py` is the checker ensomi-runtime carries too and runs in its own
+  build; the two files change together. It disassembles the runtime's native library with the NDK's tools and exits
+  with 1 on KleidiAI's kernels or any SME code and with 2 on an input or tool error. The build runs it on
+  `jni/arm64-v8a/libensomi_runtime_ffi.so` from the AAR before `preBuild` (`checkRuntimeAarLibrary`), and on
+  `lib/arm64-v8a/libensomi_runtime_ffi.so` from every APK that `assembleDebug`, `assembleChecks`, `assembleRelease` and
+  `assembleDebugAndroidTest` leave (`checkDebugApkRuntimeLibrary` and so on, each the assembly's finalizer). Any exit
+  but 0 fails the build, as do a missing `python3` or NDK, a library that cannot be extracted, and an app APK without
+  the library. The instrumentation APK links no runtime and passes with a line saying so. The checks run in every
+  build, each disassembling the whole library. A pass means none of that code is there, not that the library runs on
+  every CPU.
+
+To adopt another runtime, build it with ensomi-runtime's `scripts/build-android.sh`, whose own gate (the same checker)
+must pass; then change `runtimeAarSha256` and the documents that name the AAR (this section and
+[docs/release.md](docs/release.md)) in one commit. Never choose an AAR by searching a machine for one, which is how 0.2.1
+went wrong. The guards were written without a compiler; [docs/release.md](docs/release.md) says what has run.
 
 Every version the build uses is pinned in `gradle/libs.versions.toml`.
 
@@ -55,8 +85,9 @@ sdk.dir=/absolute/path/to/Android/sdk
 ensomi.runtime.aar=/absolute/path/to/ensomi-runtime/build/android/ensomi-runtime.aar
 ```
 
-`ensomi.runtime.aar` selects the runtime AAR the app links. Gradle stops with a message when it is missing
-or does not name a file. Gradle hashes that exact AAR into `BuildConfig.RUNTIME_AAR_SHA256`;
+`ensomi.runtime.aar` selects the runtime AAR the app links. Gradle stops with a message when it is missing,
+does not name a file, or names a file whose SHA-256 is not the pin (Build requirements). `sdk.dir` also locates the
+NDK's tools for the binary check. Gradle hashes that exact AAR into `BuildConfig.RUNTIME_AAR_SHA256`;
 Diagnostics exports it as `runtime.identity` without loading native code. The AAR carries no dependency metadata, so the app declares JNA and
 kotlinx-coroutines itself. Once a runtime release carries the AAR, the app will pin that release instead.
 
@@ -201,7 +232,7 @@ output starting the readings over.
 A debuggable build takes these extras on a normal launch, for checks on an emulator:
 
 ```sh
-adb shell am start -n io.ensomi.android/.MainActivity --ef stars 7         # stars outside the slider: the runtime refuses
+adb shell am start -n io.ensomi.android/.MainActivity --ef stars 7         # stars outside the slider: the runtime makes a chart at any finite star
 adb shell am start -n io.ensomi.android/.MainActivity --ez autoplay true   # games played by the autoplay
 adb shell am start -n io.ensomi.android/.MainActivity --ez low-memory true # the generator's lowMemory option
 ```
@@ -288,7 +319,8 @@ Ensomi never operates another app. It uses no Accessibility service, reads no ot
   `play/`, `settings/`, `audio/`, `diagnostics/`.
 - `docs/`: the design, the gameplay design, the build plan, the phone checks' runbook and the recognition session.
 - `scripts/`: the screenshot capture script, the Perfetto frame-timeline script, the click-track generator, the phone
-  checks' collection script and the kit script.
+  checks' collection script, the kit script, and `check-no-kleidiai.py`, which the build runs on the runtime's native
+  library.
 - `app/src/test/kotlin/`: unit tests that run on the JVM.
 - `app/src/androidTest/kotlin/`: the phone checks, instrumented tests that measure on a device and log their results.
 - `app/src/checks/`: the checks build's resources (the debug tools on in a build that is not debuggable).

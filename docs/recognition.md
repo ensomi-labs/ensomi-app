@@ -47,7 +47,8 @@ The lookup is optional when the text names the song. Clipboard paste on the sess
 
 `app/src/recognition/` supplies Kotlin, resources and the manifest to debug, checks and release. Release keep rules in
 `app/src/release/keepRules` retain JNA; the runtime AAR supplies UniFFI keep rules including the sync bindings.
-The required AAR SHA-256 is `606034d0be3123d0238843e263a6aac97e22362076cf0c422add69075e03cb1a`.
+The required AAR is the one pinned as `runtimeAarSha256` in `gradle/libs.versions.toml`, SHA-256
+`606034d0be3123d0238843e263a6aac97e22362076cf0c422add69075e03cb1a`; the build refuses any other.
 JVM tests in `app/src/testDebug/` cover prerequisites, share handoff and parsing, matching, waits, growth, refusal,
 chart/sync ordering, restoration and joining. Device tests in `app/src/androidTest/` exercise the real controller’s share routing, blank SEND guard, one-use guide baseline, same-file retry and dormant restoration; an opt-in decoder check uses generated headerless MP3 fixtures.
 

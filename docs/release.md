@@ -1,5 +1,5 @@
 ---
-commit: edaf37b722fc75079a4969f0bce8bd3261da4b95
+commit: e59aa3a170e222b74ecbf2b0f4db23e5cba77a1c
 ---
 
 # Android CI and release: proposed design
@@ -7,12 +7,22 @@ commit: edaf37b722fc75079a4969f0bce8bd3261da4b95
 ## Public demo: the current process
 
 The Android play demo is built on the owner's Mac from a committed tree, then signed by the owner with one
-release key made by hand and published as a GitHub release of `ensomi-labs/ensomi-app`. The current build uses `versionName` **0.2.1**,
-`versionCode` **6**, owned by `gradle/libs.versions.toml`; Swift's `v0.1.0` stays separate. The build produces an unsigned,
+release key made by hand and published as a GitHub release of `ensomi-labs/ensomi-app`. The current build uses `versionName` **0.2.2**,
+`versionCode` **7**, owned by `gradle/libs.versions.toml`; Swift's `v0.1.0` stays separate. The build produces an unsigned,
 R8-optimized arm64-v8a APK, with JNA keep rules and the runtime AAR's UniFFI keep rules. The runtime is the local AAR
-whose SHA-256 is `468a11aa3f53db041b44478fbf8d6e49d57411b72c5d01594f1c6b05a3ec0738`.
-This candidate uses runtime commit `d090374`, with ORT built without KleidiAI. The runtime library now
-carries GNU build ID `1b2f996d51834c432054707ea55137a1204c543b`. Keep the exact unstripped
+whose SHA-256 is `606034d0be3123d0238843e263a6aac97e22362076cf0c422add69075e03cb1a`, pinned as `runtimeAarSha256` in
+`gradle/libs.versions.toml`.
+It is built from runtime commit `ecc4c36` (`ecc4c36f81bff4d411db0e3458bffe2707d6b27f`), the head of the runtime's
+Android library branch `claude/android-library`, merged since as ensomi-labs/runtime#11; the commit is in the
+runtime's `main`. The branch is the earlier Android branch at `d090374`, whose ONNX Runtime is built without
+KleidiAI, with `main` merged in (ensomi-labs/runtime#10, the finite-star change and `starRating`) and one commit that
+adds the binary check to `scripts/build-android.sh`. The runtime
+library carries GNU build ID `65c20bc72e996aace854881fbbccd5af7a7526d7`, read from the AAR's
+`jni/arm64-v8a/libensomi_runtime_ffi.so`; that library's SHA-256 is
+`de9dcaa4ff32f030cf50410f7fee3c9155f3baa4e4d7da372f8db17b31e7413b` and the unstripped library's is
+`16457d6684f893e54c442d3fee74bdc542c7f3bd77f69f60b42ca0e4ff273f8e`. On the owner's Mac the AAR is
+`~/ensomi/ensomi-runtime/artifacts/android-library-0.2.2/ensomi-runtime-ecc4c36.aar`, with the unstripped library,
+`SHA256SUMS` and a `README.txt` beside it. Keep the exact unstripped
 `libensomi_runtime_ffi.so` per release alongside the AAR, its SHA-256 and R8 mapping for symbolizing
 reported offsets; rebuilding later is not a substitute for retaining that binary. Diagnostics
 `runtime.identity` is the SHA-256 of the AAR Gradle actually links.
@@ -23,6 +33,61 @@ inference; cold shares wait for readiness. Crash projection 2 prioritizes the cr
 in memory and exports up to 512 KiB of redacted evidence. Install over
 0.1.2 without uninstalling so earlier exit records survive. The candidate has not run on a CPU
 with SME, and the suspected affected-phone fix still needs a tester rerun.
+
+0.2.2 keeps the stars 0.2.1 offers, 2.0 to 5.9, and shows what was made. Each chart is measured as it is made, and
+the chart-ready card, the game's HUD and the results show the star it came out at, with the star asked for beside
+it when they differ. An experiment on twelve songs with two starting seeds (ensomi-runtime `codex/star-reach` at
+`6dfc2a2`; measured stars on a computer, nobody played a chart) found that a first chart for a target from 2.5 to 5.5
+stars misses by a median of 0.43 stars. It also found that every request at or below 2.125 stars makes one chart for
+a song and seed, and every request at or above 5.875 another, measuring about 2.5 and 5.3 stars at the centre: stars
+beyond this range would ask for the same charts as its ends, which is why the range stays. An install over 0.2.1 keeps the charts stored for each song; they have
+no measured star and show the star asked for alone. That rests on a unit test reading a record in 0.2.1's shape; the
+install itself has not been tried.
+
+Precise difficulty is a switch on the song's screen, off by default: it makes up to six charts, asking only for stars
+the slider offers, and keeps the one closest to the star asked for. In the same experiment the search brought the
+median miss from 0.43 stars to 0.08, with about two thirds of its charts within 0.15 stars; that was measured with
+requests allowed three stars from the target, and again, no worse, with requests held to 2 to 6, not with the
+slider's own 2.0 to 5.9 that the app uses.
+
+0.2.2 also puts back the library fix that 0.2.1 lost. 0.2.1 was built with `ensomi.runtime.aar` pointing at an older
+AAR (SHA-256 `16c647da00a050f3cd13a33b7a1124f467c152819b36139a6186cd195f220880`, runtime `b12bb0f`) instead of the one this
+document required then (`468a11aa3f53db041b44478fbf8d6e49d57411b72c5d01594f1c6b05a3ec0738`). Nothing compared the two: the build
+hashed whatever it linked into `BuildConfig.RUNTIME_AAR_SHA256` and went on. The older library's ONNX Runtime contains
+KleidiAI's SME2 kernels. On a CPU that has SME and not SME2 it executes `ptrue pn9.b` straight after `smstart` while the
+model opens, and the app dies with SIGILL; one user's diagnostics show three such crashes of 0.2.1. 0.1.0, 0.1.1, 0.1.2
+and 0.2.1 package that same library; 0.1.3 and 0.2.0 carry the fixed one.
+
+For the AAR that 0.2.2 links, this ran on the owner's Mac on 2026-11-10 (Codex job
+`20261110-225720-android-library-gate`): the runtime's build passed the checker, `scripts/check-no-kleidiai.py`, at both
+of its gate points; the checker fails on the 0.2.1 library (22 kernel strings, 495 instruction lines) and passes this
+one with zero findings; 151 workspace tests and 46 tests with the `sync` feature passed. The ONNX Runtime linked was an
+existing build directory configured with `onnxruntime_USE_KLEIDIAI=OFF`, not compiled afresh in that job, so the verdict
+rests on the checker, not on the flag. Nothing ran on a phone.
+
+The app's build now refuses any other AAR and checks the native code it packages. Gradle stops every build type, the
+unit tests and lint when the file `ensomi.runtime.aar` selects does not hash to the pin, at configuration and again
+before `preBuild`; nothing turns that off. It runs the same checker on the library inside the AAR before `preBuild` and
+on the library inside every APK an assembly leaves, and any exit but 0 fails the build (README, Build requirements).
+The checker finds KleidiAI's kernels and SME code; a pass does not show that the library runs on every CPU. The app
+does not refuse by CPU features on the device: with the pin and the check it cannot contain the affected library, so
+such a block could not be reached, nor tested without an affected phone.
+
+Verified on the owner's Mac on 2026-11-10 at `e59aa3a` (Codex job `20261110-231554-codex-1110-1415`): the guards ran in
+two consecutive full builds and passed with the pinned AAR; the 0.2.1 AAR was stopped by its hash at configuration, a
+file replaced at the same path was stopped, and with the pin set to the old hash in a throwaway tree the checker
+stopped the old AAR and the released 0.2.1 APK, with 22 kernel strings and 495 forbidden instruction lines. Not
+verified: no phone with SME and without SME2 is recorded as having run 0.2.2.
+
+The same Mac build at `e59aa3a` assembled debug, checks, release and the instrumentation APK, passed 609 unit tests
+with no lint finding new against 0.2.1, and launched the debug app on the 16 KB emulator. The owner signed the release
+APK on 2026-11-10; it is published as `android-v0.2.2`, from that commit. The signed build with the owner's private
+additions was installed over 0.2.1 on the owner's phone, keeping its data, and launched once without a crash; that phone
+has no SME, and the launch did not open the model. The owner reports having tested the build; what was tested is not
+recorded here. No chart generated on an Android device with this build is on record.
+
+Known in 0.2.2, as in 0.2.1: a section's star target at the top of its slider (5.9) is judged out of range and blocks
+Make chart; 5.8 works. Its fix is deferred.
 
 The owner keeps the keystore outside all repositories and signs separately with `apksigner`. CI has not run, so its
 duration is unknown. The remaining sections are the original proposal, including its future release prerequisites;
@@ -48,6 +113,12 @@ the pinned model download are the network activity. Local recognition traces and
 Proposed on 2026-10-31. Nothing here is enabled, and until the owner takes this design AGENTS.md stands: builds run on the
 owner's Mac. Each point is decided so that [the steps](#9-order-of-work) can be carried out in order; that section marks what
 only the owner can do.
+
+One thing has changed under the proposal since 0.2.2: the local AAR is pinned by SHA-256 in the build, so
+`ensomi.runtime.aar` selects the pinned file and is no longer an override that can link another. The sections below
+also pair a snapshot of `b12bb0f` with the hash `468a11aa…`, which do not belong together: `b12bb0f` builds the faulty
+`16c647da…` library, and `468a11aa…` is the AAR of 0.1.3 and 0.2.0, from `d090374`. A snapshot would be of the pinned
+AAR.
 
 | Topic | Decision |
 | --- | --- |

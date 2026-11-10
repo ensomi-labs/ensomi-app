@@ -167,10 +167,11 @@ routes with separate makers, reports time/size/RSS, and stops on any mismatch. I
 
 ## Runtime changes
 
-Build against the AAR from `codex/android-perf-2` at `b12bb0f`, selected by `ensomi.runtime.aar`
-([README](../README.md#requirements)). Its SHA-256 is
-`16c647da00a050f3cd13a33b7a1124f467c152819b36139a6186cd195f220880`.
-It supplies the sync bindings and the performance work the app now uses. No further runtime change is needed for
+This design was first built against the AAR from `codex/android-perf-2` at `b12bb0f` (SHA-256
+`16c647da00a050f3cd13a33b7a1124f467c152819b36139a6186cd195f220880`), which supplied the sync bindings and the performance work the
+app uses. Do not link that AAR: its library contains KleidiAI's SME2 kernels and crashes on CPUs with SME and without
+SME2, and the build refuses it. Link the AAR pinned as `runtimeAarSha256` in `gradle/libs.versions.toml`
+([README](../README.md#build-requirements), [release.md](release.md)). No further runtime change is needed for
 this design. Two may become useful and are listed, not made:
 
 - **One call per frame.** A frame calls the runtime through JNA only for what can have changed (gameplay.md, Frame

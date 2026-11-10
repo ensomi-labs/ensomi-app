@@ -47,6 +47,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -176,6 +177,7 @@ fun MakeChartScreen(
                 }
                 StatusCard(state, onUseSeed = viewModel::useSeed)
                 StarsCard(viewModel, capabilities, enabled = !making)
+                PreciseSwitch(viewModel.precise, onCheckedChange = { viewModel.precise = it }, enabled = !making)
                 SeedField(viewModel, enabled = !making)
                 SectionsBlock(viewModel, capabilities, enabled = !making)
                 Spacer(Modifier.height(8.dp))
@@ -262,7 +264,7 @@ private fun StatusCard(state: MakeState, onUseSeed: (ULong) -> Unit) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             when (state) {
                 MakeState.Idle -> Unit
-                is MakeState.Making -> Phases(state.phase)
+                is MakeState.Making -> Phases(state.phase, state.precise)
                 is MakeState.Made -> Made(state.chart, onUseSeed)
                 is MakeState.Stopped -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(painterResource(R.drawable.ic_stop), contentDescription = null, modifier = Modifier.size(20.dp))
@@ -346,9 +348,12 @@ private fun MakeBar(
     }
 }
 
-/** The five phases, each done, under way or to come, in words and a symbol. */
+/**
+ * The five phases, each done, under way or to come, in words and a symbol. A precise search says which of its charts
+ * it is making under the phase under way.
+ */
 @Composable
-private fun Phases(current: MakePhase) {
+private fun Phases(current: MakePhase, precise: PreciseProgress?) {
     Column(
         verticalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
@@ -370,19 +375,34 @@ private fun Phases(current: MakePhase) {
                         )
                     }
                 }
-                Text(
-                    stringResource(phase.title),
-                    style = if (phase == current) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
-                    color = if (phase > current) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                )
+                Column {
+                    Text(
+                        stringResource(phase.title),
+                        style = if (phase == current) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+                        color = if (phase > current) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                    )
+                    if (phase == current && precise != null) {
+                        Text(
+                            stringResource(R.string.make_precise_progress, precise.number, precise.limit),
+                            style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
     }
 }
 
+/**
+ * The chart that was made. Its star is the one it came out at, with the star asked for beside it when they differ
+ * ([StarDisplay]); far apart, a line says so in plain words. A chart kept without a measurement shows no star here,
+ * as before. The seed is the one to ask with again ([MadeChart.seed]).
+ */
 @Composable
 private fun Made(chart: MadeChart, onUseSeed: (ULong) -> Unit) {
     val format = NumberFormat.getIntegerInstance()
+    val display = StarDisplay.of(chart.stars, chart.measuredStars)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(painterResource(R.drawable.ic_check_circle), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -390,6 +410,35 @@ private fun Made(chart: MadeChart, onUseSeed: (ULong) -> Unit) {
                 stringResource(R.string.make_ready),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+        if (chart.measuredStars != null) {
+            val stars = String.format(Locale.ROOT, "%.1f", display.stars)
+            val asked = display.asked?.let { String.format(Locale.ROOT, "%.1f", it) }
+            Text(
+                if (asked != null) {
+                    stringResource(R.string.make_ready_stars_asked, stars, asked)
+                } else {
+                    stringResource(R.string.make_ready_stars, stars)
+                },
+                style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = "tnum"),
+            )
+        }
+        if (display.gap != StarGap.NONE) {
+            Text(
+                stringResource(
+                    if (display.gap == StarGap.EASIER) R.string.make_ready_easier else R.string.make_ready_harder,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // A precise search says how many charts it made to find this one.
+        chart.preciseCharts?.let { charts ->
+            Text(
+                pluralStringResource(R.plurals.make_ready_precise, charts, charts),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Text(

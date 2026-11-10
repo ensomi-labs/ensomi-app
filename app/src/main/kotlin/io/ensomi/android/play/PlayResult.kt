@@ -59,8 +59,12 @@ data class PlayResult(
     }
 }
 
+/**
+ * [stars] is the chart's star as [io.ensomi.android.chart.StarDisplay] gives it: the star it came out at when that
+ * was measured, else the star asked for. [askedStars] is the star asked for when it is said beside it.
+ */
 @Serializable
-data class ResultChart(val artist: String?, val stars: Double, val seed: String)
+data class ResultChart(val artist: String?, val stars: Double, val seed: String, val askedStars: Double? = null)
 
 /** One method's part in a game: whether it pressed, and its hits timed with the sum of their errors. */
 data class MethodHits(val pressed: Boolean = false, val hits: Int = 0, val errorSumMs: Double = 0.0)

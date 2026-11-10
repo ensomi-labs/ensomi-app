@@ -38,6 +38,7 @@ import io.ensomi.runtime.ScheduleMode
 import io.ensomi.runtime.SectionRequest
 import io.ensomi.runtime.SectionTarget
 import io.ensomi.runtime.prepare
+import io.ensomi.runtime.starRating
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
@@ -61,8 +62,10 @@ import kotlinx.coroutines.launch
  * - Library songs run `prepare` one at a time while idle. Audio stages are kept in [disk] and the latest
  *   [PREPARED_SONGS] in memory, keyed by audio SHA-256 and model revision. Both chart routes consult these before
  *   decoding. A requested chart interrupts background work; play waits for cancellation and cleanup.
- * - Make chart runs a whole-chart `ChartScheduler` from those stages and keeps the result, `.osu` and receipt, as the
- *   song's last chart in [store], so it can be played after the app was closed.
+ * - Make chart runs a whole-chart `ChartScheduler` from those stages, measures the chart with the runtime's
+ *   `starRating`, and keeps the result, `.osu` and receipt, as the song's last chart in [store] with the star it came
+ *   out at, so it can be played after the app was closed. With precise difficulty on, it makes up to
+ *   [PreciseSearch.MAX_CHARTS] charts from the one preparation and keeps the closest ([PreciseSearch]).
  * - Stop signals the work under way from the calling thread: the preparation's `Cancellation`, or the scheduler's
  *   `stop()`. The runtime stops at its next graph run.
  *
@@ -142,11 +145,11 @@ class RuntimeChartMaker(
 
         /** A waiting chart can finish inside preparation's model scope, without passing out a native handle. */
         @Volatile
-        var finishChart: (ChartGenerator.(Prepared) -> ChartResult?)? = null
+        var finishChart: (ChartGenerator.(Prepared) -> Measured?)? = null
 
         var chartStartedNanos = 0L
         var chartAttempted = false
-        var chart: ChartResult? = null
+        var chart: Measured? = null
 
         lateinit var job: Job
 
@@ -167,6 +170,12 @@ class RuntimeChartMaker(
             }
         }
     }
+
+    /**
+     * A chart as the runtime made it, and the star it came out at: the runtime's `starRating`, as it answered.
+     * [precise] is set on the chart a precise search kept.
+     */
+    private class Measured(val result: ChartResult, val stars: Double, val precise: PreciseRecord? = null)
 
     /** A chart being made; [stop] reaches whichever part is under way. */
     private class Making {
@@ -340,7 +349,7 @@ class RuntimeChartMaker(
                 preparation.chartStartedNanos = System.nanoTime()
                 preparation.report(MakePhase.ROWS)
                 PeakMemory.reset()
-                makePrepared(stages, runtimeRequest, making)
+                makeCharts(songId, stages, runtimeRequest, request.precise, making)
             }
             making.preparation = preparation
             preparation.onPhase = { setState(songId, MakeState.Making(songId, it)) }
@@ -359,26 +368,28 @@ class RuntimeChartMaker(
         val preparedKey = key ?: return MakeState.Failed(songId, "The song's audio could not be prepared.", reason = MakeFailure.DECODE)
         setState(songId, MakeState.Making(songId, MakePhase.ROWS))
         val started = completed?.chartStartedNanos?.takeIf { it != 0L } ?: System.nanoTime()
-        val result = if (completed?.chartAttempted == true) completed.chart else {
+        val made = if (completed?.chartAttempted == true) completed.chart else {
             PeakMemory.reset()
             model.access.withLock {
                 check(modelReady() && preparedKey.substringAfterLast('/') == capabilitiesRevision) { unavailableModel() }
                 worker.withGenerator(appContext, directory, options()) {
                     val stages = prepared.get(preparedKey) ?: return@withGenerator null
-                    makePrepared(stages, runtimeRequest, making)
+                    makeCharts(songId, stages, runtimeRequest, request.precise, making)
                 }
             }
         }
-        if (result == null) {
+        if (made == null) {
             return if (making.stopped.get()) MakeState.Stopped(songId) else MakeState.Failed(songId, "No chart was made.")
         }
+        val result = made.result
         Log.i(
             TAG,
             String.format(
                 Locale.ROOT,
-                "Chart made for %s in %.1f s, peak RSS %s: %d objects, seed %s, star %.1f",
+                "Chart made for %s in %.1f s, peak RSS %s: %d objects, seed %s, star %.2f asked (receipt %.2f), %.2f measured, %s",
                 song.fileName, (System.nanoTime() - started) / 1e9, PeakMemory.describe(),
-                result.chart.objects.size, result.receipt.seed, result.receipt.star,
+                result.chart.objects.size, result.receipt.seed, request.stars, result.receipt.star, made.stars,
+                made.precise?.let { "the closest of ${it.charts} from seed ${it.startSeed}" } ?: "one pass",
             ),
         )
         setState(songId, MakeState.Making(songId, MakePhase.EXPORT))
@@ -387,24 +398,98 @@ class RuntimeChartMaker(
             songId = songId,
             modelName = "${result.receipt.modelName} ${result.receipt.modelVersion}",
             seed = result.receipt.seed.toString(),
-            stars = result.receipt.star,
+            // The star the person asked for; the receipt keeps the request the generator was given.
+            stars = request.stars,
             noteCount = result.chart.objects.size,
             holdCount = holds,
             durationMs = result.chart.durationMs.toInt(),
             sha256 = sha256,
             madeAtMs = System.currentTimeMillis(),
+            // JSON holds no NaN or infinity: a star that is not a number is kept as no measurement.
+            measuredStars = made.stars.takeIf { it.isFinite() },
+            precise = made.precise,
         )
         store.save(record, result.osu, result.receipt.receiptJson)
         return MakeState.Made(songId, record.toMade())
     }
 
-    /** Called only inside withGenerator; the scheduler cannot outlive that model scope. */
-    private fun ChartGenerator.makePrepared(stages: Prepared, request: GenerateChartRequest, making: Making): ChartResult? =
+    /**
+     * One chart, or with precise difficulty the closest of several: [PreciseSearch] asks for each chart from the same
+     * audio stages, steering only the whole song's star and seed (the sections go unchanged with every one), and this
+     * holds the closest so far and the one just made, never more. The search's requests stay within the stars the
+     * slider offers, from the model's capabilities; the star asked for is not moved. Each chart is announced through the song's state
+     * ("Chart 2 of up to 6", within Placing notes), and a stop ends the search with no chart, as it ends a single one.
+     * The chart kept carries what the search did; its receipt holds its own request star and seed.
+     *
+     * Called only inside withGenerator, like [makePrepared].
+     */
+    private fun ChartGenerator.makeCharts(
+        songId: String,
+        stages: Prepared,
+        request: GenerateChartRequest,
+        precise: Boolean,
+        making: Making,
+    ): Measured? {
+        if (!precise) return makePrepared(stages, request, making)
+        // A chart is made only while the model's capabilities are held; should they be gone, one chart as asked.
+        val offered = mutableCapabilities.value?.selectableStars ?: return makePrepared(stages, request, making)
+        var latest: Measured? = null
+        var kept: Measured? = null
+        val outcome = PreciseSearch.run(
+            target = request.star,
+            seed = request.seed,
+            lowest = offered.start,
+            highest = offered.endInclusive,
+            keep = { kept = latest },
+        ) { index, star, seed ->
+            // The chart before this one is let go here, unless it was kept.
+            latest = null
+            val candidate = if (making.stopped.get()) {
+                null
+            } else {
+                setState(
+                    songId,
+                    MakeState.Making(songId, MakePhase.ROWS, PreciseProgress(index + 1, PreciseSearch.MAX_CHARTS)),
+                )
+                makePrepared(stages, request.copy(star = star, seed = seed), making)
+            }
+            if (candidate != null) {
+                Log.i(
+                    TAG,
+                    String.format(
+                        Locale.ROOT,
+                        "Precise chart %d of up to %d for %s: asked %.3f with seed %s, came out %.3f (target %.2f)",
+                        index + 1, PreciseSearch.MAX_CHARTS, songId, star, seed.toString(), candidate.stars, request.star,
+                    ),
+                )
+            }
+            latest = candidate
+            candidate?.stars
+        }
+        if (outcome == null) return null
+        val best = kept ?: return null
+        return Measured(
+            best.result,
+            best.stars,
+            PreciseRecord(
+                charts = outcome.tries.size,
+                startSeed = request.seed.toString(),
+                requestStars = best.result.receipt.star,
+            ),
+        )
+    }
+
+    /**
+     * Called only inside withGenerator; the scheduler cannot outlive that model scope. The chart is measured here, on
+     * the runtime's worker, where every other runtime call of a generation runs.
+     */
+    private fun ChartGenerator.makePrepared(stages: Prepared, request: GenerateChartRequest, making: Making): Measured? =
         ChartScheduler.fromPrepared(this, stages, request, ScheduleMode.WHOLE_CHART, NO_PLAY).use { scheduler ->
             making.running(scheduler)
             try {
                 guardInference("model_chart") { scheduler.work() }
-                scheduler.result()
+                val result: ChartResult? = scheduler.result()
+                if (result == null) null else Measured(result, starRating(result.chart))
             } finally {
                 making.running(null)
             }

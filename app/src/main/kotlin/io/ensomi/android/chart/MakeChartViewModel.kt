@@ -18,8 +18,13 @@ class MakeChartViewModel(
     private val maker: ChartMaker,
     initialSections: List<SectionDraft>,
     sectionsOpen: Boolean,
-    /** Debug launches only: stars outside the slider's range, to see the runtime refuse them. */
+    /**
+     * A debug launch's stars, which may lie outside the slider's range, to see what the runtime does with them; or the
+     * stars a screenshot scenario's chart was asked for.
+     */
     initialStars: Double? = null,
+    /** Screenshot scenarios only: the screen of a precise search opens with the switch on. */
+    initialPrecise: Boolean = false,
     /** The song's screen has closed for good. */
     private val onClosed: () -> Unit = {},
 ) : ViewModel() {
@@ -30,6 +35,9 @@ class MakeChartViewModel(
 
     var stars by mutableDoubleStateOf(initialStars ?: 3.5)
     var seedText by mutableStateOf("")
+
+    /** Precise difficulty: off until the player turns it on, and kept with the screen like the stars and the seed. */
+    var precise by mutableStateOf(initialPrecise)
     var sections by mutableStateOf(initialSections)
         private set
     var sectionsOpen by mutableStateOf(sectionsOpen)
@@ -54,7 +62,7 @@ class MakeChartViewModel(
     }
 
     fun make() {
-        maker.make(song.id, ChartRequest(stars, ChartRequestRules.parseSeed(seedText), sections))
+        maker.make(song.id, ChartRequest(stars, ChartRequestRules.parseSeed(seedText), sections, precise = precise))
     }
 
     fun stop() = maker.stop(song.id)

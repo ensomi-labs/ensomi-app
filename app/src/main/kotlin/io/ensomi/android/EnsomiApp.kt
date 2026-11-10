@@ -39,6 +39,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import io.ensomi.android.chart.MakeChartScreen
 import io.ensomi.android.chart.MakeChartViewModel
+import io.ensomi.android.chart.StarDisplay
 import io.ensomi.android.diagnostics.DiagnosticsScreen
 import io.ensomi.android.diagnostics.DiagnosticsActivity
 import io.ensomi.android.keyboard.KeyboardScreen
@@ -193,7 +194,8 @@ fun EnsomiApp(scenario: Scenario, graph: AppGraph) {
                             graph.charts,
                             scenario.sections,
                             scenario.sectionsOpen,
-                            initialStars = graph.debug.stars,
+                            initialStars = graph.debug.stars ?: scenario.stars,
+                            initialPrecise = scenario.precise,
                             onClosed = { graph.playAudio?.drop(song.id) },
                         )
                     }
@@ -222,7 +224,8 @@ fun EnsomiApp(scenario: Scenario, graph: AppGraph) {
                     } else {
                         PlayScreen(
                             title = song?.title ?: stringResource(R.string.play_preview_title),
-                            detail = stringResource(R.string.play_sample_detail),
+                            detail = scenario.playStars?.let { chartDetail(it, settings) }
+                                ?: stringResource(R.string.play_sample_detail),
                             settings = settings,
                             loop = key.loop,
                             onFinished = { result -> backStack.replaceLast(Results(key.songId, result)) },
@@ -344,15 +347,15 @@ private fun SongPlay(
         GameLoad.Loading -> GameLoading(song.title, failure = null, onBack = { backStack.removeLastOrNull() })
         is GameLoad.Failed -> GameLoading(song.title, current.message, onBack = { backStack.removeLastOrNull() })
         is GameLoad.Ready -> {
-            val stars = formatStars(current.record.stars)
+            val display = StarDisplay.of(current.record.stars, current.record.measuredStars)
             PlayScreen(
                 title = song.title,
-                detail = stringResource(R.string.play_detail, stars, settings.judge.name),
+                detail = chartDetail(display, settings),
                 settings = settings,
                 loop = false,
                 onFinished = { result -> backStack.replaceLast(Results(song.id, result.copy(
                     detail = song.artist.orEmpty(),
-                    chart = ResultChart(song.artist, current.record.stars, current.record.seed),
+                    chart = ResultChart(song.artist, display.stars, current.record.seedToReuse, askedStars = display.asked),
                 ))) },
                 onQuit = { backStack.removeLastOrNull() },
                 keyboards = graph.keyboards,
@@ -365,6 +368,18 @@ private fun SongPlay(
                 ),
             )
         }
+    }
+}
+
+/** The HUD's line for a chart: the star it came out at, the star asked for beside it when they differ, the judge. */
+@Composable
+private fun chartDetail(display: StarDisplay, settings: PlaySettings): String {
+    val stars = formatStars(display.stars)
+    val asked = display.asked?.let { formatStars(it) }
+    return if (asked != null) {
+        stringResource(R.string.play_detail_asked, stars, asked, settings.judge.name)
+    } else {
+        stringResource(R.string.play_detail, stars, settings.judge.name)
     }
 }
 

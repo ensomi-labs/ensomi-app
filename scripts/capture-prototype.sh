@@ -40,7 +40,8 @@ SCENARIOS=(
   first-run:3 downloading:3 download-stopped:3 no-space:3 download-failed:3 installing-files:3 install-files-refused:3
   library:3 library-missing:3
   make-chart:3 make-chart-sections:3 make-chart-section-problem:3 make-chart-no-model:3
-  make-chart-making:3 make-chart-made:3 make-chart-stopped:3 make-chart-failed:3
+  make-chart-making:3 make-chart-made:3 make-chart-made-far:3 make-chart-stopped:3 make-chart-failed:3
+  make-chart-precise-making:3 make-chart-precise-made:3
   results:3 settings:3 settings-playfield:4 settings-playfield-portrait:4 settings-downloading:3
   settings-update-pending:3 notices:3 notice-text:4
   calibration:4 calibration-hits:4 diagnostics:6 settings-about:3 lucky:3
@@ -138,6 +139,8 @@ sleep 8; shot play-3
 sleep 16; shot play-end-results
 launch play-paused; sleep 15; shot play-paused
 launch play-countdown; sleep 15; shot play-countdown
+# The HUD's line for a chart whose star differs from the one asked for.
+launch play-stars; sleep 6; shot play-stars
 # Results in both modes, so the game screens' system bars can be checked.
 for mode in light dark; do
   if [ "$mode" = dark ]; then adb shell cmd uimode night yes; else adb shell cmd uimode night no; fi

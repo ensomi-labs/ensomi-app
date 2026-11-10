@@ -117,7 +117,23 @@ class FakeChartMaker(initial: MakeState, capabilities: ChartCapabilities?) : Cha
             ),
         )
 
-        val MADE = MadeChart(noteCount = 1229, holdCount = 230, seed = 2914u, stars = 3.5, modelName = "Ensomi R2 r2-1.0")
+        /** A chart that came out a tenth above the star asked for. */
+        val MADE = MadeChart(
+            noteCount = 1229, holdCount = 230, seed = 2914u, stars = 3.5, modelName = "Ensomi R2 r2-1.0",
+            measuredStars = 3.6,
+        )
+
+        /** The chart a precise search kept, the closest of four. */
+        val MADE_PRECISE = MadeChart(
+            noteCount = 1764, holdCount = 281, seed = 2914u, stars = 4.5, modelName = "Ensomi R2 r2-1.0",
+            measuredStars = 4.52, preciseCharts = 4,
+        )
+
+        /** A chart that came out well below the star asked for: more than half a star. */
+        val MADE_FAR = MadeChart(
+            noteCount = 1687, holdCount = 274, seed = 2914u, stars = 5.5, modelName = "Ensomi R2 r2-1.0",
+            measuredStars = 4.6,
+        )
     }
 }
 
@@ -238,7 +254,7 @@ class FakeKeyboards(connected: List<FakeKeyboard>, settings: StateFlow<PlaySetti
 val SAMPLE_RESULT = PlayResult(
     title = "Lantern Walk",
     detail = "Mira Sato",
-    chart = io.ensomi.android.play.ResultChart("Mira Sato", 3.5, "2914"),
+    chart = io.ensomi.android.play.ResultChart("Mira Sato", 3.6, "2914", askedStars = 3.5),
     accuracy = 0.9784,
     perfect = 1102,
     good = 119,

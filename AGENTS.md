@@ -62,6 +62,13 @@ Ensomi never operates another app. It uses no Accessibility service, reads no ot
   metadata, so the app declares JNA (as an AAR) and kotlinx-coroutines. A pinned runtime release
   replaces it once one exists. Every build needs one with the `SyncSession` binding (ensomi-runtime's
   `scripts/build-android.sh` turns its `sync` feature on).
+- The AAR is pinned by SHA-256: `runtimeAarSha256` in `gradle/libs.versions.toml`. `local.properties` selects a file,
+  not an exemption: Gradle stops every build type, the unit tests and lint when the selected file is another, and
+  nothing turns that off. The build also runs `scripts/check-no-kleidiai.py` on the runtime's native library, in the
+  AAR and in every assembled APK, and stops on any exit but 0; it needs `python3` and the pinned NDK (README, Build
+  requirements). ensomi-runtime carries the same file: change both together. Another runtime means changing the pin on
+  purpose, in one commit with README.md and docs/release.md, after the runtime's `scripts/build-android.sh` passed its
+  own gate. Do not add a bypass, and never derive the expected hash from the linked file.
 - Run blocking runtime calls through the runtime's `RuntimeWorker`, never on the main thread.
 - The logcat tag `EnsomiDiagnostics` carries only the Diagnostics JSON, `EnsomiDecodeCheck` only the decode check's
   JSON lines, `EnsomiModelInstall` only each model install's start and outcome as a JSON line, and `EnsomiPhoneCheck`
@@ -78,7 +85,11 @@ Ensomi never operates another app. It uses no Accessibility service, reads no ot
 Builds run only on the owner's Mac; there is no CI workflow. Agents without the Android toolchain push
 a commit and hand the build to Astra (Codex on the Mac) with `ens astra`. A build brief asks for:
 
-1. `local.properties` with `sdk.dir` and `ensomi.runtime.aar`.
+1. `local.properties` with `sdk.dir` and `ensomi.runtime.aar`. Give the AAR by its path and its pinned SHA-256
+   (`runtimeAarSha256`; the README says where the approved file is on the owner's Mac), and ask for the file's hash in
+   the report. Never leave the builder to find an AAR, and never pick one by searching the machine: 0.2.1 was built
+   with an older AAR chosen that way, and its library crashes on CPUs with SME and without SME2 (docs/release.md). The
+   build now stops on any other file; a brief that names the wrong one costs a round, not a release.
 2. `./gradlew assembleDebug assembleDebugAndroidTest assembleChecks testDebugUnitTest lint assembleRelease`, with Android Studio's
    bundled JDK.
 3. On the arm64 AVD `ensomi-36-16k` (16 KB pages), the only one: emulator runs take turns on it, and nobody creates,

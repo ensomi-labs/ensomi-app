@@ -254,8 +254,42 @@ One screen per song. The top app bar has Back and the song's title; under it, th
 | Open failed | "Opening the model failed:" and the reason | Try again; Remove model; Share diagnostics |
 | Stopped | "Stopped. No chart was made." | Make chart |
 | Failed | "The chart could not be made." with a warning symbol, the runtime's message under it | Try again |
-| Ready to play | "Chart ready", "1,229 notes: 999 taps, 230 long notes", the seed with **Use seed** | **Play** (primary) and Make another, side by side, stacked at large text sizes |
+| Ready to play | "Chart ready", the star the chart came out at ("3.6 stars · asked 3.5"), "1,229 notes: 999 taps, 230 long notes", the seed with **Use seed** | **Play** (primary) and Make another, side by side, stacked at large text sizes |
 
+- **The star a chart came out at.** Each chart is measured once it is made, with the runtime's `starRating` (the
+  osu!mania star rating), and that number is the chart's star wherever a star is shown: the chart-ready state, the
+  game's HUD and the results. The star asked for is said beside it when the two differ once each is rounded to a
+  tenth: "4.6 stars · asked 4.5". When they are more than 0.5 apart the chart-ready state says so in plain words, with
+  no warning symbol, since nothing failed: "This came out easier than asked." (or harder). The rule is `StarDisplay`.
+  The generator answers a request with a chart near it, not on it. In an experiment on twelve songs with two starting
+  seeds (ensomi-runtime `codex/star-reach` at `6dfc2a2`, its `artifacts/star-reach/report.md`; measured stars on a
+  computer, nobody played a chart) a first chart for a target from 2.5 to 5.5 stars missed by a median of 0.43 stars,
+  and by 1.16 at the 90th percentile. The same experiment is why the slider keeps the model's range. Every request at
+  or below 2.125 stars made one chart for a song and seed, and every request at or above 5.875 another, measuring about
+  2.5 and 5.3 stars at the centre; a slider from 1 to 9, built on this branch first, would have offered positions that
+  all ask for the same chart, and the owner took it back on 2026-11-10. The measured star is stored as a number beside
+  the star asked for (`chart.json`'s `measuredStars`); a chart made by 0.2.1 has none, is not measured again, and shows
+  the star asked for alone, as it did.
+- **Precise difficulty**, a switch under the stars, off by default: "Makes up to 6 charts and keeps the closest.
+  Slower." The runtime makes one chart per request and seed; this mode is the app's, and it stays opt-in (the owner's
+  decisions of 2026-11-10). It lives in its own files and commits (`PreciseSearch`, `PreciseSwitch`), so that reverting
+  them takes it out. From the song's one preparation it makes a chart, measures it, and asks again with the request
+  moved by how far the chart missed; when moving the request no longer moves the star it tries further seeds at the
+  best request so far; it stops at the first chart within 0.05 stars of the target, or after six. Its requests stay
+  within the slider's range (2.0 to 5.9 for R2), so it never asks for a star the person could not ask for themselves:
+  a target at an end of the slider goes straight to further seeds. The rule is written out in `PreciseSearch.kt`, and
+  the website implements the same one. In the experiment named above, on a computer, for targets from 2.5 to 5.5 stars
+  the search before this bound brought the median miss from 0.43 stars to 0.08 (0.475 at the 90th percentile), with
+  about two thirds of its charts within 0.15 stars and 5.1 charts made on average. Keeping the requests inside the
+  model's fitted range, 2 to 6, was no worse on the miss or on the charts made; the slider's own 2.0 to 5.9 was not
+  measured. Sections go unchanged with every chart; only
+  the whole song's star and seed are steered. While it runs, Placing notes says "Chart 2 of up to 6"; Stop ends it
+  with no chart, as it ends a single one. Only the closest chart so far and the one just made are held. The chart
+  kept is stored with the star asked for, the star it came out at, and what the search did (how many charts, the seed
+  it began with, the kept chart's own request star; its receipt has its own request star and seed), and the
+  chart-ready card adds "Made 4 charts and kept the closest." The seed shown, and given by Use seed, is the one the
+  search began with: the same song, stars, sections and seed with the switch on repeat the search and so the chart.
+  The choice lasts as long as the song's screen, like the stars and the seed. Listen & Play stays one pass.
 - The runtime reports phases, not fractions, so the bar is indeterminate rather than a guessed percentage. The app
   shows Loading audio while it decodes the song, Finding the beat while the runtime's `prepare` runs, Placing notes
   while the whole-chart scheduler works and Finishing while the chart is saved. The scheduler reports no phases of its
@@ -288,7 +322,7 @@ turned to the play orientation: **landscape** by default, with the lanes leaning
 Phone sizes and orientation). Before the game, the song's last chart is read and the song decoded for play, with
 "Loading the song…" in the game's dark presentation (instant for Play again, which keeps the sound); a song whose file
 has gone, or with no chart, says so there with Back. Without a panel of its own, the HUD: the song's title and its
-stars and judge on the left, accuracy on the right, then a Pause button; in landscape these sit in the top corners beside the lanes' far
+stars (the star the chart came out at, and "asked 4.5" beside it when they differ) and judge on the left, accuracy on the right, then a Pause button; in landscape these sit in the top corners beside the lanes' far
 end, in portrait in a row above the lanes. The playfield itself, its look and its timing are in
 [gameplay.md](gameplay.md). A game starts with two seconds of lead-in before the song's first frame, so the hands can
 reach the lanes. The lead-in runs only while the play window has focus: the first time an app hides the system bars,
@@ -331,7 +365,7 @@ the game cannot rewind instead.
 ### Results
 
 In the game's dark presentation, replacing the game, and still in the play orientation, so the end of a song does not
-turn the screen under the player's hands: the song with its stars and seed; accuracy, large; Perfect, Good
+turn the screen under the player's hands: the song with its stars (as on the HUD) and seed; accuracy, large; Perfect, Good
 and Miss counts, each named and coloured (three tiles, or three rows at large text sizes); the longest combo; a timing
 chart of how early or late the hits were, with the mean in words ("Your hits were 6 ms late on average."), each method's
 mean when touch and keys both hit notes, and the latency slots the game used ([latency.md](latency.md#results)); nothing

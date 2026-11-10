@@ -98,6 +98,11 @@
     <string name="make_stars">難易度（星）</string>
     <string name="make_stars_range">%1$s は星 %2$s ～ %3$s の譜面を生成できます。</string>
     <string name="make_stars_no_model">モデルをインストールすると、対応する星の範囲が表示されます。</string>
+    <string name="make_precise">難易度を正確に合わせる</string>
+    <plurals name="make_precise_help">
+        <item quantity="other">最大 %1$d 個の譜面を生成し、目標に最も近いものを残します。時間がかかります。</item>
+    </plurals>
+    <string name="make_precise_progress">譜面 %1$d（最大 %2$d）</string>
     <string name="make_seed">シード</string>
     <string name="make_seed_random">ランダム</string>
     <string name="make_seed_help">空欄にすると毎回新しい譜面を生成します。同じ曲、難易度、区間、シードでは同じ譜面になります。</string>
@@ -124,6 +129,13 @@
     <string name="make_blocked_sections">区間の設定を修正してから、譜面を生成してください。</string>
     <string name="make_stop">停止</string>
     <string name="make_ready">譜面ができました</string>
+    <string name="make_ready_stars">星 %1$s</string>
+    <string name="make_ready_stars_asked">星 %1$s · 目標 %2$s</string>
+    <string name="make_ready_easier">目標より易しい譜面になりました。</string>
+    <string name="make_ready_harder">目標より難しい譜面になりました。</string>
+    <plurals name="make_ready_precise">
+        <item quantity="other">%d 個の譜面を生成し、目標に最も近いものを残しました。</item>
+    </plurals>
     <string name="make_ready_notes">%1$s ノーツ：タップ %2$s、ロングノーツ %3$s</string>
     <string name="make_ready_seed">シード %1$s</string>
     <string name="make_use_seed">このシードを使用</string>
@@ -173,6 +185,7 @@
     <string name="play_preview_title">プレイエリアのプレビュー</string>
     <string name="play_sample_detail">サンプル譜面 · 音声なし</string>
     <string name="play_detail">星 %1$s · 判定 %2$s</string>
+    <string name="play_detail_asked">星 %1$s · 目標 %2$s · 判定 %3$s</string>
     <string name="play_output_moved">音声出力が %1$s に切り替わりました。このプレイでは音声遅延 %2$s を引き続き使用します。</string>
     <string name="key_space">スペース</string>
     <string name="key_escape">Esc</string>
@@ -183,6 +196,7 @@
     <string name="play_failed_chart">譜面を読み込めませんでした。生成し直してください。</string>
     <string name="play_failed_decode">曲をデコードできないため、プレイできません。</string>
     <string name="results_detail">星 %1$s · シード %2$s</string>
+    <string name="results_detail_asked">星 %1$s · 目標 %2$s · シード %3$s</string>
     <string name="results_title">リザルト</string>
     <string name="results_max_combo">最大コンボ</string>
     <string name="results_timing">タイミング</string>

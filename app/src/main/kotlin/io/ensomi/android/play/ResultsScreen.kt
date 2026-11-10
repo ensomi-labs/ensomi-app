@@ -106,8 +106,15 @@ fun ResultsScreen(
                         )
                         Text(result.title, style = MaterialTheme.typography.headlineSmall, color = Brand.Text)
                         val detail = result.chart?.let { chart ->
-                            listOfNotNull(chart.artist, stringResource(R.string.results_detail,
-                                String.format(java.util.Locale.ROOT, "%.1f", chart.stars), chart.seed)).joinToString(" · ")
+                            val stars = String.format(java.util.Locale.ROOT, "%.1f", chart.stars)
+                            // The star asked for, beside the star the chart came out at, when they differ.
+                            val asked = chart.askedStars?.let { String.format(java.util.Locale.ROOT, "%.1f", it) }
+                            val line = if (asked != null) {
+                                stringResource(R.string.results_detail_asked, stars, asked, chart.seed)
+                            } else {
+                                stringResource(R.string.results_detail, stars, chart.seed)
+                            }
+                            listOfNotNull(chart.artist, line).joinToString(" · ")
                         } ?: if (result.sample) stringResource(R.string.play_sample_detail) else result.detail
                         Text(detail, style = MaterialTheme.typography.bodyMedium, color = Brand.MutedText)
                     }

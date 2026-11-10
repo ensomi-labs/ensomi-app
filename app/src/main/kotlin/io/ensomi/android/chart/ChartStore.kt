@@ -8,14 +8,26 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
+/**
+ * What a precise search ([PreciseSearch]) leaves with the chart it kept: how many [charts] it made, the seed it began
+ * with ([startSeed], as text like [StoredChart.seed]), and the star the kept chart's own request carried
+ * ([requestStars], from its receipt; the star the person asked for is [StoredChart.stars]).
+ */
+@Serializable
+data class PreciseRecord(val charts: Int, val startSeed: String, val requestStars: Double)
+
 /** What the app keeps of the last chart made for a song, beside its `.osu` and the runtime's receipt. */
 @Serializable
 data class StoredChart(
     val songId: String,
     /** The model's name and version, such as "Ensomi R2 r2-1.0". */
     val modelName: String,
-    /** The seed, as text: JSON numbers cannot hold every 64-bit unsigned value. */
+    /**
+     * The seed the generator used for this chart, from its receipt, as text: JSON numbers cannot hold every 64-bit
+     * unsigned value.
+     */
     val seed: String,
+    /** The star asked for. */
     val stars: Double,
     val noteCount: Int,
     val holdCount: Int,
@@ -24,13 +36,29 @@ data class StoredChart(
     /** The SHA-256 of the song's file it was made from. */
     val sha256: String? = null,
     val madeAtMs: Long = 0,
+    /**
+     * The star the chart came out at, the runtime's `starRating` of it: a number, so each screen words it in its own
+     * language. Null in a record written by 0.2.1, which measured nothing; such a chart shows the star asked for.
+     */
+    val measuredStars: Double? = null,
+    /** Set for a chart a precise search kept; null for a chart made in one pass, and in older records. */
+    val precise: PreciseRecord? = null,
 ) {
+    /**
+     * The seed to ask with again, as the screens show it: this chart's own, or the one its precise search began with,
+     * since asking again with that one repeats the search and so the chart.
+     */
+    val seedToReuse: String
+        get() = precise?.startSeed ?: seed
+
     fun toMade(): MadeChart = MadeChart(
         noteCount = noteCount,
         holdCount = holdCount,
-        seed = seed.toULongOrNull() ?: 0u,
+        seed = seedToReuse.toULongOrNull() ?: 0u,
         stars = stars,
         modelName = modelName,
+        measuredStars = measuredStars,
+        preciseCharts = precise?.charts,
     )
 }
 

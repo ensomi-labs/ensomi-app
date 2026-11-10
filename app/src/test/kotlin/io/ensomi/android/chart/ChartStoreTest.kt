@@ -56,6 +56,68 @@ class ChartStoreTest {
         assertTrue(store.songIds.value.isEmpty())
     }
 
+    @Test
+    fun keepsTheStarAChartCameOutAt() {
+        val root = root()
+        ChartStore(root).save(chart("song-4").copy(stars = 5.5, measuredStars = 4.6), osu = "osu", receiptJson = "{}")
+        val kept = ChartStore(root).chart("song-4")!!
+        assertEquals(5.5, kept.stars, 0.0)
+        assertEquals(4.6, kept.measuredStars!!, 0.0)
+        assertEquals(4.6, kept.toMade().measuredStars!!, 0.0)
+        assertEquals(5.5, kept.toMade().stars, 0.0)
+    }
+
+    @Test
+    fun aRecordWrittenBeforeChartsWereMeasuredReadsWithoutAMeasuredStar() {
+        val root = root()
+        val directory = File(root, "song-5").apply { mkdirs() }
+        File(directory, "chart.osu").writeText("osu")
+        File(directory, "receipt.json").writeText("{}")
+        // chart.json as 0.2.1 wrote it: every field it had, and no measuredStars.
+        File(directory, "chart.json").writeText(
+            """{"songId":"song-5","modelName":"Ensomi R2 r2-1.0.1","seed":"2914","stars":4.5,"noteCount":1229,""" +
+                """"holdCount":230,"durationMs":222000,"sha256":null,"madeAtMs":1762700000000}""",
+        )
+        val store = ChartStore(root)
+        assertEquals(setOf("song-5"), store.songIds.value)
+        val kept = store.chart("song-5")!!
+        assertNull(kept.measuredStars)
+        assertEquals(4.5, kept.stars, 0.0)
+        assertNull(kept.toMade().measuredStars)
+        assertEquals("osu", store.osu("song-5"))
+        // Such a chart shows the star asked for alone, as 0.2.1 did.
+        assertEquals(StarDisplay(4.5, null, StarGap.NONE), StarDisplay.of(kept.stars, kept.measuredStars))
+    }
+
+    @Test
+    fun keepsWhatAPreciseSearchDid() {
+        val root = root()
+        // The person asked for 4.5 with seed 2914; the search kept its fourth chart, asked for at 4.37 with seed 2915.
+        val precise = PreciseRecord(charts = 4, startSeed = "2914", requestStars = 4.37)
+        ChartStore(root).save(
+            chart("song-6", seed = 2915u).copy(stars = 4.5, measuredStars = 4.52, precise = precise),
+            osu = "osu",
+            receiptJson = "{}",
+        )
+        val kept = ChartStore(root).chart("song-6")!!
+        assertEquals(precise, kept.precise)
+        assertEquals("2915", kept.seed)
+        assertEquals(4.5, kept.stars, 0.0)
+        // The seed to ask with again is the one the search began with: it repeats the search.
+        assertEquals("2914", kept.seedToReuse)
+        assertEquals(2914uL, kept.toMade().seed)
+        assertEquals(4, kept.toMade().preciseCharts)
+    }
+
+    @Test
+    fun aChartMadeInOnePassHasNoSearchToTell() {
+        val one = chart("song-7", seed = 7u)
+        assertNull(one.precise)
+        assertEquals("7", one.seedToReuse)
+        assertEquals(7uL, one.toMade().seed)
+        assertNull(one.toMade().preciseCharts)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun aSongIdCannotLeaveTheDirectory() {
         ChartStore(root()).chart("../settings")

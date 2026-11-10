@@ -10,7 +10,10 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The search against generators that answer by a rule, so each of its moves can be read off. */
+/**
+ * The search against generators that answer by a rule, so each of its moves can be read off. The range offered is the
+ * slider's for R2, 2.0 to 5.9.
+ */
 class PreciseSearchTest {
     /** A generator that counts its charts and remembers what it was asked. */
     private class Fake(val star: (request: Double, seed: ULong) -> Double) {
@@ -20,6 +23,8 @@ class PreciseSearchTest {
         fun search(target: Double, seed: ULong): PreciseSearch.Outcome = PreciseSearch.run(
             target = target,
             seed = seed,
+            lowest = LOWEST,
+            highest = HIGHEST,
             keep = { kept.add(it) },
         ) { _, request, trySeed ->
             asked.add(request to trySeed)
@@ -79,55 +84,83 @@ class PreciseSearchTest {
     }
 
     @Test
-    fun aResponseThatHasGoneFlatTurnsToOtherSeeds() {
-        // Nothing above 6 stars, whatever is asked: asking for more changes nothing, so further seeds are tried at
-        // the best request so far.
-        val fake = Fake { request, seed -> min(request, 6.0) + bySeed(seed) }
-        val outcome = fake.search(8.0, 10uL)
+    fun aTargetAtTheTopOfTheRangeGoesToOtherSeedsAfterOneFlatStep() {
+        // The hardest chart measures about 5.3, whatever is asked. Asked for 5.9, the first chart falls short, and the
+        // next request would be above the range: it stays at 5.9, which changes nothing, so further seeds are tried.
+        val fake = Fake { request, seed -> min(request, 5.3) + bySeed(seed) }
+        val outcome = fake.search(5.9, 10uL)
         assertEquals(PreciseSearch.MAX_CHARTS, outcome.tries.size)
-        assertEquals(listOf(10uL, 10uL, 11uL, 12uL, 13uL, 14uL), outcome.tries.map { it.seed })
-        assertEquals(10.0, outcome.tries[1].request, 1e-9)
-        outcome.tries.drop(2).forEach { assertEquals(8.0, it.request, 0.0) }
-        // Seed 13 gives the most, 6.06: the closest to 8.
-        assertEquals(4, outcome.best.index)
-        assertEquals(6.06, outcome.best.measured, 1e-9)
+        assertEquals(listOf(10uL, 11uL, 12uL, 13uL, 14uL, 15uL), outcome.tries.map { it.seed })
+        outcome.tries.forEach { assertEquals(5.9, it.request, 0.0) }
+        // Seed 13 gives the most, 5.36: the closest to 5.9.
+        assertEquals(3, outcome.best.index)
+        assertEquals(5.36, outcome.best.measured, 1e-9)
+        assertEquals(listOf(0, 1, 2, 3), fake.kept.map { it.index })
     }
 
     @Test
-    fun aFlatResponseBelowTheTargetWorksTheSameWay() {
-        val fake = Fake { request, seed -> max(request, 2.0) + bySeed(seed) }
-        val outcome = fake.search(1.0, 10uL)
+    fun aTargetAtTheBottomOfTheRangeWorksTheSameWay() {
+        val fake = Fake { request, seed -> max(request, 2.5) + bySeed(seed) }
+        val outcome = fake.search(2.0, 10uL)
         assertEquals(PreciseSearch.MAX_CHARTS, outcome.tries.size)
-        assertEquals(listOf(10uL, 10uL, 11uL, 12uL, 13uL, 14uL), outcome.tries.map { it.seed })
-        // Seed 14 gives the least, 1.94.
-        assertEquals(5, outcome.best.index)
+        assertEquals(listOf(10uL, 11uL, 12uL, 13uL, 14uL, 15uL), outcome.tries.map { it.seed })
+        outcome.tries.forEach { assertEquals(2.0, it.request, 0.0) }
+        // Seed 14 gives the least, 2.44.
+        assertEquals(4, outcome.best.index)
     }
 
     @Test
     fun theEarliestOfEquallyCloseChartsIsKept() {
-        val fake = Fake { request, _ -> min(request, 6.0) }
-        val outcome = fake.search(8.0, 3uL)
+        val fake = Fake { request, _ -> min(request, 5.3) }
+        val outcome = fake.search(5.9, 3uL)
         assertEquals(PreciseSearch.MAX_CHARTS, outcome.tries.size)
-        outcome.tries.forEach { assertEquals(6.0, it.measured, 0.0) }
+        outcome.tries.forEach { assertEquals(5.3, it.measured, 0.0) }
         assertEquals(0, outcome.best.index)
         assertEquals(listOf(0), fake.kept.map { it.index })
     }
 
     @Test
-    fun aRequestStaysWithinThreeStarsOfTheTarget() {
-        // Every chart comes out five stars under its request: the request stops three above the target.
-        val fake = Fake { request, _ -> request - 5.0 }
-        val outcome = fake.search(4.0, 1uL)
+    fun aTargetInsideSteersUntilItMeetsTheTopOfTheRange() {
+        // Every chart comes out 1.5 under its request. The second request would be 6.5: it is 5.9, the top of the
+        // range. The third would be above it again, so the request stays and further seeds are tried there.
+        val fake = Fake { request, _ -> request - 1.5 }
+        val outcome = fake.search(5.0, 1uL)
         assertEquals(PreciseSearch.MAX_CHARTS, outcome.tries.size)
-        outcome.tries.forEach { assertTrue(it.request in 1.0..7.0) }
-        assertEquals(7.0, outcome.tries[1].request, 0.0)
+        assertEquals(listOf(5.0, 5.9, 5.9, 5.9, 5.9, 5.9), outcome.tries.map { it.request })
+        assertEquals(listOf(1uL, 1uL, 2uL, 3uL, 4uL, 5uL), outcome.tries.map { it.seed })
+        assertEquals(1, outcome.best.index)
+        assertEquals(4.4, outcome.best.measured, 1e-9)
+    }
+
+    @Test
+    fun aTargetInsideSteersUntilItMeetsTheBottomOfTheRange() {
+        val fake = Fake { request, _ -> request + 1.5 }
+        val outcome = fake.search(3.0, 1uL)
+        assertEquals(PreciseSearch.MAX_CHARTS, outcome.tries.size)
+        assertEquals(listOf(3.0, 2.0, 2.0, 2.0, 2.0, 2.0), outcome.tries.map { it.request })
         assertEquals(listOf(1uL, 1uL, 2uL, 3uL, 4uL, 5uL), outcome.tries.map { it.seed })
         assertEquals(1, outcome.best.index)
     }
 
     @Test
+    fun aTargetOutsideTheRangeStartsAtTheNearerEndAndIsStillTheTarget() {
+        // No control of the app sends such a target; a debug launch can. The request is brought inside, the target
+        // is not: the chart kept is the one closest to 8, the hardest, not the one closest to 5.9.
+        val above = Fake { request, seed -> min(request, 5.3) + bySeed(seed) }
+        val hardest = above.search(8.0, 10uL)
+        assertEquals(5.9 to 10uL, above.asked.first())
+        hardest.tries.forEach { assertEquals(5.9, it.request, 0.0) }
+        assertEquals(3, hardest.best.index)
+        val below = Fake { request, seed -> max(request, 2.5) + bySeed(seed) }
+        val easiest = below.search(1.0, 10uL)
+        assertEquals(2.0 to 10uL, below.asked.first())
+        easiest.tries.forEach { assertEquals(2.0, it.request, 0.0) }
+        assertEquals(4, easiest.best.index)
+    }
+
+    @Test
     fun aNoisyResponseKeepsItsRules() {
-        for (target in listOf(1.0, 2.0, 3.5, 5.0, 7.0, 9.0)) {
+        for (target in listOf(2.0, 2.4, 3.5, 5.0, 5.9)) {
             for (seed in listOf(0uL, 1uL, 2uL, 99uL, 123_456_789uL)) {
                 val fake = Fake { request, trySeed -> noisy(request, trySeed) }
                 val outcome = fake.search(target, seed)
@@ -150,7 +183,8 @@ class PreciseSearchTest {
                 outcome.tries.dropLast(1).forEach {
                     assertTrue(label, abs(it.measured - target) > PreciseSearch.TOLERANCE)
                 }
-                outcome.tries.forEach { assertTrue(label, abs(it.request - target) <= PreciseSearch.REACH) }
+                // No request leaves the range offered.
+                outcome.tries.forEach { assertTrue(label, it.request in LOWEST..HIGHEST) }
             }
         }
     }
@@ -160,25 +194,25 @@ class PreciseSearchTest {
         val first = Fake { request, trySeed -> noisy(request, trySeed) }.search(3.5, 99uL)
         val second = Fake { request, trySeed -> noisy(request, trySeed) }.search(3.5, 99uL)
         assertEquals(first, second)
-        val flat = Fake { request, seed -> min(request, 6.0) + bySeed(seed) }
-        assertEquals(flat.search(8.0, 10uL), flat.search(8.0, 10uL))
+        val flat = Fake { request, seed -> min(request, 5.3) + bySeed(seed) }
+        assertEquals(flat.search(5.9, 10uL), flat.search(5.9, 10uL))
     }
 
     @Test
     fun theSeedAfterTheLargestIsZero() {
         val largest = ULong.MAX_VALUE
-        val fake = Fake { request, seed -> min(request, 6.0) + bySeed(seed) }
-        val outcome = fake.search(8.0, largest)
-        assertEquals(listOf(largest, largest, 0uL, 1uL, 2uL, 3uL), outcome.tries.map { it.seed })
-        assertEquals(3uL, outcome.best.seed)
+        val fake = Fake { request, seed -> min(request, 5.3) + bySeed(seed) }
+        val outcome = fake.search(5.9, largest)
+        assertEquals(listOf(largest, 0uL, 1uL, 2uL, 3uL, 4uL), outcome.tries.map { it.seed })
+        assertEquals(4uL, outcome.best.seed)
     }
 
     @Test
     fun aSearchStoppedPartWayKeepsNothing() {
         var charts = 0
-        val outcome = PreciseSearch.run(target = 8.0, seed = 1uL) { _, request, _ ->
+        val outcome = PreciseSearch.run(target = 5.9, seed = 1uL, lowest = LOWEST, highest = HIGHEST) { _, request, _ ->
             charts += 1
-            if (charts == 3) null else min(request, 6.0)
+            if (charts == 3) null else min(request, 5.3)
         }
         assertNull(outcome)
         assertEquals(3, charts)
@@ -186,22 +220,44 @@ class PreciseSearchTest {
 
     @Test
     fun fewerChartsCanBeAskedFor() {
-        val one = PreciseSearch.run(target = 8.0, seed = 1uL, maxCharts = 1) { _, request, _ -> min(request, 6.0) }
+        val one = PreciseSearch.run(
+            target = 5.9, seed = 1uL, lowest = LOWEST, highest = HIGHEST, maxCharts = 1,
+        ) { _, request, _ -> min(request, 5.3) }
         assertNotNull(one)
         assertEquals(1, one!!.tries.size)
-        val wide = PreciseSearch.run(target = 4.0, seed = 1uL, tolerance = 0.5) { _, request, _ -> request + 0.3 }
+        val wide = PreciseSearch.run(
+            target = 4.0, seed = 1uL, lowest = LOWEST, highest = HIGHEST, tolerance = 0.5,
+        ) { _, request, _ -> request + 0.3 }
         assertEquals(1, wide!!.tries.size)
     }
 
     @Test
+    fun aRangeOfOneStarOnlyTriesSeeds() {
+        val outcome = PreciseSearch.run(target = 4.0, seed = 1uL, lowest = 3.0, highest = 3.0) { _, request, seed ->
+            request + bySeed(seed)
+        }!!
+        assertEquals(PreciseSearch.MAX_CHARTS, outcome.tries.size)
+        outcome.tries.forEach { assertEquals(3.0, it.request, 0.0) }
+        assertEquals(listOf(1uL, 2uL, 3uL, 4uL, 5uL, 6uL), outcome.tries.map { it.seed })
+        assertEquals(5, outcome.best.index)
+    }
+
+    @Test
     fun aStarThatIsNotANumberEndsTheSearch() {
-        val first = PreciseSearch.run(target = 4.0, seed = 1uL) { _, _, _ -> Double.NaN }!!
+        val first = PreciseSearch.run(target = 4.0, seed = 1uL, lowest = LOWEST, highest = HIGHEST) { _, _, _ ->
+            Double.NaN
+        }!!
         assertEquals(1, first.tries.size)
         assertEquals(0, first.best.index)
-        val later = PreciseSearch.run(target = 4.0, seed = 1uL) { index, request, _ ->
+        val later = PreciseSearch.run(target = 4.0, seed = 1uL, lowest = LOWEST, highest = HIGHEST) { index, request, _ ->
             if (index == 1) Double.NaN else request + 0.3
         }!!
         assertEquals(2, later.tries.size)
         assertEquals(0, later.best.index)
+    }
+
+    private companion object {
+        const val LOWEST = 2.0
+        const val HIGHEST = 5.9
     }
 }

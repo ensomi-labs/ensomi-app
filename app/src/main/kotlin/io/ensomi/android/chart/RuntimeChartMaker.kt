@@ -416,7 +416,8 @@ class RuntimeChartMaker(
     /**
      * One chart, or with precise difficulty the closest of several: [PreciseSearch] asks for each chart from the same
      * audio stages, steering only the whole song's star and seed (the sections go unchanged with every one), and this
-     * holds the closest so far and the one just made, never more. Each chart is announced through the song's state
+     * holds the closest so far and the one just made, never more. The search's requests stay within the stars the
+     * slider offers, from the model's capabilities; the star asked for is not moved. Each chart is announced through the song's state
      * ("Chart 2 of up to 6", within Placing notes), and a stop ends the search with no chart, as it ends a single one.
      * The chart kept carries what the search did; its receipt holds its own request star and seed.
      *
@@ -430,11 +431,15 @@ class RuntimeChartMaker(
         making: Making,
     ): Measured? {
         if (!precise) return makePrepared(stages, request, making)
+        // A chart is made only while the model's capabilities are held; should they be gone, one chart as asked.
+        val offered = mutableCapabilities.value?.selectableStars ?: return makePrepared(stages, request, making)
         var latest: Measured? = null
         var kept: Measured? = null
         val outcome = PreciseSearch.run(
             target = request.star,
             seed = request.seed,
+            lowest = offered.start,
+            highest = offered.endInclusive,
             keep = { kept = latest },
         ) { index, star, seed ->
             // The chart before this one is let go here, unless it was kept.

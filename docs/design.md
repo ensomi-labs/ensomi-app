@@ -275,8 +275,14 @@ One screen per song. The top app bar has Back and the song's title; under it, th
   decisions of 2026-11-10). It lives in its own files and commits (`PreciseSearch`, `PreciseSwitch`), so that reverting
   them takes it out. From the song's one preparation it makes a chart, measures it, and asks again with the request
   moved by how far the chart missed; when moving the request no longer moves the star it tries further seeds at the
-  best request so far; it stops at the first chart within 0.05 stars of the target, or after six. The rule is written
-  out in `PreciseSearch.kt`, and the website implements the same one. Sections go unchanged with every chart; only
+  best request so far; it stops at the first chart within 0.05 stars of the target, or after six. Its requests stay
+  within the slider's range (2.0 to 5.9 for R2), so it never asks for a star the person could not ask for themselves:
+  a target at an end of the slider goes straight to further seeds. The rule is written out in `PreciseSearch.kt`, and
+  the website implements the same one. In the experiment named above, on a computer, for targets from 2.5 to 5.5 stars
+  the search before this bound brought the median miss from 0.43 stars to 0.08 (0.475 at the 90th percentile), with
+  about two thirds of its charts within 0.15 stars and 5.1 charts made on average. Keeping the requests inside the
+  model's fitted range, 2 to 6, was no worse on the miss or on the charts made; the slider's own 2.0 to 5.9 was not
+  measured. Sections go unchanged with every chart; only
   the whole song's star and seed are steered. While it runs, Placing notes says "Chart 2 of up to 6"; Stop ends it
   with no chart, as it ends a single one. Only the closest chart so far and the one just made are held. The chart
   kept is stored with the star asked for, the star it came out at, and what the search did (how many charts, the seed

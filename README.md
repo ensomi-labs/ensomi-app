@@ -1,5 +1,5 @@
 ---
-commit: 26f45aef44f55636c8070db2be6494091c72f67e
+commit: e59aa3a170e222b74ecbf2b0f4db23e5cba77a1c
 ---
 
 # Ensomi for Android
@@ -24,7 +24,7 @@ shares device facts, recovered process exits and a bounded event journal. Loadin
 
 ## Get the demo
 
-Download the signed APK from the [Android 0.2.1 release](https://github.com/ensomi-labs/ensomi-app/releases/tag/android-v0.2.1), open it on your device, and allow installation from the app you opened it with. It needs Android 13 or
+Download the signed APK from the [Android 0.2.2 release](https://github.com/ensomi-labs/ensomi-app/releases/tag/android-v0.2.2), open it on your device, and allow installation from the app you opened it with. It needs Android 13 or
 later, an arm64-v8a device, an internet connection for the first-run model download from Hugging Face (about 120 MB),
 and a song you select through Android's system file picker. Chart generation runs on your device and needs additional
 storage and memory. This is an early demo; performance and audio timing vary by device and output.
@@ -39,8 +39,8 @@ storage and memory. This is an early demo; performance and audio timing vary by 
 - The runtime AAR whose SHA-256 is `606034d0be3123d0238843e263a6aac97e22362076cf0c422add69075e03cb1a`, pinned as `runtimeAarSha256`
   in `gradle/libs.versions.toml`; the build refuses any other. It is built with `scripts/build-android.sh` (see the
   runtime's `android/README.md`) from ensomi-runtime commit `ecc4c36`, the head of the branch `claude/android-library`,
-  which is draft pull request [ensomi-labs/runtime#11](https://github.com/ensomi-labs/runtime/pull/11); the commit
-  joins `main` when that merges. The branch is the earlier Android branch at `d090374`, whose ONNX Runtime is built
+  merged since as [ensomi-labs/runtime#11](https://github.com/ensomi-labs/runtime/pull/11); the commit
+  is in the runtime's `main`. The branch is the earlier Android branch at `d090374`, whose ONNX Runtime is built
   without KleidiAI, with `main` merged in (the finite-star change and `starRating`) and one commit that adds the binary
   check to `scripts/build-android.sh`. On the owner's Mac the AAR is
   `~/ensomi/ensomi-runtime/artifacts/android-library-0.2.2/ensomi-runtime-ecc4c36.aar`, with the unstripped library,

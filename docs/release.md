@@ -1,5 +1,5 @@
 ---
-commit: 26f45aef44f55636c8070db2be6494091c72f67e
+commit: e59aa3a170e222b74ecbf2b0f4db23e5cba77a1c
 ---
 
 # Android CI and release: proposed design
@@ -13,8 +13,8 @@ R8-optimized arm64-v8a APK, with JNA keep rules and the runtime AAR's UniFFI kee
 whose SHA-256 is `606034d0be3123d0238843e263a6aac97e22362076cf0c422add69075e03cb1a`, pinned as `runtimeAarSha256` in
 `gradle/libs.versions.toml`.
 It is built from runtime commit `ecc4c36` (`ecc4c36f81bff4d411db0e3458bffe2707d6b27f`), the head of the runtime's
-Android library branch `claude/android-library`, which is draft pull request ensomi-labs/runtime#11; the commit joins
-`main` when that merges. The branch is the earlier Android branch at `d090374`, whose ONNX Runtime is built without
+Android library branch `claude/android-library`, merged since as ensomi-labs/runtime#11; the commit is in the
+runtime's `main`. The branch is the earlier Android branch at `d090374`, whose ONNX Runtime is built without
 KleidiAI, with `main` merged in (ensomi-labs/runtime#10, the finite-star change and `starRating`) and one commit that
 adds the binary check to `scripts/build-android.sh`. The runtime
 library carries GNU build ID `65c20bc72e996aace854881fbbccd5af7a7526d7`, read from the AAR's
@@ -73,15 +73,21 @@ The checker finds KleidiAI's kernels and SME code; a pass does not show that the
 does not refuse by CPU features on the device: with the pin and the check it cannot contain the affected library, so
 such a block could not be reached, nor tested without an affected phone.
 
-Not verified: the two guards were written without a compiler and have not run. A build on the owner's Mac has still to
-show that they pass with the pinned AAR and stop the 0.2.1 one, by its hash and by the checker. No phone with SME and
-without SME2 has run 0.2.2.
+Verified on the owner's Mac on 2026-11-10 at `e59aa3a` (Codex job `20261110-231554-codex-1110-1415`): the guards ran in
+two consecutive full builds and passed with the pinned AAR; the 0.2.1 AAR was stopped by its hash at configuration, a
+file replaced at the same path was stopped, and with the pin set to the old hash in a throwaway tree the checker
+stopped the old AAR and the released 0.2.1 APK, with 22 kernel strings and 495 forbidden instruction lines. Not
+verified: no phone with SME and without SME2 is recorded as having run 0.2.2.
 
-No chart has been generated on an Android device with this build, and nothing has run on a phone. The last build on
-the owner's Mac was at `1d11232`, before the range went back to 2.0 to 5.9, before the search was bounded and before
-this version: there the four builds, 608 unit tests and lint passed against this AAR and the debug app launched on the
-16 KB emulator. This tree is built only when a later Mac build says so. This build remains unsigned until the owner
-signs it; no tag or publication is part of this.
+The same Mac build at `e59aa3a` assembled debug, checks, release and the instrumentation APK, passed 609 unit tests
+with no lint finding new against 0.2.1, and launched the debug app on the 16 KB emulator. The owner signed the release
+APK on 2026-11-10; it is published as `android-v0.2.2`, from that commit. The signed build with the owner's private
+additions was installed over 0.2.1 on the owner's phone, keeping its data, and launched once without a crash; that phone
+has no SME, and the launch did not open the model. The owner reports having tested the build; what was tested is not
+recorded here. No chart generated on an Android device with this build is on record.
+
+Known in 0.2.2, as in 0.2.1: a section's star target at the top of its slider (5.9) is judged out of range and blocks
+Make chart; 5.8 works. Its fix is deferred.
 
 The owner keeps the keystore outside all repositories and signs separately with `apksigner`. CI has not run, so its
 duration is unknown. The remaining sections are the original proposal, including its future release prerequisites;

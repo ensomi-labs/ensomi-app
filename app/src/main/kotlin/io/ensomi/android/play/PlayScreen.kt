@@ -102,6 +102,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import io.ensomi.android.R
 import io.ensomi.android.settings.JudgeDifficulty
 import io.ensomi.android.settings.PlayOrientation
+import io.ensomi.android.settings.localizedName
+import io.ensomi.android.settings.OutputRoute
+import androidx.compose.ui.platform.LocalResources
 import io.ensomi.android.settings.PlaySettings
 import io.ensomi.android.settings.latencySlotLabel
 import io.ensomi.android.settings.phoneWindow
@@ -212,7 +215,7 @@ fun PlayScreen(
         var restarts by remember { mutableIntStateOf(0) }
         var view by remember { mutableStateOf<PlayfieldView?>(null) }
         // Where the sound moved during this game, for the pause panel.
-        var movedTo by remember { mutableStateOf<String?>(null) }
+        var movedTo by remember { mutableStateOf<OutputRoute?>(null) }
         // The panel was opened by the Pause key, so Resume takes focus (keyboard.md, Keys around the game).
         var pausedByKey by remember { mutableStateOf(false) }
         val running = remember(restarts) { RunningGame() }
@@ -268,7 +271,7 @@ fun PlayScreen(
         if (autoPauseAfterMs != null) {
             LaunchedEffect(Unit) {
                 delay(autoPauseAfterMs)
-                movedToAtPause?.let { movedTo = it }
+                movedToAtPause?.let { movedTo = OutputRoute("preview", it) }
                 pause("the scenario")
                 if (holdCountdown) phase = PlayPhase.COUNTDOWN
             }
@@ -289,7 +292,7 @@ fun PlayScreen(
             Log.i(TAG, "Sound plays on ${device.type}/${device.productName} (id $id)")
             if (previous == null) return
             running.clock?.outputChanged(System.nanoTime())
-            movedTo = outputs.routeOf(device).name
+            movedTo = outputs.routeOf(device)
             pause("the output changed")
         }
 
@@ -464,7 +467,7 @@ fun PlayScreen(
                     if (ambient != null) AmbientCountIn(ambient)
                 }
                 PlayPhase.PAUSED -> PausePanel(
-                    movedTo = movedTo,
+                    movedTo = movedTo?.localizedName(LocalResources.current),
                     // The game took the active slot as it started, and Settings cannot be opened during it.
                     keptSlot = settings.audioLatency.let { latencySlotLabel(it.active, it.slots[it.active]) },
                     focusResume = pausedByKey,

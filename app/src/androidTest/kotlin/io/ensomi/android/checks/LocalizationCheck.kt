@@ -9,6 +9,8 @@ import io.ensomi.android.R
 import io.ensomi.android.model.InstallPhase
 import io.ensomi.android.model.ModelFailure
 import io.ensomi.android.model.description
+import io.ensomi.android.settings.OutputRoute
+import io.ensomi.android.settings.localizedName
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -17,6 +19,17 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class LocalizationCheck {
+    @Test
+    fun outputLabelsFollowTheLanguageWhileProductNamesStayExact() {
+        val speaker = OutputRoute("speaker/Pixel", "Phone speaker")
+        val headphones = OutputRoute("bluetooth-a2dp/WH-1000XM4", "WH-1000XM4")
+        assertEquals("手机扬声器", speaker.localizedName(resources("zh-Hans")))
+        assertEquals("本体スピーカー", speaker.localizedName(resources("ja")))
+        listOf("en", "zh-Hans", "ja").forEach { tag ->
+            assertEquals("WH-1000XM4", headphones.localizedName(resources(tag)))
+        }
+    }
+
     @Test
     fun simplifiedChineseAndJapaneseResolveAcrossTheApp() {
         listOf("zh-CN", "zh-SG", "zh-Hans").forEach { tag ->

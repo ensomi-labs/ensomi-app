@@ -1,5 +1,5 @@
 ---
-commit: edaf37b722fc75079a4969f0bce8bd3261da4b95
+commit: 3050c59b00e52c736fcabb4da275c6e85b12c622
 ---
 
 # Ensomi for Android
@@ -36,9 +36,10 @@ storage and memory. This is an early demo; performance and audio timing vary by 
 - Android SDK platform 37, build-tools 37.0.0, NDK 30.0.16248370, platform-tools and the emulator.
 - A device or emulator with an arm64-v8a CPU and Android 13 (API 33) or later. The app is built for
   arm64-v8a only.
-- The runtime AAR, built from ensomi-runtime commit `d090374` (ORT without KleidiAI) with
-  `scripts/build-android.sh` (see its `android/README.md`). The required AAR SHA-256 is
-  `468a11aa3f53db041b44478fbf8d6e49d57411b72c5d01594f1c6b05a3ec0738`.
+- The runtime AAR, built from ensomi-runtime commit `11da954` (branch `codex/star-open-android`:
+  `codex/android-no-kleidiai` at `d090374` with the finite-star and star-rating change merged; ORT still without
+  KleidiAI) with `scripts/build-android.sh` (see its `android/README.md`). The required AAR SHA-256 is
+  `606034d0be3123d0238843e263a6aac97e22362076cf0c422add69075e03cb1a`.
 
 The 0.1.3 candidate (code 4) removes KleidiAI kernels from ONNX Runtime to avoid the suspected
 SME-without-SME2 failure. It has not run on a CPU with SME; the affected phone still needs a tester rerun.

@@ -1,5 +1,5 @@
 ---
-commit: edaf37b722fc75079a4969f0bce8bd3261da4b95
+commit: 3050c59b00e52c736fcabb4da275c6e85b12c622
 ---
 
 # Android CI and release: proposed design
@@ -7,12 +7,14 @@ commit: edaf37b722fc75079a4969f0bce8bd3261da4b95
 ## Public demo: the current process
 
 The Android play demo is built on the owner's Mac from a committed tree, then signed by the owner with one
-release key made by hand and published as a GitHub release of `ensomi-labs/ensomi-app`. The current build uses `versionName` **0.2.1**,
-`versionCode` **6**, owned by `gradle/libs.versions.toml`; Swift's `v0.1.0` stays separate. The build produces an unsigned,
+release key made by hand and published as a GitHub release of `ensomi-labs/ensomi-app`. The current build uses `versionName` **0.3.0**,
+`versionCode` **7**, owned by `gradle/libs.versions.toml`; Swift's `v0.1.0` stays separate. The build produces an unsigned,
 R8-optimized arm64-v8a APK, with JNA keep rules and the runtime AAR's UniFFI keep rules. The runtime is the local AAR
-whose SHA-256 is `468a11aa3f53db041b44478fbf8d6e49d57411b72c5d01594f1c6b05a3ec0738`.
-This candidate uses runtime commit `d090374`, with ORT built without KleidiAI. The runtime library now
-carries GNU build ID `1b2f996d51834c432054707ea55137a1204c543b`. Keep the exact unstripped
+whose SHA-256 is `606034d0be3123d0238843e263a6aac97e22362076cf0c422add69075e03cb1a`.
+This candidate uses runtime commit `11da954` (branch `codex/star-open-android`: `codex/android-no-kleidiai` at
+`d090374` with the finite-star and star-rating change merged), with ORT still built without KleidiAI. The runtime
+library now carries GNU build ID `65c20bc72e996aace854881fbbccd5af7a7526d7`, read from the AAR's
+`jni/arm64-v8a/libensomi_runtime_ffi.so`. Keep the exact unstripped
 `libensomi_runtime_ffi.so` per release alongside the AAR, its SHA-256 and R8 mapping for symbolizing
 reported offsets; rebuilding later is not a substitute for retaining that binary. Diagnostics
 `runtime.identity` is the SHA-256 of the AAR Gradle actually links.
@@ -23,6 +25,19 @@ inference; cold shares wait for readiness. Crash projection 2 prioritizes the cr
 in memory and exports up to 512 KiB of redacted evidence. Install over
 0.1.2 without uninstalling so earlier exit records survive. The candidate has not run on a CPU
 with SME, and the suspected affected-phone fix still needs a tester rerun.
+
+0.3.0 offers 1.0 to 9.0 stars on the song's slider, on a section's star target and on Listen & Play's stepper,
+where 0.2.1 offered 2.0 to 5.9. The runtime now takes any finite star; a notice under the slider says the model is
+at its best from 2 to 6. Each chart is measured as it is made, and the chart-ready card, the game's HUD and the
+results show the star it came out at, with the star asked for beside it when they differ.
+Precise difficulty, a switch that is off by default, makes up to six charts and keeps the closest.
+An install over 0.2.1 keeps the charts stored for each song; they have no measured star and show the star asked
+for alone. That rests on a unit test reading a record in 0.2.1's shape; the install itself has not been tried.
+The candidate has not run on a phone. At `1be61bd`, before the last prototype and warning fixes and this version
+change, the four builds, 608 unit tests and lint passed on the owner's Mac against this AAR, and the debug app
+launched on the 16 KB emulator; no chart was generated there. No chart asked for outside 2 to 6 stars has been made
+or played on any device, so how close such a chart comes to the star asked for is not known. This build remains
+unsigned until the owner signs it; no tag or publication is part of this.
 
 The owner keeps the keystore outside all repositories and signs separately with `apksigner`. CI has not run, so its
 duration is unknown. The remaining sections are the original proposal, including its future release prerequisites;

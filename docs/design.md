@@ -277,20 +277,6 @@ One screen per song. The top app bar has Back and the song's title; under it, th
   come out near 2 or near 6. The rule is `StarDisplay`. The measured star is stored as a number beside the star asked
   for (`chart.json`'s `measuredStars`); a chart made by 0.2.1 has none, is not measured again, and shows the star
   asked for alone, as it did.
-- **Precise difficulty**, a switch under the stars, off by default: "Makes up to 6 charts and keeps the closest.
-  Slower." The runtime makes one chart per request and seed; this mode is the app's (the owner's decision of
-  2026-11-10, who has not yet decided whether to keep it, so it lives in its own files and commits: `PreciseSearch`,
-  `PreciseSwitch`). From the song's one preparation it makes a chart, measures it, and asks again with the request
-  moved by how far the chart missed; when moving the request no longer moves the star it tries further seeds at the
-  best request so far; it stops at the first chart within 0.05 stars of the target, or after six. The rule is written
-  out in `PreciseSearch.kt`, and the website implements the same one. Sections go unchanged with every chart; only
-  the whole song's star and seed are steered. While it runs, Placing notes says "Chart 2 of up to 6"; Stop ends it
-  with no chart, as it ends a single one. Only the closest chart so far and the one just made are held. The chart
-  kept is stored with the star asked for, the star it came out at, and what the search did (how many charts, the seed
-  it began with, the kept chart's own request star; its receipt has its own request star and seed), and the
-  chart-ready card adds "Made 4 charts and kept the closest." The seed shown, and given by Use seed, is the one the
-  search began with: the same song, stars, sections and seed with the switch on repeat the search and so the chart.
-  The choice lasts as long as the song's screen, like the stars and the seed. Listen & Play stays one pass.
 - The runtime reports phases, not fractions, so the bar is indeterminate rather than a guessed percentage. The app
   shows Loading audio while it decodes the song, Finding the beat while the runtime's `prepare` runs, Placing notes
   while the whole-chart scheduler works and Finishing while the chart is saved. The scheduler reports no phases of its

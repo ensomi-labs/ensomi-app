@@ -64,8 +64,7 @@ import kotlinx.coroutines.launch
  *   decoding. A requested chart interrupts background work; play waits for cancellation and cleanup.
  * - Make chart runs a whole-chart `ChartScheduler` from those stages, measures the chart with the runtime's
  *   `starRating`, and keeps the result, `.osu` and receipt, as the song's last chart in [store] with the star it came
- *   out at, so it can be played after the app was closed. With precise difficulty on, it makes up to
- *   [PreciseSearch.MAX_CHARTS] charts from the one preparation and keeps the closest ([PreciseSearch]).
+ *   out at, so it can be played after the app was closed.
  * - Stop signals the work under way from the calling thread: the preparation's `Cancellation`, or the scheduler's
  *   `stop()`. The runtime stops at its next graph run.
  *
@@ -171,11 +170,8 @@ class RuntimeChartMaker(
         }
     }
 
-    /**
-     * A chart as the runtime made it, and the star it came out at: the runtime's `starRating`, as it answered.
-     * [precise] is set on the chart a precise search kept.
-     */
-    private class Measured(val result: ChartResult, val stars: Double, val precise: PreciseRecord? = null)
+    /** A chart as the runtime made it, and the star it came out at: the runtime's `starRating`, as it answered. */
+    private class Measured(val result: ChartResult, val stars: Double)
 
     /** A chart being made; [stop] reaches whichever part is under way. */
     private class Making {
@@ -349,7 +345,7 @@ class RuntimeChartMaker(
                 preparation.chartStartedNanos = System.nanoTime()
                 preparation.report(MakePhase.ROWS)
                 PeakMemory.reset()
-                makeCharts(songId, stages, runtimeRequest, request.precise, making)
+                makePrepared(stages, runtimeRequest, making)
             }
             making.preparation = preparation
             preparation.onPhase = { setState(songId, MakeState.Making(songId, it)) }
@@ -374,7 +370,7 @@ class RuntimeChartMaker(
                 check(modelReady() && preparedKey.substringAfterLast('/') == capabilitiesRevision) { unavailableModel() }
                 worker.withGenerator(appContext, directory, options()) {
                     val stages = prepared.get(preparedKey) ?: return@withGenerator null
-                    makeCharts(songId, stages, runtimeRequest, request.precise, making)
+                    makePrepared(stages, runtimeRequest, making)
                 }
             }
         }
@@ -386,10 +382,9 @@ class RuntimeChartMaker(
             TAG,
             String.format(
                 Locale.ROOT,
-                "Chart made for %s in %.1f s, peak RSS %s: %d objects, seed %s, star %.2f asked (receipt %.2f), %.2f measured, %s",
+                "Chart made for %s in %.1f s, peak RSS %s: %d objects, seed %s, star %.2f asked (receipt %.2f), %.2f measured",
                 song.fileName, (System.nanoTime() - started) / 1e9, PeakMemory.describe(),
                 result.chart.objects.size, result.receipt.seed, request.stars, result.receipt.star, made.stars,
-                made.precise?.let { "the closest of ${it.charts} from seed ${it.startSeed}" } ?: "one pass",
             ),
         )
         setState(songId, MakeState.Making(songId, MakePhase.EXPORT))
@@ -407,71 +402,9 @@ class RuntimeChartMaker(
             madeAtMs = System.currentTimeMillis(),
             // JSON holds no NaN or infinity: a star that is not a number is kept as no measurement.
             measuredStars = made.stars.takeIf { it.isFinite() },
-            precise = made.precise,
         )
         store.save(record, result.osu, result.receipt.receiptJson)
         return MakeState.Made(songId, record.toMade())
-    }
-
-    /**
-     * One chart, or with precise difficulty the closest of several: [PreciseSearch] asks for each chart from the same
-     * audio stages, steering only the whole song's star and seed (the sections go unchanged with every one), and this
-     * holds the closest so far and the one just made, never more. Each chart is announced through the song's state
-     * ("Chart 2 of up to 6", within Placing notes), and a stop ends the search with no chart, as it ends a single one.
-     * The chart kept carries what the search did; its receipt holds its own request star and seed.
-     *
-     * Called only inside withGenerator, like [makePrepared].
-     */
-    private fun ChartGenerator.makeCharts(
-        songId: String,
-        stages: Prepared,
-        request: GenerateChartRequest,
-        precise: Boolean,
-        making: Making,
-    ): Measured? {
-        if (!precise) return makePrepared(stages, request, making)
-        var latest: Measured? = null
-        var kept: Measured? = null
-        val outcome = PreciseSearch.run(
-            target = request.star,
-            seed = request.seed,
-            keep = { kept = latest },
-        ) { index, star, seed ->
-            // The chart before this one is let go here, unless it was kept.
-            latest = null
-            val candidate = if (making.stopped.get()) {
-                null
-            } else {
-                setState(
-                    songId,
-                    MakeState.Making(songId, MakePhase.ROWS, PreciseProgress(index + 1, PreciseSearch.MAX_CHARTS)),
-                )
-                makePrepared(stages, request.copy(star = star, seed = seed), making)
-            }
-            if (candidate != null) {
-                Log.i(
-                    TAG,
-                    String.format(
-                        Locale.ROOT,
-                        "Precise chart %d of up to %d for %s: asked %.3f with seed %s, came out %.3f (target %.2f)",
-                        index + 1, PreciseSearch.MAX_CHARTS, songId, star, seed.toString(), candidate.stars, request.star,
-                    ),
-                )
-            }
-            latest = candidate
-            candidate?.stars
-        }
-        if (outcome == null) return null
-        val best = kept ?: return null
-        return Measured(
-            best.result,
-            best.stars,
-            PreciseRecord(
-                charts = outcome.tries.size,
-                startSeed = request.seed.toString(),
-                requestStars = best.result.receipt.star,
-            ),
-        )
     }
 
     /**

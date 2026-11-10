@@ -195,7 +195,6 @@ fun EnsomiApp(scenario: Scenario, graph: AppGraph) {
                             scenario.sections,
                             scenario.sectionsOpen,
                             initialStars = graph.debug.stars ?: scenario.stars,
-                            initialPrecise = scenario.precise,
                             onClosed = { graph.playAudio?.drop(song.id) },
                         )
                     }
@@ -355,7 +354,7 @@ private fun SongPlay(
                 loop = false,
                 onFinished = { result -> backStack.replaceLast(Results(song.id, result.copy(
                     detail = song.artist.orEmpty(),
-                    chart = ResultChart(song.artist, display.stars, current.record.seedToReuse, askedStars = display.asked),
+                    chart = ResultChart(song.artist, display.stars, current.record.seed, askedStars = display.asked),
                 ))) },
                 onQuit = { backStack.removeLastOrNull() },
                 keyboards = graph.keyboards,

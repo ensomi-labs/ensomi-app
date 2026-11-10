@@ -30,7 +30,6 @@ with SME, and the suspected affected-phone fix still needs a tester rerun.
 where 0.2.1 offered 2.0 to 5.9. The runtime now takes any finite star; a notice under the slider says the model is
 at its best from 2 to 6. Each chart is measured as it is made, and the chart-ready card, the game's HUD and the
 results show the star it came out at, with the star asked for beside it when they differ.
-Precise difficulty, a switch that is off by default, makes up to six charts and keeps the closest.
 An install over 0.2.1 keeps the charts stored for each song; they have no measured star and show the star asked
 for alone. That rests on a unit test reading a record in 0.2.1's shape; the install itself has not been tried.
 The candidate has not run on a phone. At `1be61bd`, before the last prototype and warning fixes and this version

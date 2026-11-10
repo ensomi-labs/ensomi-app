@@ -19,8 +19,6 @@ import io.ensomi.android.audio.PlayAudioCache
 import io.ensomi.android.chart.ChartMaker
 import io.ensomi.android.chart.MakePhase
 import io.ensomi.android.chart.MakeState
-import io.ensomi.android.chart.PreciseProgress
-import io.ensomi.android.chart.PreciseSearch
 import io.ensomi.android.chart.SectionDraft
 import io.ensomi.android.chart.SectionKind
 import io.ensomi.android.chart.StarDisplay
@@ -98,8 +96,6 @@ data class Scenario(
     val sectionsOpen: Boolean = false,
     /** The stars the song's screen opens with, where [make] shows a chart asked for at other than the default. */
     val stars: Double? = null,
-    /** The song's screen opens with Precise difficulty on, where [make] shows a precise search or its chart. */
-    val precise: Boolean = false,
     /**
      * The chart whose star the game's HUD names, as a game of the player's song does; without it the sample game says
      * it is the sample.
@@ -275,19 +271,6 @@ data class Scenario(
                 listOf(Library, MakeChart(SONG)),
                 make = MakeState.Made(SONG, FakeChartMaker.MADE),
                 sections = ONE_SECTION,
-            ),
-            // Precise difficulty: the second chart of a search under way, and the chart a search kept.
-            "make-chart-precise-making" to Scenario(
-                listOf(Library, MakeChart(SONG)),
-                make = MakeState.Making(SONG, MakePhase.ROWS, PreciseProgress(2, PreciseSearch.MAX_CHARTS)),
-                stars = FakeChartMaker.MADE_PRECISE.stars,
-                precise = true,
-            ),
-            "make-chart-precise-made" to Scenario(
-                listOf(Library, MakeChart(SONG)),
-                make = MakeState.Made(SONG, FakeChartMaker.MADE_PRECISE),
-                stars = FakeChartMaker.MADE_PRECISE.stars,
-                precise = true,
             ),
             // Asked for 8.0 stars and came out at 6.2: the chart-ready state says so in words.
             "make-chart-made-far" to Scenario(

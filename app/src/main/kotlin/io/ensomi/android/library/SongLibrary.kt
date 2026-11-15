@@ -52,7 +52,7 @@ interface SongLibrary {
 
 /**
  * A library whose songs say whether they have a chart (the last chart made for each is kept, [chartIds]), and whose
- * [remove] forgets a song's chart with it.
+ * [remove] forgets a song's chart and decoded sound with it.
  */
 class ChartedSongLibrary(
     private val library: SongLibrary,
@@ -67,7 +67,8 @@ class ChartedSongLibrary(
     override fun song(id: String): Song? = songs.value.firstOrNull { it.id == id } ?: library.song(id)
 
     override fun remove(id: String) {
-        library.remove(id)
+        // Stop the work that reads the document, and forget the chart and sound, before its permission is given back.
         onRemove(id)
+        library.remove(id)
     }
 }

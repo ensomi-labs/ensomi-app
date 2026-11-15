@@ -51,6 +51,11 @@
     <string name="library_file_not_found">ファイルが見つかりません：%1$s</string>
     <string name="library_find_again">探し直す</string>
     <string name="library_remove">削除</string>
+    <string name="library_remove_song">%1$s を削除</string>
+    <string name="library_remove_title">曲を削除しますか？</string>
+    <string name="library_remove_body">「%1$s」とその譜面を Ensomi から削除します。音声ファイルは端末に残ります。</string>
+    <string name="library_remove_cancel">キャンセル</string>
+    <string name="library_formats">MP3、FLAC、WAV、OGG、Opus、M4A、AAC に対応しています。</string>
     <string name="library_unreadable_one">「%1$s」を音声として読み込めませんでした。</string>
     <plurals name="library_unreadable_many">
         <item quantity="other">%1$d 個のファイルを音声として読み込めませんでした。</item>

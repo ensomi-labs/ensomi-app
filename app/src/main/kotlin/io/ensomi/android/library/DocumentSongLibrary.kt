@@ -154,38 +154,50 @@ class DocumentSongLibrary(context: Context, private val scope: CoroutineScope) :
         }
     }
 
-    /** The song in [uri]'s document, or null when it cannot be read as audio. */
+    /**
+     * The song in [uri]'s document, or null when it cannot be read as audio. Tags are a convenience: a file whose tags
+     * the platform's retriever cannot read (some FLAC, Ogg and WAV files) is still a song when its container names an
+     * audio track and a length.
+     */
     private fun readSong(uri: Uri, id: String): StoredSong? {
         val name = displayName(uri) ?: return null
-        var title: String? = null
-        var artist: String? = null
-        var durationMs = 0L
-        try {
-            MediaMetadataRetriever().use { retriever ->
-                retriever.setDataSource(appContext, uri)
-                if (retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_AUDIO) == null) return null
-                title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-                artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-                    ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
-                durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0
-            }
-        } catch (e: RuntimeException) {
-            Log.w(TAG, "Not readable as audio: $name", e)
-            return null
-        } catch (e: IOException) {
-            Log.w(TAG, "Not readable as audio: $name", e)
-            return null
-        }
-        if (durationMs <= 0) durationMs = extractorDurationMs(uri) ?: return null
+        val tags = readTags(uri, name)
+        val durationMs = tags?.durationMs?.takeIf { it > 0 } ?: extractorDurationMs(uri) ?: return null
         return StoredSong(
             id = id,
             uri = uri.toString(),
             fileName = name,
-            title = title?.trim()?.takeIf { it.isNotEmpty() },
-            artist = artist?.trim()?.takeIf { it.isNotEmpty() },
+            title = tags?.title?.trim()?.takeIf { it.isNotEmpty() },
+            artist = tags?.artist?.trim()?.takeIf { it.isNotEmpty() },
             durationMs = durationMs,
             addedAtMs = System.currentTimeMillis(),
         )
+    }
+
+    private data class Tags(val title: String?, val artist: String?, val durationMs: Long)
+
+    /** The title and artist tags the retriever knows, and the length it gives; null when it cannot read the file. */
+    private fun readTags(uri: Uri, name: String): Tags? = try {
+        MediaMetadataRetriever().use { retriever ->
+            retriever.setDataSource(appContext, uri)
+            if (retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_AUDIO) == null) {
+                null
+            } else {
+                Tags(
+                    title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE),
+                    artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                        ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST),
+                    durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                        ?.toLongOrNull() ?: 0,
+                )
+            }
+        }
+    } catch (e: RuntimeException) {
+        Log.w(TAG, "Tags could not be read for $name; using the audio track", e)
+        null
+    } catch (e: IOException) {
+        Log.w(TAG, "Tags could not be read for $name; using the audio track", e)
+        null
     }
 
     /** The length the container gives, for a file whose tags have none. */

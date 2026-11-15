@@ -10,7 +10,9 @@ written in Kotlin with Jetpack Compose. Chart generation and gameplay come from 
 code or history with the Swift app, which is the reference for what it does.
 
 The app is an early play demo. It does drop-in play on the app's own stores: the settings, kept
-with Jetpack DataStore (latency slots for the sound and for each input method); the song library, from the system's document picker; decoding
+with Jetpack DataStore (latency slots for the sound and for each input method); the song library, from the system's document picker,
+with MP3, FLAC, WAV, OGG, Opus, M4A and AAC files and a Remove action beside every song (the chart and decoded
+sound go; the file stays on the device); decoding
 songs to PCM; the chart model, downloaded from Hugging Face at a pinned tag or installed from the package's files in a
 folder the player picks, either way only the pinned package and checked file by file; charts made on
 the device by the runtime from the player's songs, each shown with the star it came out at beside the star asked for

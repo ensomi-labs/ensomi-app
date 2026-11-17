@@ -7,8 +7,9 @@ commit: 774482f80cddbc5b80fedf5e31bc3de57e064172
 ## Public demo: the current process
 
 The Android play demo is built on the owner's Mac from a committed tree, then signed by the owner with one
-release key made by hand and published as a GitHub release of `ensomi-labs/ensomi-app`. The current build uses `versionName` **0.2.2**,
-`versionCode` **7**, owned by `gradle/libs.versions.toml`; Swift's `v0.1.0` stays separate. The build produces an unsigned,
+release key made by hand and published as a GitHub release of `ensomi-labs/ensomi-app`; 0.2.2 (code 7) was the last built
+that way. The current version is `versionName` **0.2.3**, `versionCode` **8**, owned by `gradle/libs.versions.toml`, the
+first meant to be built and signed by [Automation](#automation); its app is 0.2.2's. Swift's `v0.1.0` stays separate. The build produces an unsigned,
 R8-optimized arm64-v8a APK, with JNA keep rules and the runtime AAR's UniFFI keep rules. The runtime is the local AAR
 whose SHA-256 is `606034d0be3123d0238843e263a6aac97e22362076cf0c422add69075e03cb1a`, pinned as `runtimeAarSha256` in
 `gradle/libs.versions.toml`.

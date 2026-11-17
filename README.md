@@ -31,7 +31,8 @@ storage and memory. This is an early demo; performance and audio timing vary by 
 
 ## Build requirements
 
-- macOS. Builds run only there for now, and there is no CI.
+- macOS for local builds. GitHub Actions builds every push and each release on Ubuntu with `scripts/ci-setup.sh`
+  ([docs/release.md](docs/release.md)).
 - Android Studio, whose bundled JDK runs Gradle (any JDK 17 or later works).
 - Android SDK platform 37, build-tools 37.0.0, NDK 30.0.16248370, platform-tools and the emulator.
 - A device or emulator with an arm64-v8a CPU and Android 13 (API 33) or later. The app is built for

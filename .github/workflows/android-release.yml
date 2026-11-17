@@ -1,0 +1,290 @@
+# Builds, signs and publishes an Android release from an annotated android-v* tag. docs/release.md, section 5, is
+# the design; the GitHub settings it relies on are listed there.
+#
+#   build    no secrets: checks the tag and versions, builds the unsigned APK
+#   sign     environment android-signing (the key): checks out nothing, signs with apksigner, makes a draft
+#            release; if commons has the same tag, signs the private APK built there and attaches it to a release
+#            in commons
+#   publish  environment android-release (a releaser approves): publishes the draft
+name: Android release
+
+on:
+  push:
+    tags: ["android-v*"]
+
+permissions: {}
+
+concurrency:
+  group: android-release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  # The release certificate (docs/release.md, section 5). Every APK signed here must carry it.
+  CERT_SHA256: 92188ba6c6abbe64a8f2494a756835cec2ab22be3e40c6a21ae16f62ce4f0c3b
+  KEY_ALIAS: ensomi
+  PRIVATE_REPO: ensomi-labs/commons
+
+jobs:
+  build:
+    name: Build the unsigned APK
+    # The private build in commons merges this branch; there, android-private.yml builds and nothing signs.
+    if: ${{ github.repository == 'ensomi-labs/ensomi-app' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    outputs:
+      version-name: ${{ steps.versions.outputs.name }}
+      build-tools: ${{ steps.versions.outputs.build-tools }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "25"
+      - name: The tag, the versions and the branch
+        id: versions
+        run: |
+          pin() { sed -n "s/^$1 = \"\(.*\)\"$/\1/p" gradle/libs.versions.toml; }
+          name=$(pin appVersionName)
+          code=$(pin appVersionCode)
+          tag=$GITHUB_REF_NAME
+          if [ "$tag" != "android-v$name" ]; then
+            echo "::error::tag $tag does not match appVersionName $name"; exit 1
+          fi
+          if [ "$(git cat-file -t "refs/tags/$tag")" != tag ]; then
+            echo "::error::$tag is not an annotated tag; its message is the release notes"; exit 1
+          fi
+          if ! git merge-base --is-ancestor HEAD origin/dev/android; then
+            echo "::error::$tag is not on dev/android"; exit 1
+          fi
+          highest=0
+          for other in $(git tag -l 'android-v*'); do
+            [ "$other" = "$tag" ] && continue
+            c=$(git show "$other:gradle/libs.versions.toml" 2>/dev/null | sed -n 's/^appVersionCode = "\(.*\)"$/\1/p')
+            if [ -n "$c" ] && [ "$c" -gt "$highest" ]; then highest=$c; fi
+          done
+          if [ "$code" -le "$highest" ]; then
+            echo "::error::appVersionCode $code is not above $highest, the highest of the other android-v* tags"; exit 1
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "build-tools=$(pin buildTools)" >> "$GITHUB_OUTPUT"
+      - name: SDK packages, the pinned runtime AAR, local.properties
+        run: sh scripts/ci-setup.sh
+      # No Gradle cache: a release builds from the tag alone.
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-disabled: true
+      - name: Build the release APK
+        run: ./gradlew --no-daemon assembleRelease
+      - name: 16 KB alignment
+        run: sh scripts/ci-check-16k.sh app/build/outputs/apk/release/app-release-unsigned.apk
+      - name: Collect the APK, the mapping and the notes
+        env:
+          NAME: ${{ steps.versions.outputs.name }}
+        run: |
+          mkdir dist
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "dist/ensomi-$NAME-unsigned.apk"
+          cp app/build/outputs/mapping/release/mapping.txt dist/mapping.txt
+          {
+            git tag -l --format='%(contents)' "$GITHUB_REF_NAME"
+            echo
+            echo "Built from \`$GITHUB_SHA\` by [this run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)."
+            echo "Runtime AAR SHA-256 \`$(sed -n 's/^runtimeAarSha256 = "\(.*\)"$/\1/p' gradle/libs.versions.toml)\`."
+          } > dist/notes.md
+      # Unsigned, and the same bytes the release will carry; kept a day.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: unsigned
+          path: dist/
+          retention-days: 1
+          if-no-files-found: error
+
+  sign:
+    name: Sign
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: android-signing
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    outputs:
+      apk-sha256: ${{ steps.public.outputs.sha256 }}
+    env:
+      NAME: ${{ needs.build.outputs.version-name }}
+      BUILD_TOOLS: ${{ needs.build.outputs.build-tools }}
+    # Nothing from the repository runs in this job: no checkout, no Gradle.
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: unsigned
+          path: dist
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "25"
+      - name: Signing tools and the keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "build-tools;$BUILD_TOOLS" > /dev/null
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::the android-signing environment has no ANDROID_KEYSTORE_BASE64"; exit 1
+          fi
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          # sign_apk UNSIGNED SIGNED: signs with schemes v2 and v3, then checks the certificate, the schemes, the
+          # alignment and that the zip entries are the unsigned APK's.
+          cat > "$RUNNER_TEMP/sign.sh" <<'EOF'
+          set -eu
+          bt="$ANDROID_HOME/build-tools/$BUILD_TOOLS"
+          sign_apk() {
+            if [ -n "${KEY_PASSWORD:-}" ]; then key_pass="--key-pass env:KEY_PASSWORD"; else key_pass=; fi
+            # shellcheck disable=SC2086
+            "$bt/apksigner" sign --ks "$RUNNER_TEMP/release.keystore" --ks-key-alias "$KEY_ALIAS" \
+              --ks-pass env:KEYSTORE_PASSWORD $key_pass \
+              --v1-signing-enabled false --v2-signing-enabled true \
+              --v3-signing-enabled true --v4-signing-enabled false \
+              --out "$2" "$1" < /dev/null
+            report=$("$bt/apksigner" verify --min-sdk-version 24 --print-certs -v "$2")
+            certs=$(printf '%s\n' "$report" | sed -n 's/^.*Signer.*: certificate SHA-256 digest: //p' | sort -u)
+            if ! printf '%s\n' "$report" | grep -qx 'Number of signers: 1'; then
+              echo "::error::$(basename "$2") does not have exactly one signer"; exit 1
+            fi
+            if [ "$certs" != "$CERT_SHA256" ]; then
+              echo "::error::$(basename "$2") is signed by $certs, not the release certificate"; exit 1
+            fi
+            for scheme in v2 v3; do
+              printf '%s\n' "$report" | grep -q "^Verified using $scheme scheme .*: true$" ||
+                { echo "::error::$(basename "$2") is not signed with scheme $scheme"; exit 1; }
+            done
+            "$bt/zipalign" -c -P 16 4 "$2"
+            entries() { unzip -lv "$1" | awk '$7 ~ /^[0-9a-f]{8}$/ { print $1, $7, $8 }'; }
+            if [ "$(entries "$1" | sha256sum)" != "$(entries "$2" | sha256sum)" ]; then
+              echo "::error::$(basename "$2") has other zip entries than the unsigned APK"; exit 1
+            fi
+          }
+          EOF
+      - name: Sign the public APK
+        id: public
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          . "$RUNNER_TEMP/sign.sh"
+          sign_apk "dist/ensomi-$NAME-unsigned.apk" "dist/ensomi-$NAME.apk"
+          (cd dist && sha256sum "ensomi-$NAME.apk" > "ensomi-$NAME.apk.sha256")
+          echo "sha256=$(cut -d' ' -f1 "dist/ensomi-$NAME.apk.sha256")" >> "$GITHUB_OUTPUT"
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/ensomi-${{ needs.build.outputs.version-name }}.apk
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA256: ${{ steps.public.outputs.sha256 }}
+        run: |
+          # shellcheck disable=SC2016 # the backticks are Markdown
+          printf '\nAPK SHA-256 `%s`, signed by certificate `%s`.\n' "$SHA256" "$CERT_SHA256" >> dist/notes.md
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+            --title "Ensomi for Android $NAME" --notes-file dist/notes.md \
+            "dist/ensomi-$NAME.apk" "dist/ensomi-$NAME.apk.sha256" dist/mapping.txt
+      # The private APK: built by commons' own workflow from the same tag there, signed here, and returned to a
+      # release in commons. It never becomes an artifact or a release of this public repository; print nothing
+      # about its contents.
+      - name: Token for commons
+        id: commons
+        if: ${{ vars.COMMONS_APP_CLIENT_ID != '' }}
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.COMMONS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.COMMONS_APP_PRIVATE_KEY }}
+          owner: ensomi-labs
+          repositories: commons
+          permission-actions: read
+          permission-contents: write
+      - name: Sign the private APK
+        if: ${{ steps.commons.outputs.token != '' }}
+        env:
+          GH_TOKEN: ${{ steps.commons.outputs.token }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          . "$RUNNER_TEMP/sign.sh"
+          tag=$GITHUB_REF_NAME
+          if ! ref=$(gh api "repos/$PRIVATE_REPO/git/ref/tags/$tag" 2> /dev/null); then
+            echo "No $tag in commons: no private APK for this release."; exit 0
+          fi
+          sha=$(printf '%s' "$ref" | jq -r .object.sha)
+          if [ "$(printf '%s' "$ref" | jq -r .object.type)" = tag ]; then
+            sha=$(gh api "repos/$PRIVATE_REPO/git/tags/$sha" --jq .object.sha)
+          fi
+          status=$(gh api "repos/$PRIVATE_REPO/compare/$GITHUB_SHA...$sha" --jq .status)
+          case $status in ahead|identical) ;; *)
+            echo "::error::commons' $tag does not contain this release's commit"; exit 1 ;;
+          esac
+          # Wait up to an hour for commons' build of that commit.
+          for _ in $(seq 120); do
+            run=$(gh run list --repo "$PRIVATE_REPO" --workflow android-private.yml --event push \
+              --json databaseId,headSha,status,conclusion --limit 50 \
+              --jq "[.[] | select(.headSha == \"$sha\")][0] // empty")
+            if [ -n "$run" ] && [ "$(printf '%s' "$run" | jq -r .status)" = completed ]; then break; fi
+            sleep 30
+          done
+          if [ -z "$run" ] || [ "$(printf '%s' "$run" | jq -r .conclusion)" != success ]; then
+            echo "::error::commons' private build for $tag did not succeed within an hour"; exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/private"
+          gh run download "$(printf '%s' "$run" | jq -r .databaseId)" --repo "$PRIVATE_REPO" \
+            --name private-unsigned --dir "$RUNNER_TEMP/private"
+          cd "$RUNNER_TEMP/private"
+          badge() { "$ANDROID_HOME/build-tools/$BUILD_TOOLS/aapt2" dump badging "$1" | head -n 1 | cut -d' ' -f1-4; }
+          if [ "$(badge "ensomi-$NAME-private-unsigned.apk")" != "$(badge "$GITHUB_WORKSPACE/dist/ensomi-$NAME-unsigned.apk")" ]; then
+            echo "::error::the private APK's package or version differs from the public one"; exit 1
+          fi
+          sign_apk "ensomi-$NAME-private-unsigned.apk" "ensomi-$NAME-private.apk"
+          sha256sum "ensomi-$NAME-private.apk" > "ensomi-$NAME-private.apk.sha256"
+          if gh release view "$tag" --repo "$PRIVATE_REPO" > /dev/null 2>&1; then
+            gh release upload "$tag" --repo "$PRIVATE_REPO" --clobber \
+              "ensomi-$NAME-private.apk" "ensomi-$NAME-private.apk.sha256" mapping-private.txt
+          else
+            gh release create "$tag" --repo "$PRIVATE_REPO" --verify-tag --latest=false \
+              --title "Private Android $NAME" --notes "Signed by $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID." \
+              "ensomi-$NAME-private.apk" "ensomi-$NAME-private.apk.sha256" mapping-private.txt
+          fi
+          echo "Private APK signed and attached to commons' $tag."
+      - name: Remove the keystore
+        if: ${{ always() }}
+        run: rm -f "$RUNNER_TEMP/release.keystore"
+
+  publish:
+    name: Publish
+    needs: [build, sign]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: android-release
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NAME: ${{ needs.build.outputs.version-name }}
+      SHA256: ${{ needs.sign.outputs.apk-sha256 }}
+    steps:
+      - name: The draft still carries the signed APK
+        run: |
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern "ensomi-$NAME.apk" --dir draft
+          if [ "$(sha256sum "draft/ensomi-$NAME.apk" | cut -d' ' -f1)" != "$SHA256" ]; then
+            echo "::error::the draft's APK is not the one this run signed"; exit 1
+          fi
+          expected=$(printf '%s\n' "ensomi-$NAME.apk" "ensomi-$NAME.apk.sha256" mapping.txt | sort)
+          actual=$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | sort)
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::the draft's assets changed since signing"; exit 1
+          fi
+      - name: Publish
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest

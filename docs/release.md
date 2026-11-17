@@ -1,8 +1,8 @@
 ---
-commit: e59aa3a170e222b74ecbf2b0f4db23e5cba77a1c
+commit: 774482f80cddbc5b80fedf5e31bc3de57e064172
 ---
 
-# Android CI and release: proposed design
+# Android CI and release
 
 ## Public demo: the current process
 
@@ -89,9 +89,9 @@ recorded here. No chart generated on an Android device with this build is on rec
 Known in 0.2.2, as in 0.2.1: a section's star target at the top of its slider (5.9) is judged out of range and blocks
 Make chart; 5.8 works. Its fix is deferred.
 
-The owner keeps the keystore outside all repositories and signs separately with `apksigner`. CI has not run, so its
-duration is unknown. The remaining sections are the original proposal, including its future release prerequisites;
-they do not describe automation enabled for this demo.
+Up to 0.2.2 the owner kept the keystore outside all repositories and signed separately with `apksigner`. The
+workflows in [Automation](#automation) replace that once the owner has done the setup in
+[section 9](#9-order-of-work); none of them has run yet.
 
 The initial demo was 0.1.0 (code 1, `android-v0.1.0`). The 0.1.1 patch replaces the launcher icon with the website
 artwork; this build remains unsigned until the owner signs it. No tag or publication is part of the icon patch.
@@ -106,29 +106,28 @@ and the exported `ACTION_SEND` text share target. It adds no foreground service 
 Release uses microphone capture, autoplay off, 3.5 stars and zero ambient offset; debug controls and external options
 are unavailable. Microphone samples are neither saved nor uploaded. The optional public song short-link lookup and
 the pinned model download are the network activity. Local recognition traces and caches are bounded; see
-[recognition.md](recognition.md). The deliverable is unsigned; signing, tagging and publication are separate owner actions.
+[recognition.md](recognition.md). Signing and publication follow [section 5](#5-signing).
 
-## Proposed automation
+## Automation
 
-Proposed on 2026-10-31. Nothing here is enabled, and until the owner takes this design AGENTS.md stands: builds run on the
-owner's Mac. Each point is decided so that [the steps](#9-order-of-work) can be carried out in order; that section marks what
-only the owner can do.
+The workflows are on this branch: `.github/workflows/android.yml` builds and checks every push, and
+`android-release.yml` builds, signs and publishes a tagged release. They depend on GitHub settings only an organisation
+owner can make and on the runtime AAR being downloadable ([section 9](#9-order-of-work)); until then `android.yml`
+fails at setup and no release can be signed. Builds of the phone kit, arm64 emulator runs and the phone checks stay on
+the Mac.
 
-One thing has changed under the proposal since 0.2.2: the local AAR is pinned by SHA-256 in the build, so
-`ensomi.runtime.aar` selects the pinned file and is no longer an override that can link another. The sections below
-also pair a snapshot of `b12bb0f` with the hash `468a11aa…`, which do not belong together: `b12bb0f` builds the faulty
-`16c647da…` library, and `468a11aa…` is the AAR of 0.1.3 and 0.2.0, from `d090374`. A snapshot would be of the pinned
-AAR.
+The organisation is on GitHub Free. Everything below works there because this repository is public; `commons` is
+private, and Free gives a private repository no environments, so nothing holding the key runs there.
 
 | Topic | Decision |
 | --- | --- |
-| CI | `android.yml` on `dev/android` only, on `ubuntu-24.04`: every build type, the `androidTest` APK, JVM tests, lint, a 16 KB check. No secrets, no APK artifacts. |
-| Runtime AAR | A runtime release asset, fetched by Gradle and pinned by SHA-256. `ensomi.runtime.aar` stays as the local override. |
-| Emulators | No hosted runner can run an arm64 image, so arm64 AVDs stay on the Mac. One hosted experiment with x86_64 translation. No self-hosted runner, no device farm. |
+| CI | `android.yml` on `ubuntu-24.04`: every build type, the `androidTest` APK, JVM tests, lint, a 16 KB check. No secrets, no APK artifacts. |
+| Runtime AAR | The pinned AAR as a release asset of `ensomi-labs/runtime`, fetched by `scripts/ci-setup.sh` and checked by the build's existing pin. Local builds keep naming the file in `local.properties`. |
+| Emulators | No hosted runner can run an arm64 image, so arm64 AVDs stay on the Mac. No self-hosted runner, no device farm. |
 | Phones | The human-run kit, built on the Mac from a commit whose CI passed. |
-| Release | A signed arm64-v8a APK built by CI from an `android-v*` tag. Draft: internal. Prerelease: public, on the owner's word. No AAB yet. |
-| Signing | One key for all channels, used only by `apksigner` in a job that runs no repository code. |
-| Testers | The draft release, or the owner forwards the zip; the SHA-256 is checked. |
+| Release | An annotated `android-v*` tag, pushed by a signer, builds and signs the APK and makes a draft release; a releaser's approval publishes it. |
+| Signing | One key, held in the `android-signing` environment, used only by `apksigner` in a job that runs no repository code. |
+| Private APK | Built by `commons`' own workflow from the same tag there, signed by the same job here through a GitHub App token scoped to `commons`, attached to a release in `commons`. |
 | Coordinated release | Runtime and model first; one commit moves the app's pins; the app goes last. |
 
 ## 1. CI on `dev/android`
@@ -137,112 +136,57 @@ CodeQL’s default setup is off, because this branch has no workflows and Kotlin
 which needs the runtime AAR. An advanced workflow comes with the published AAR.
 
 
-**Where the file lives.** `.github/workflows/android.yml` on `dev/android`. "Each workflow run will use the version of the
-workflow that is present in the associated commit SHA or Git ref of the event", so pushes, pull requests and tags need nothing
-on `dev/swift`. Only `schedule` and `workflow_dispatch` need the file on the default branch, and nothing here uses them.
+**Where the file lives.** `.github/workflows/android.yml` on `dev/android`, the default branch. "Each workflow run will use
+the version of the workflow that is present in the associated commit SHA or Git ref of the event", so pushes, pull requests
+and tags each run the workflow of their own commit.
 
 **Triggers.** Pushes to `dev/android`, `claude/**` and `codex/**`, and pull requests into `dev/android`, unless they touch only
 docs. Agent branches are in so that an agent without the toolchain gets a build from a push; Swift branches have no
 `android.yml` and start nothing. No required check: `dev/android` keeps taking direct pushes.
 
-**What runs.** One job: `assembleDebug assembleDebugAndroidTest assembleChecks assembleRelease testDebugUnitTest lint`, the
-16 KB check, and a check that `scripts/phone-checks.sh` and `ModelSource.kt` pin the same model. The
-[appendix](#appendix-the-first-workflow) is the complete file.
+**What runs.** One job: `scripts/ci-setup.sh` (the catalog's SDK packages, the pinned AAR, `local.properties`),
+`assembleDebug assembleDebugAndroidTest assembleChecks assembleRelease testDebugUnitTest lint`, the 16 KB check
+(`scripts/ci-check-16k.sh`), and a check that `scripts/phone-checks.sh` and `ModelSource.kt` pin the same model.
 
 **Runner and cache.** `ubuntu-24.04`: 4 CPUs, 16 GB, free on a public repository, with the pinned SDK packages already in its
 image; the workflow still installs the catalog's pins, so they stay written in one place. `setup-gradle` uses `cache-provider:
-basic` (MIT), not its proprietary default. Left alone it writes caches only on the default branch, `dev/swift`, so the workflow
-sets `cache-read-only` itself. A new agent branch builds cold once.
+basic` (MIT), not its proprietary default. Only pushes to `dev/android` write the cache. A new agent branch builds cold once;
+a release never uses the cache.
 
 **Forks and secrets.** The workflow has no secrets and runs with `contents: read`. A fork's pull request gets a read-only token
 and no secrets, and first-time contributors wait for approval. `pull_request_target` and `workflow_run` are never used. No APK
 goes into artifacts: anyone signed in to GitHub can read a public repository's, which would distribute `checks`.
 
-**Beside `dev/swift`'s CI.** `ci.yml` lives only on `dev/swift` and `android.yml` only on `dev/android`, so neither sees the
-other's pushes.
+**Beside `dev/swift`'s CI.** `ci.yml` lives only on `dev/swift` and the Android workflows only on `dev/android`, so neither sees
+the other's pushes.
 
 ## 2. The runtime AAR
 
 This blocks all CI: the app does not compile without the runtime's classes.
 
+**The app's side.** `runtimeAarUrl` in `gradle/libs.versions.toml` names where CI downloads the file that
+`runtimeAarSha256` pins. `scripts/ci-setup.sh` downloads it with no token, compares its SHA-256 and writes
+`local.properties`; Gradle then checks the hash again and runs the binary check, exactly as on the Mac. Gradle never reads
+the URL, so a local build cannot pick up a downloaded file by accident, and moving the pin means changing both lines in
+one commit.
+
 | Option | Verdict |
 | --- | --- |
-| Runtime release asset, fetched by Gradle, checked by SHA-256 | **Chosen.** No token for public reads, no runtime toolchain in the app's CI, and how Swift already consumes the runtime. |
+| Runtime release asset, downloaded by CI, checked by the existing pin | **Chosen.** No token for public reads, no runtime toolchain in the app's CI, no change to Gradle. |
+| The same asset resolved by Gradle as an Ivy module with `verification-metadata.xml` | Not now: a second pin beside `runtimeAarSha256`, and a dependency path no build has tried through AGP. |
 | GitHub Packages (Maven) | No: "You need an access token to publish, install, and delete private, internal, and public packages", forks' builds included. |
 | Maven Central | Not now: namespace verification and signing for one consumer. |
 | Build in the app's CI from a pinned commit | No: Rust, cargo-ndk and an ONNX Runtime source build in every cold run. |
 
-**The app's side.** Gradle resolves the asset as an Ivy module, so caching and checking are Gradle's own. In
-`settings.gradle.kts`, under `dependencyResolutionManagement.repositories`:
+**The runtime's side, first.** A prerelease `android-aar-ecc4c36` of `ensomi-labs/runtime` carrying the AAR 0.2.2 links,
+`ensomi-runtime-ecc4c36.aar` (SHA-256 `606034d0…`), with the unstripped library and `SHA256SUMS` beside it, created from
+the owner's approved file with `--prerelease --latest=false --target ecc4c36f81bff4d411db0e3458bffe2707d6b27f`. No runtime
+workflow fires, and `main`, npm and `Package.swift` stay untouched. It has no CI build or attestation, so it serves CI and
+releases built from the same pinned file, not a claim about the runtime's release process.
 
-```kotlin
-// The runtime's AAR, an asset of a release of ensomi-labs/runtime. Nothing else comes from here.
-exclusiveContent {
-    forRepository {
-        ivy("https://github.com/ensomi-labs/runtime/releases/download") {
-            name = "ensomi-runtime-releases"
-            patternLayout { artifact("[revision]/[artifact].[ext]") }
-            metadataSources { artifact() }
-        }
-    }
-    filter { includeModule("io.ensomi", "ensomi-runtime") }
-}
-```
-
-In `gradle/libs.versions.toml`, replacing the comment there:
-
-```toml
-[versions]
-ensomiRuntime = "android-aar-b12bb0f" # a tag of ensomi-labs/runtime; its AAR's SHA-256 is in verification-metadata.xml
-[libraries]
-ensomi-runtime = { module = "io.ensomi:ensomi-runtime", version.ref = "ensomiRuntime" }
-```
-
-A new `gradle/verification-metadata.xml` pins that one file and leaves other modules as they are today:
-
-```xml
-<verification-metadata xmlns="https://schema.gradle.org/dependency-verification">
-   <configuration>
-      <verify-metadata>true</verify-metadata>
-      <verify-signatures>false</verify-signatures>
-      <trusted-artifacts>
-         <trust group="^(?!io\.ensomi$).*$" regex="true"/>
-      </trusted-artifacts>
-   </configuration>
-   <components>
-      <component group="io.ensomi" name="ensomi-runtime" version="android-aar-b12bb0f">
-         <artifact name="ensomi-runtime-android-aar-b12bb0f.aar">
-            <sha256 value="468a11aa3f53db041b44478fbf8d6e49d57411b72c5d01594f1c6b05a3ec0738" origin="the release's digest"/>
-         </artifact>
-      </component>
-   </components>
-</verification-metadata>
-```
-
-In `app/build.gradle.kts`, `runtimeAar` becomes null when `ensomi.runtime.aar` is unset, which keeps the local override:
-
-```kotlin
-if (localRuntimeAar != null) implementation(files(localRuntimeAar))
-else implementation(libs.ensomi.runtime) { artifact { type = "aar"; extension = "aar" } }
-```
-
-Tested with Gradle 9.8.2 on the `v0.3.2` xcframework asset: 46.8 MB through GitHub's redirect with no token; the right SHA-256
-builds, a wrong or missing one stops the build. Not yet through AGP; JNA's line uses the same `artifact` form.
-
-**The runtime's side, first (step 1).** A prerelease `android-aar-b12bb0f` with the AAR the Mac builds from `codex/android-perf-2`
-at `b12bb0f`, SHA-256 `468a11aa3f53db041b44478fbf8d6e49d57411b72c5d01594f1c6b05a3ec0738`.
-No runtime workflow fires, and `main`, npm and `Package.swift` stay untouched. It has no CI build or attestation and claims
-0.3.2 with API that 0.3.2 lacks, so it serves CI and internal builds only. The plan
-was a runtime CI job with the first release carrying the AAR, so this needs the owner's yes; without it, steps 2 and 3 wait for
-step 8.
-
-**Then a release (step 8).** Before any public APK, a `vX.Y.Z` release carries the AAR. That asks of the runtime:
-
-- `codex/android-perf-2` merged, and version 0.4.0. `r2-1.0.1` declares `min_runtime` 0.3.0 and no upper bound, so it still opens.
-- An `android` job in `ci.yml`, with `scripts/build-android.sh` made portable to `ubuntu-24.04` (its `darwin-x86_64` path,
-  `shasum`, default paths) and `target/onnxruntime-android` cached.
-- `release.yml` attaching and attesting the AAR, and `RELEASING.md` saying so.
-- JNA's rules in `android/consumer-rules.pro`, and notices for the Rust crates in the AAR.
+**Then a release.** Later, a `vX.Y.Z` runtime release carries the AAR, built and attested by the runtime's CI. That asks of the
+runtime an `android` job in `ci.yml` with `scripts/build-android.sh` made portable to `ubuntu-24.04`, `release.yml` attaching
+and attesting the AAR, JNA's rules in `android/consumer-rules.pro`, and notices for the Rust crates in the AAR.
 
 ## 3. Emulators and devices
 
@@ -255,7 +199,7 @@ step 8.
 | Self-hosted Mac runner | No | GitHub: they "should almost never be used for public repositories". The Mac holds private data; a fork's pull request must not reach it. |
 | Firebase Test Lab | No | Deprecated, shut down on 2027-09-30; its replacement requires billing. |
 
-**The experiment (step 5).** On a branch, with the API 36 x86_64 image: install the debug APK, read `EnsomiDiagnostics`, run
+**The experiment, not yet run.** On a branch, with the API 36 x86_64 image: install the debug APK, read `EnsomiDiagnostics`, run
 `RuntimeCheck`; then launch the release APK, which catches what R8 broke. It says nothing about timing, and whether JNA and ONNX
 Runtime run under translation is unknown. Keep it if a week of runs is stable; otherwise drop it and say why here.
 
@@ -276,18 +220,19 @@ No AAB until a store is planned.
 
 | Channel | What | Who | When |
 | --- | --- | --- | --- |
-| Internal | A draft release | Write access, so both testers ("Only users with push access will receive listings for draft releases") | Step 7 |
-| Public | That draft, published as a prerelease, not rebuilt | Anyone | Owner's decision, step 9 |
+| Internal | A draft release | Write access ("Only users with push access will receive listings for draft releases") | After signing |
+| Public | That draft, published, not rebuilt | Anyone | A releaser's approval |
 | Stores | An AAB and a listing | — | Postponed |
 
-**Tags.** `android-vX.Y.Z` and `android-vX.Y.Z-rc.N`; bare `v*` stays Swift's. The version numbers are independent, and releases
-use `--latest=false`, so Swift's `v0.1.0` keeps Latest.
+**Tags.** Annotated `android-vX.Y.Z`; bare `v*` stays Swift's. The version numbers are independent. Android releases have been
+marked Latest since 0.2.0, and `publish` keeps doing so.
 
-**Versions.** `appVersionName` and `appVersionCode` move into the catalog. `versionCode` goes up by one for every tag and is never
-reused. The release job fails unless the tag is `android-v<appVersionName>` and the code is above the last tag's.
+**Versions.** `appVersionName` and `appVersionCode` live in the catalog. `versionCode` goes up by one for every tag and is never
+reused. `build` fails unless the tag is annotated, is `android-v<appVersionName>`, is on `dev/android`, and its code is above
+every other `android-v*` tag's.
 
-**Changelog.** The annotated tag's message, plus the commit, the APK's SHA-256, the pins, and links to the model card and the data
-provenance page. `--generate-notes` would compare histories that share nothing.
+**Changelog.** The annotated tag's message, plus the commit, the run, the runtime pin, the APK's SHA-256 and the certificate.
+A releaser may edit the draft's title and text before approving. `--generate-notes` would compare histories that share nothing.
 
 **Notices.** The Notices screen has the model's and ONNX Runtime's. A public APK also needs AndroidX, Compose, Kotlin, kotlinx, JNA
 (under Apache-2.0), libc++ and the Rust crates: a generated list for the Kotlin side, the AAR for the native side.
@@ -300,39 +245,73 @@ so the release APK gets its own smoke test on the Mac AVD and by hand on both de
 **Mapping, symbols, 16 KB.** `mapping.txt` stays on the release. With no crash service nothing is uploaded; the exact unstripped native library and its GNU build ID are retained per release for symbolizing. CI checks zip alignment and every library's `LOAD` segments, and `sign`
 checks the zip again.
 
-**The workflow.** `android-release.yml` on `dev/android`, on a push of `android-v*`. Job `build`, no secrets: check the tag and
-versions, `assembleRelease`, upload the unsigned APK, mapping and notes for a day. Job `sign`, in environment `android-release`, no
-checkout: `apksigner sign`, verify the certificate's SHA-256, attest, `gh release create --draft --latest=false`.
+**The workflow.** `android-release.yml`, on a push of `android-v*`:
+
+1. `build`, no secrets: the tag and version checks, `assembleRelease` without the Gradle cache, the 16 KB check; the unsigned
+   APK, `mapping.txt` and the notes kept as an artifact for a day. That artifact is readable by anyone signed in to GitHub; it
+   holds the unsigned form of what will be public.
+2. `sign`, environment `android-signing`, no checkout and no Gradle: `apksigner sign` with schemes v2 and v3, then checks
+   that exactly one signer with the release certificate signed it with both schemes, that it is aligned, and that its zip
+   entries are the unsigned APK's; attests it; creates the draft release with the APK, its `.sha256` and `mapping.txt`; then
+   the private APK ([section 5](#5-signing)). The keystore is written to the runner's temporary directory and removed.
+3. `publish`, environment `android-release`: after a releaser approves, checks that the draft still holds exactly the APK
+   `sign` made, then publishes it.
 
 ## 5. Signing
 
-**One key** for internal, public and later store builds, so a tester's rc upgrades to the final build. RSA 4096, valid 30 years
-(Google: "at least 25 years"; Play needs past 2033-10-22). `checks` stays on the debug key and is never distributed.
+**One key** for internal, public and later store builds, and for the private APK, so every build upgrades every other. It is
+the key 0.1.0 to 0.2.2 were signed with; another one would make every user uninstall, losing the library and the model.
+`checks` stays on the debug key and is never distributed.
 
-**Where it lives.** Secrets of the environment `android-release`, and two copies the owner keeps away from GitHub (a password
-manager, an encrypted drive), since GitHub secrets cannot be read back. Never in the repository, in `gradle.properties`, or on a
-disk an agent can read, which includes the Mac.
+Release certificate SHA-256: `92188ba6c6abbe64a8f2494a756835cec2ab22be3e40c6a21ae16f62ce4f0c3b` (`CERT_SHA256` in
+`android-release.yml`; `sign` refuses any APK that verifies under another).
 
-**Protection.** The environment allows only `android-v*` tags and has the owner as required reviewer: "a job cannot access
-environment secrets until one of the required reviewers approves it". Prevent self-review stays off, since the owner both tags and
-approves. The key stays out of Gradle: `sign` checks out nothing and runs only `apksigner`, so no third-party plugin runs beside it.
-Approving is a person's act: an agent never approves, even with a token that could.
+**Who does what.**
 
-**By hand, once (step 6),** with no agent running on that machine, after creating the environment in Settings. Then store the
-keystore and password in the two copies and delete the working file.
+| Role | Who | How |
+| --- | --- | --- |
+| Signer, team `android-signers` | Members trusted to cut a release | Pushing an annotated `android-v*` tag starts `build` and `sign` with no further prompt. Only this team may create, move or delete such tags. |
+| Releaser, team `android-releasers` | Members trusted to publish | Approving `publish` in the run. A releaser may approve a run they started; with one releaser, a second person cannot be required yet. |
+| Organisation owner | — | The settings below, the key's secrets, the GitHub App. |
+
+The signer's authorisation is the tag push itself, under the organisation's required two-factor authentication: nobody types
+the keystore password. Approving is a person's act: an agent never approves, pushes a release tag or handles the key, even
+with a token that could.
+
+**Settings (organisation owner).**
+
+| Where | Setting |
+| --- | --- |
+| Organisation teams | `android-signers` with write access to this repository; `android-releasers` with write access (its members review `.github/` as code owners). |
+| Tag ruleset | Target `refs/tags/android-v*`; restrict creations, updates and deletions; bypass: `android-signers` only. |
+| Environment `android-signing` | Deployment branches and tags: tags matching `android-v*` only. No required reviewers. Secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_PASSWORD` only if the key's password differs; `COMMONS_APP_PRIVATE_KEY`. Variable: `COMMONS_APP_CLIENT_ID`. |
+| Environment `android-release` | Deployment branches and tags: tags matching `android-v*` only. Required reviewers: `android-releasers`. Prevent self-review off. Allow administrators to bypass: off. No secrets. |
+| Branch ruleset on `dev/android` | Require a pull request with code owner review, so `.github/CODEOWNERS` holds: the workflow at a tag decides what `sign` does with the key. |
+| GitHub App | Owned by the organisation, installed on `commons` only, with repository permissions Actions: read and Contents: read and write. Its client ID and a private key go to `android-signing`. |
+| Releases | Immutable releases, once the first release from this workflow is published (repository-wide, so Swift's too). |
+
+**Moving the key, once,** with no agent running on that machine. Set the secrets from the keystore file and typed passwords:
 
 ```sh
-keytool -genkeypair -keystore ensomi-release.p12 -storetype PKCS12 -alias ensomi-release \
-  -keyalg RSA -keysize 4096 -validity 11000 -dname "CN=Ensomi, O=ensomi-labs"
-keytool -list -v -keystore ensomi-release.p12 | grep SHA256:   # goes in this document, below
-base64 < ensomi-release.p12 | gh secret set ANDROID_KEYSTORE_BASE64 --env android-release -R ensomi-labs/ensomi-app
-gh secret set ANDROID_KEYSTORE_PASSWORD --env android-release -R ensomi-labs/ensomi-app
+base64 -i ensomi-release.jks | gh secret set ANDROID_KEYSTORE_BASE64 --env android-signing -R ensomi-labs/ensomi-app
+gh secret set ANDROID_KEYSTORE_PASSWORD --env android-signing -R ensomi-labs/ensomi-app
 ```
 
-Release certificate SHA-256: none yet.
+GitHub secrets cannot be read back, so keep two copies away from GitHub (a password manager, an encrypted drive), then delete
+the keystore from the Mac: an agent can read any file there.
 
-**Fixed by the first public APK:** the certificate, since another one means uninstalling and losing the library and the model ("You
-cannot regenerate a previously generated key"), and `io.ensomi.android`, which matches Swift's `io.ensomi.ios` and should stay.
+**The private APK.** `commons` holds the private source on a branch that merges `dev/android`, with its own
+`.github/workflows/android-private.yml`: on a push of the same `android-v*` tag there, it builds the unsigned private APK with
+no secrets and keeps it as a private artifact for a day. Push that tag in `commons` before the tag here. `sign` then, with the
+App's token, checks that the `commons` tag contains this release's commit, waits up to an hour for that build, checks that the
+private APK has the public one's package and version, signs and checks it like the public one, and attaches it to a release of
+`commons`. It never becomes an artifact, release or attestation of this repository, and the job prints nothing about its
+contents. With no such tag in `commons`, `sign` skips it.
+
+**What this protects and what it does not.** A compromised Gradle plugin in `build` could alter an APK but cannot reach the
+key. Anyone with write access can change a workflow on a branch, but only a signer's tag reaches `android-signing`, and code
+owner review guards what that tag runs. A signer is trusted with the key's use; a releaser with what is published. An owner can
+change any of these settings.
 
 **Loss and rotation.** A lost key ends upgrades. A held key can be retired with `apksigner rotate`; rotated keys work from Android 13,
 this app's minSdk. Rotation does not undo a leak: a device that has not updated still trusts the old key.
@@ -343,14 +322,14 @@ sideloads are not covered yet, ADB is exempt), so a public APK will need the pac
 
 ## 6. Getting a build to the testers
 
-Both testers have write access and see the draft. GreatFire's public probes, none from the teammate's network: `github.com` is
+Testers with write access see the draft. GreatFire's public probes, none from the teammate's network: `github.com` is
 intermittent (42 of 62 tests disturbed), `release-assets.githubusercontent.com`, where downloads redirect, connected in 5 of 5 (last
-on 2026-10-10), `huggingface.co` is blocked (15 of 15). At step 7 the teammate tries one download. If it fails, the owner sends the APK
+on 2026-10-10), `huggingface.co` is blocked (15 of 15). At the first draft the teammate tries one download. If it fails, the owner sends the APK
 zipped over whatever the two already use, and the teammate checks the SHA-256. Behind the block the model comes from the kit by
 Install from files.
 
 **On HyperOS.** `adb install -r`, tapping `继续安装` within 10 s ([the runbook](phone-checks.md)), or open the APK in the file manager and
-allow that app to install unknown apps; nobody has seen those dialogs with a signed build, so step 7 records them. From a debug build,
+allow that app to install unknown apps; nobody has recorded those dialogs with a signed build. From a debug build,
 `adb uninstall io.ensomi.android` first, which also removes the model, settings and library.
 
 ## 7. The model pin and coordinated releases
@@ -369,7 +348,7 @@ so.
    The runtime's release carries the AAR.
 2. The app, last: one commit moves every pin; CI; a kit with the new package; the phone checks; a tag.
 
-The Swift app pins independently. That page still calls this repository "the macOS and iOS app"; step 9 adds Android. A mirror of the
+The Swift app pins independently. That page still calls this repository "the macOS and iOS app"; it should add Android. A mirror of the
 model for China is a new host for the weights, so it goes through the project's review of weights releases, not this document.
 
 ## 8. Provenance and supply chain
@@ -382,38 +361,34 @@ not take the key.
 
 ## 9. Order of work
 
-S is under half a day of an agent's work, M about a day.
-
-| # | Step | Size | Needs |
-| --- | --- | --- | --- |
-| 0 | **Owner:** take this design, lifting the no-CI rule | S | |
-| 1 | The snapshot: Astra builds `b12bb0f`, then `gh release create android-aar-b12bb0f ensomi-runtime.aar -R ensomi-labs/runtime --prerelease --latest=false --target b12bb0f3053415c4fa1af17903d4e901bf074b5e` | S | **Owner's yes** |
-| 2 | Section 2's app changes; check on the Mac with the override unset | S | 1 |
-| 3 | `android.yml`; AGENTS.md and README updated | S | 2 |
-| 4 | Optimization and JNA's rules; the smoke test on the Mac AVD, signed with the debug key | S | 3 |
-| 5 | The hosted experiment | M | 3 |
-| 6 | **Owner:** environment, key, copies, secrets | S | |
-| 7 | `android-release.yml`, `.gitignore` for `*.p12`, `android-v0.1.0-rc.1`; **the owner approves**; both testers install | M | 4, 6 |
-| 8 | The runtime's `v0.4.0` with the AAR; the app pins it | M | Parity on the Mac |
-| 9 | Notices complete; phone checks and smoke test pass on both devices; ecosystem page updated; **the owner decides** on a public prerelease and turns on immutable releases | M | 7, 8 |
-
-Steps 1 to 3 are the smallest thing that gives value: every push built, tested and linted, without Astra.
+| # | Step | Who |
+| --- | --- | --- |
+| 1 | Publish the runtime prerelease of [section 2](#2-the-runtime-aar) from the approved AAR | Owner's word; an agent may run it |
+| 2 | Merge this branch's workflows; `android.yml` runs on the next push | Review |
+| 3 | Teams, tag ruleset, both environments, `dev/android` ruleset ([section 5](#5-signing)) | Organisation owner |
+| 4 | The GitHub App on `commons`; its client ID and key in `android-signing` | Organisation owner |
+| 5 | Move the key into `android-signing`; two offline copies; delete it from the Mac | Owner, no agent running |
+| 6 | The long-lived private branch in `commons` with `android-private.yml` | Review in `commons` |
+| 7 | First release: a signer tags `commons`, then this repository; the draft is checked and installed; a releaser publishes | Signer, releaser |
 
 **Stays on the Mac:** arm64 AVD runs, screenshots, the kit, the runtime's parity checks, builds of a runtime branch.
 
-**Before anything is published,** the catalog's `ensomiRuntime` is a `vX.Y.Z` tag, not a snapshot, and the APK is built from the public
-tree alone.
-
 ## Considered and rejected
 
-- A stub workflow on `dev/swift`: nothing here needs `schedule` or `workflow_dispatch`.
-- A Gradle download task: custom code for what verification does.
+- A Gradle download task: custom code beside a pin the build already checks.
+- A required reviewer on `android-signing`: a signer's tag push is the authorisation, and a click per signature adds nothing a
+  signer could not also click.
+- Signing in `commons`: on GitHub Free a private repository has no environments; GitHub Team would cost a seat for every
+  organisation member.
+- Building the private APK in this repository's runners: public logs could carry its source's paths and warnings.
 - The AAR in git: 15.7 MB in public history at each bump.
 - `v0.4.0-rc.1` as the first asset: it needs `main`, and drags npm and `Package.swift` along.
 - Whole-graph dependency verification, SBOMs, Dependabot on the pins: churn for a small team.
 - `sha_pinning_required`: it would fail `dev/swift`'s `@v7` tags.
 - A second key for internal builds: testers would uninstall at the first public build.
 - `signingConfigs` fed from secrets: the key would sit in a Gradle process with third-party plugins.
+- Removing the password prompt on the Mac (a keychain item set to always allow, a password file): any process of that user,
+  agents included, would hold a working signing key.
 - `applicationIdSuffix` on debug: scripts name the package, and each install would hold its own model.
 - `versionCode` from a semver formula: a counter cannot run out of room.
 - Firebase App Distribution, Play internal testing, Pgyer, fir.im, object storage in China: too much for two testers.
@@ -421,12 +396,12 @@ tree alone.
 
 ## Not verified
 
-- **Nothing has run.** The workflow passes `actionlint` with `shellcheck`, but it has never run on GitHub; its duration is unknown.
-- **`compileSdk = 37` resolving to `android-37.0`** is inferred: the SDK repository has no `platforms;android-37`. The first run shows it.
-- **AGP taking the AAR from the Ivy repository:** tested with Gradle alone, on another asset.
-- **`scripts/build-android.sh` and ONNX Runtime's build on Linux.**
-- **This app under `libndk_translation`.** Whether `ubuntu-24.04-arm` exposes `/dev/kvm` is unstated by GitHub, and moot. A software-only
-  arm64 emulator on hosted Apple silicon was not tried; Google calls that mode "quite slow".
+- **`android-release.yml` has not run.** `android.yml` has: its first full run on `ubuntu-24.04` (2026-11-17, a cold
+  cache) took about 10 minutes, with every build type, the unit tests, lint, the binary check on Linux and the 16 KB check
+  passing. Both workflows pass `actionlint` with `shellcheck`. The signing helper's checks were run on the Mac with a
+  throwaway key against 0.2.2's unsigned APK: it signs, refuses another certificate, and tells a changed zip from the
+  unsigned one.
+- **`gh release download` and `gh release view` on a draft** from `publish`, and the App token's access to `commons`' artifacts.
 - **Reach from the teammate's network:** GreatFire's public probes only, and few for the assets host.
 - **HyperOS's dialogs** for a signed APK installed by hand.
 - **Developer verification:** when sideloads are enforced, and whether HyperOS China builds are "certified".
@@ -468,92 +443,3 @@ All read on 2026-10-31.
 - GreatFire: [github.com](https://en.greatfire.org/https/github.com),
   [release-assets](https://en.greatfire.org/https/release-assets.githubusercontent.com),
   [huggingface.co](https://en.greatfire.org/https/huggingface.co).
-
-## Appendix: the first workflow
-
-For `.github/workflows/android.yml` at step 3; it stays here until then, since the file on this branch would start running. The actions
-are pinned to the commits their release tags pointed at on 2026-10-31; check them again on adoption. The one value still to fill is
-outside this file: the AAR's SHA-256 in section 2.
-
-```yaml
-# Builds and checks the Android app on every push. docs/release.md is the design.
-# A release is another workflow; this one holds no secrets and uploads no APK.
-name: Android
-
-on:
-  push:
-    branches: [dev/android, "claude/**", "codex/**"]
-    paths-ignore: ["docs/**", "**.md"]
-  pull_request:
-    branches: [dev/android]
-    paths-ignore: ["docs/**", "**.md"]
-
-permissions:
-  contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  build:
-    name: Build, JVM tests and lint
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
-        with:
-          distribution: temurin
-          java-version: "25"
-      # Every pin stays in the catalog; a package the runner image already has is not fetched again.
-      - name: Install the catalog's SDK packages
-        run: |
-          pin() { sed -n "s/^$1 = \"\(.*\)\"$/\1/p" gradle/libs.versions.toml; }
-          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          yes | "$sdkmanager" --licenses > /dev/null
-          "$sdkmanager" --install "platforms;android-$(pin compileSdk).0" "build-tools;$(pin buildTools)" "ndk;$(pin ndk)"
-      # Also validates the Gradle wrapper. Without cache-read-only it would write the cache only on the default
-      # branch, which is dev/swift.
-      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
-        with:
-          cache-provider: basic
-          cache-read-only: ${{ github.event_name == 'pull_request' }}
-      - name: The phone checks' script and the app pin the same model
-        run: |
-          app=$(sed -n 's/.*PINNED_MANIFEST_SHA256 = "\(.*\)".*/\1/p' app/src/main/kotlin/io/ensomi/android/model/ModelSource.kt)
-          script=$(sed -n 's/^PINNED_MANIFEST=//p' scripts/phone-checks.sh)
-          if [ -z "$app" ] || [ "$app" != "$script" ]; then
-            echo "::error::scripts/phone-checks.sh and ModelSource.kt pin different manifests"
-            exit 1
-          fi
-      - name: Build every type, the checks APK, JVM tests, lint
-        run: >
-          ./gradlew --no-daemon
-          assembleDebug assembleDebugAndroidTest assembleChecks assembleRelease
-          testDebugUnitTest lint
-      - name: 16 KB alignment of the release APK
-        run: |
-          pin() { sed -n "s/^$1 = \"\(.*\)\"$/\1/p" gradle/libs.versions.toml; }
-          apk=app/build/outputs/apk/release/app-release-unsigned.apk
-          "$ANDROID_HOME/build-tools/$(pin buildTools)/zipalign" -c -P 16 4 "$apk"
-          readelf="$ANDROID_HOME/ndk/$(pin ndk)/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
-          unzip -q "$apk" 'lib/arm64-v8a/*' -d "$RUNNER_TEMP/apk"
-          for so in "$RUNNER_TEMP"/apk/lib/arm64-v8a/*.so; do
-            "$readelf" -lW "$so" | awk '
-              $1 == "LOAD" { count++; if ($NF != "0x4000") bad = 1 }
-              END { exit !count || bad }
-            ' || { echo "::error::$so is not aligned to 16 KB"; exit 1; }
-          done
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: ${{ !cancelled() }}
-        with:
-          name: reports
-          path: |
-            app/build/reports/
-            app/build/test-results/
-          retention-days: 7
-          if-no-files-found: ignore
-```

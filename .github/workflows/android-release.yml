@@ -27,6 +27,8 @@ env:
 jobs:
   build:
     name: Build the unsigned APK
+    # The private build in commons merges this branch; there, android-private.yml builds and nothing signs.
+    if: ${{ github.repository == 'ensomi-labs/ensomi-app' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:

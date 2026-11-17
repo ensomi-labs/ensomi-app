@@ -20,6 +20,8 @@ concurrency:
 jobs:
   build:
     name: Build, JVM tests and lint
+    # The private build in commons merges this branch; it has its own workflow.
+    if: ${{ github.repository == 'ensomi-labs/ensomi-app' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:

@@ -102,16 +102,20 @@ and forwards to the main activity. Library is home; everything else is pushed on
 ### Library
 
 A top app bar ("Ensomi", the Settings gear), the songs as a Material list (title; artist and length; how many charts
-are kept for it), and an extended floating action button, **Add songs**. Tapping a song opens Make chart.
+are kept for it), and an extended floating action button, **Add songs**. Tapping a song opens Make chart; the delete
+button at the end of its row removes it.
 
 - **First run.** Until the model is installed, a card at the top of the list carries it (below). Under it, an empty
   state card says how songs get in and has its own Add songs button. The first screen therefore reads as two steps,
   get the model and add songs, and both can happen at once.
+- **Removing a song.** The delete button asks first. The dialog names the song and says that it and any chart kept for
+  it leave Ensomi while the sound file stays on the device. Confirming stops that song's chart work, forgets its kept
+  chart and decoded play sound, releases the document's persistable read permission, and takes the row out of the
+  library. The app never deletes the file itself, which may be in shared storage, Downloads or a cloud provider.
 - **A song whose file has gone** (moved, deleted, its permission revoked) stays in the list with "File not found"
-  and its file name, and offers Find again (pick it anew; the song and its charts stay) and Remove. Removing a song
-  forgets it and gives its permission back; the file stays where it is. The library looks again at each start and
-  each return to the app, by asking the provider for the document's name (a cloud file is not fetched), and a song
-  whose file fails to open is marked the same way.
+  and its file name, and offers Find again (pick it anew; the song and its charts stay) and Remove, with the same
+  confirmation. The library looks again at each start and each return to the app, by asking the provider for the
+  document's name (a cloud file is not fetched), and a song whose file fails to open is marked the same way.
 - The songs are listed by title as the phone's language sorts it; a song without a title tag shows its file name.
 - A small **Prepared** label beside the chart count means the song's stored audio stages have been checked this
   launch. Songs added to the library and songs present at launch prepare one at a time while the app is on an idle
@@ -220,6 +224,11 @@ photo picker has no audio mode (stack report §2.6). The library keeps each song
 file has them, its title and artist tags, in `library.json` in the app's files; it copies nothing. Cancelling the
 picker is not an error and says nothing; a file that cannot be read as audio is named in a snackbar, and a song
 already in the library is not added twice.
+
+The picker offers any `audio/*` document, and the decoder follows whatever audio track Android's extractors and
+codecs name: MP3, FLAC, WAV, OGG, Opus, M4A and AAC are the formats the build plan verifies. A tag the platform's
+retriever cannot read does not keep a file out of the library: the audio track and its length still add it, titled by
+its file name. The empty library names the formats so a first run does not have to guess.
 
 Browsing the whole music collection instead (MediaStore with `READ_MEDIA_AUDIO`,
 [Android 13 granular media permissions](https://developer.android.com/about/versions/13/behavior-changes-13#granular-media-permissions))

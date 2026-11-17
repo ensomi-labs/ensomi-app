@@ -42,8 +42,12 @@ class AppStores private constructor(context: Context) {
     })
     val chartStore = ChartStore(File(context.filesDir, "charts"))
     val charts = RuntimeChartMaker(context, scope, documents, model, chartStore, RuntimeChartMaker.lowMemory(context))
-    val songs = ChartedSongLibrary(documents, chartStore.songIds, scope) { charts.forget(it) }
     val playAudio = PlayAudioCache()
+    // A removed song's kept chart and decoded play sound belong to no other song.
+    val songs = ChartedSongLibrary(documents, chartStore.songIds, scope) {
+        charts.forget(it)
+        playAudio.drop(it)
+    }
     val keyboards = ConnectedKeyboards(context, settings.settings.map { it.keys }, scope)
 
     companion object {

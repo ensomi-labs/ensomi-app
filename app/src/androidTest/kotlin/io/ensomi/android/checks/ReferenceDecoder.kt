@@ -73,8 +73,8 @@ object ReferenceDecoder {
                 format.removeKey(MediaFormat.KEY_ENCODER_DELAY)
                 format.removeKey(MediaFormat.KEY_ENCODER_PADDING)
             }
-            // Raw PCM (WAV, and FLAC, which the extractor decodes itself) says in this key what its samples are;
-            // for a compressed format it asks the decoder for float output.
+            // Raw PCM (WAV) says in this key what its samples are; for a compressed format, FLAC included, it asks
+            // the decoder for float output.
             if (mime != MediaFormat.MIMETYPE_AUDIO_RAW) {
                 format.setInteger(MediaFormat.KEY_PCM_ENCODING, AudioFormat.ENCODING_PCM_FLOAT)
             }

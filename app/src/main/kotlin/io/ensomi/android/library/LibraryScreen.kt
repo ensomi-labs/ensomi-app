@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -30,6 +32,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -71,6 +77,10 @@ fun LibraryScreen(
     extraAction: @Composable () -> Unit = {},
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    // The song whose removal awaits confirmation; the list is untouched until the player confirms. The id is saved
+    // across a rotation, and the list still decides whether that song is there.
+    var removeCandidateId by rememberSaveable { mutableStateOf<String?>(null) }
+    val removeCandidate = songs.firstOrNull { it.id == removeCandidateId }
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
@@ -143,19 +153,34 @@ fun LibraryScreen(
                     }
                     items(songs, key = { it.id }) { song ->
                         if (song.missing) {
-                            MissingSongRow(song, onFindAgain = { onFindAgain(song) }, onRemove = { onRemoveSong(song) })
+                            MissingSongRow(song, onFindAgain = { onFindAgain(song) }, onRemove = { removeCandidateId = song.id })
                         } else {
-                            SongRow(song, song.id in preparedSongs) { onOpenSong(song) }
+                            SongRow(
+                                song = song,
+                                prepared = song.id in preparedSongs,
+                                onClick = { onOpenSong(song) },
+                                onRemove = { removeCandidateId = song.id },
+                            )
                         }
                     }
                 }
             }
         }
     }
+    removeCandidate?.let { song ->
+        RemoveSongDialog(
+            song = song,
+            onConfirm = {
+                removeCandidateId = null
+                onRemoveSong(song)
+            },
+            onDismiss = { removeCandidateId = null },
+        )
+    }
 }
 
 @Composable
-private fun SongRow(song: Song, prepared: Boolean, onClick: () -> Unit) {
+private fun SongRow(song: Song, prepared: Boolean, onClick: () -> Unit, onRemove: () -> Unit) {
     val length = ChartRequestRules.formatDuration(song.durationMs)
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
@@ -177,17 +202,26 @@ private fun SongRow(song: Song, prepared: Boolean, onClick: () -> Unit) {
             }
         },
         trailingContent = {
-            Column(horizontalAlignment = Alignment.End) {
-                if (prepared) Text(
-                    stringResource(R.string.library_prepared),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (song.chartCount > 0) Text(
-                    pluralStringResource(R.plurals.library_chart_count, song.chartCount, song.chartCount),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(horizontalAlignment = Alignment.End) {
+                    if (prepared) Text(
+                        stringResource(R.string.library_prepared),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (song.chartCount > 0) Text(
+                        pluralStringResource(R.plurals.library_chart_count, song.chartCount, song.chartCount),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(onClick = onRemove) {
+                    Icon(
+                        painterResource(R.drawable.ic_delete),
+                        contentDescription = stringResource(R.string.library_remove_song, song.title),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         },
     )
@@ -237,6 +271,35 @@ private fun MissingSongRow(song: Song, onFindAgain: () -> Unit, onRemove: () -> 
     }
 }
 
+/**
+ * Asks before a song leaves the library. The song, its kept chart and its label in the library go; the sound file is
+ * not the app's to delete and stays where the player keeps it.
+ */
+@Composable
+private fun RemoveSongDialog(song: Song, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                painterResource(R.drawable.ic_delete),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+            )
+        },
+        title = { Text(stringResource(R.string.library_remove_title)) },
+        text = { Text(stringResource(R.string.library_remove_body, song.title)) },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) { Text(stringResource(R.string.library_remove)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_remove_cancel)) }
+        },
+    )
+}
+
 @Composable
 private fun EmptySongs(onAddSongs: () -> Unit, showAdd: Boolean) {
     OutlinedCard(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -249,6 +312,11 @@ private fun EmptySongs(onAddSongs: () -> Unit, showAdd: Boolean) {
             )
             Text(stringResource(R.string.library_empty_title), style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.library_empty_body), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                stringResource(R.string.library_formats),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             if (showAdd) Button(onClick = onAddSongs, contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)) {
                 Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(18.dp))
                 Text(stringResource(R.string.library_add_songs), modifier = Modifier.padding(start = 8.dp))

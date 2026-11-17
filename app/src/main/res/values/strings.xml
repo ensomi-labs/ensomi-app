@@ -66,6 +66,11 @@
     <string name="library_file_not_found">File not found: %1$s</string>
     <string name="library_find_again">Find again</string>
     <string name="library_remove">Remove</string>
+    <string name="library_remove_song">Remove %1$s</string>
+    <string name="library_remove_title">Remove song?</string>
+    <string name="library_remove_body">“%1$s” and any chart kept for it will be removed from Ensomi. The sound file stays on your device.</string>
+    <string name="library_remove_cancel">Cancel</string>
+    <string name="library_formats">MP3, FLAC, WAV, OGG, Opus, M4A and AAC files work.</string>
     <string name="library_unreadable_one">“%1$s” could not be read as audio.</string>
     <plurals name="library_unreadable_many">
         <item quantity="one">%1$d file could not be read as audio.</item>

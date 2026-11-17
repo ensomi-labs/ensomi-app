@@ -7,7 +7,7 @@ or history with this branch.
 
 UI and UX decisions live in `docs/design.md`, gameplay and timing in `docs/gameplay.md`, the order of work in
 `docs/plan.md`, the recognition session in `docs/recognition.md`. Keep them current when a decision changes. `docs/release.md`
-records the first demo's manual Mac build and owner signing; its CI and automated release design remains proposed.
+is CI, signing and release: who signs, who publishes, and the GitHub settings they rely on.
 
 ## Recognition
 
@@ -82,8 +82,10 @@ Ensomi never operates another app. It uses no Accessibility service, reads no ot
 
 ## Build and verify
 
-Builds run only on the owner's Mac; there is no CI workflow. Agents without the Android toolchain push
-a commit and hand the build to Astra (Codex on the Mac) with `ens astra`. A build brief asks for:
+`.github/workflows/android.yml` builds, tests and lints every push on GitHub Actions; read its result before asking
+for a Mac build. Releases are `android-release.yml`, started by a signer's tag: an agent never pushes an `android-v*` tag,
+approves a release or handles the key (docs/release.md, section 5). Emulator runs, screenshots and the phone kit still need
+the Mac: hand them to Astra (Codex on the Mac) with `ens astra`. A build brief asks for:
 
 1. `local.properties` with `sdk.dir` and `ensomi.runtime.aar`. Give the AAR by its path and its pinned SHA-256
    (`runtimeAarSha256`; the README says where the approved file is on the owner's Mac), and ask for the file's hash in

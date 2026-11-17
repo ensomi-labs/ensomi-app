@@ -1,0 +1,3 @@
+# Changes to the workflows decide what the signing job does with the release key (docs/release.md, section 5).
+/.github/ @ensomi-labs/android-releasers
+/scripts/ci-*.sh @ensomi-labs/android-releasers

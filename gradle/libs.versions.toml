@@ -28,7 +28,9 @@ uiautomator = "2.4.0"
 # build stops when the selected file's SHA-256 is another (app/build.gradle.kts). Change it on purpose, in one commit
 # with the documents that name it, after scripts/check-no-kleidiai.py passes on the new AAR's library (README.md).
 runtimeAarSha256 = "606034d0be3123d0238843e263a6aac97e22362076cf0c422add69075e03cb1a"
-# Once a runtime release carries the AAR, pin it here, for example: ensomiRuntime = "x.y.z"
+# Where CI fetches that same file (scripts/ci-setup.sh): a prerelease asset of ensomi-labs/runtime. Gradle does not
+# read it; local builds keep naming the file in local.properties. Move it with runtimeAarSha256.
+runtimeAarUrl = "https://github.com/ensomi-labs/runtime/releases/download/android-aar-ecc4c36/ensomi-runtime-ecc4c36.aar"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }

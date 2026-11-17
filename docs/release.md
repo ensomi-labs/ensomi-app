@@ -396,11 +396,11 @@ not take the key.
 
 ## Not verified
 
-- **Nothing has run on GitHub.** Both workflows pass `actionlint` with `shellcheck`; their durations are unknown. The signing
-  helper's checks were run on the Mac with a throwaway key against 0.2.2's unsigned APK: it signs, refuses another
-  certificate, and tells a changed zip from the unsigned one.
-- **`compileSdk = 37` resolving to `android-37.0`** is inferred: the SDK repository has no `platforms;android-37`. The first run shows it.
-- **`scripts/check-no-kleidiai.py` on Linux**, with the NDK's `linux-x86_64` tools.
+- **`android-release.yml` has not run.** `android.yml` has: its first full run on `ubuntu-24.04` (2026-11-17, a cold
+  cache) took about 10 minutes, with every build type, the unit tests, lint, the binary check on Linux and the 16 KB check
+  passing. Both workflows pass `actionlint` with `shellcheck`. The signing helper's checks were run on the Mac with a
+  throwaway key against 0.2.2's unsigned APK: it signs, refuses another certificate, and tells a changed zip from the
+  unsigned one.
 - **`gh release download` and `gh release view` on a draft** from `publish`, and the App token's access to `commons`' artifacts.
 - **Reach from the teammate's network:** GreatFire's public probes only, and few for the assets host.
 - **HyperOS's dialogs** for a signed APK installed by hand.

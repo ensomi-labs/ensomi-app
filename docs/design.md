@@ -391,7 +391,7 @@ A Material list in sections:
   0.46 s to fall to the line."), judge difficulty (segmented A to E, C by default), **Hold tail judgement** (a switch,
   off by default: when off, hitting a hold head scores the note immediately and releasing early cannot break combo;
   when on, releasing too early or holding past the tail misses; holding a long note body adds +1 combo every 100 ms in
-  both modes), and **Shorten hold tails** (a visual-only slider from 0 ms to 200 ms in 10 ms steps, 0 ms by default,
+  both modes), and **Shorten hold tails** (a visual-only slider from 0 ms to 80 ms in 10 ms steps, 0 ms by default,
   pulling drawn hold ends back toward their heads for dense-4K readability without changing judgement timing).
 - **Playfield**: orientation (segmented Landscape and Portrait, Landscape by default); **Lane lean** for the
   orientation chosen (a slider from Flat to 55° in whole degrees; 40° in landscape, 47° on a phone-sized window, and

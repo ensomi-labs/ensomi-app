@@ -40,7 +40,7 @@ data class PlaySettings(
     val inputLatency: InputLatency = InputLatency(),
     /** Whether releasing a held long note is judged; off by default, so hitting the head scores it without tail break. */
     val holdTailJudgement: Boolean = false,
-    /** Visual trim taken off each hold's tail in milliseconds (0 to 200 ms), without changing gameplay judgement. */
+    /** Visual trim taken off each hold's tail in milliseconds (0 to 80 ms), without changing gameplay judgement. */
     val holdTailShortenMs: Int = DEFAULT_HOLD_TAIL_SHORTEN_MS,
 ) {
     /** The active audio slot's value: the audio latency a game starts with. */
@@ -91,7 +91,7 @@ data class PlaySettings(
         val LEANS = 0..55
 
         const val DEFAULT_HOLD_TAIL_SHORTEN_MS = 0
-        val HOLD_TAIL_SHORTEN_MS = 0..200
+        val HOLD_TAIL_SHORTEN_MS = 0..80
         const val HOLD_TAIL_SHORTEN_STEP_MS = 10
 
         /**

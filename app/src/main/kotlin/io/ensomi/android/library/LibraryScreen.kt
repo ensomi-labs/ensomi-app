@@ -32,16 +32,18 @@ import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxDefaults
+import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -250,13 +252,24 @@ private fun SwipeToRemoveSongBox(
     onRemove: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    val state = rememberSwipeToDismissBoxState()
+    val currentOnRemove by rememberUpdatedState(onRemove)
+    val positionalThreshold = SwipeToDismissBoxDefaults.positionalThreshold
+    // Plain remember (not rememberSwipeToDismissBoxState's rememberSaveable): LazyColumn's SaveableStateHolder must not
+    // restore EndToStart and immediately dismiss the row again when Undo puts the song back.
+    val state = remember(song.id, positionalThreshold) {
+        SwipeToDismissBoxState(SwipeToDismissBoxValue.Settled, positionalThreshold)
+    }
+    var dismissed by remember(song.id) { mutableStateOf(false) }
     SwipeToDismissBox(
         state = state,
         enableDismissFromStartToEnd = false,
         enableDismissFromEndToStart = true,
+        gesturesEnabled = !dismissed,
         onDismiss = { direction ->
-            if (direction == SwipeToDismissBoxValue.EndToStart) onRemove()
+            if (!dismissed && direction == SwipeToDismissBoxValue.EndToStart) {
+                dismissed = true
+                currentOnRemove()
+            }
         },
         backgroundContent = {
             val active = state.dismissDirection == SwipeToDismissBoxValue.EndToStart

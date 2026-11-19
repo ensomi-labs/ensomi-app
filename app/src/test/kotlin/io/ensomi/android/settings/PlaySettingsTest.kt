@@ -109,22 +109,23 @@ class PlaySettingsTest {
         assertEquals(0, PlaySettings.snapHoldTailShortenMs(-15f))
         assertEquals(0, PlaySettings.snapHoldTailShortenMs(4.9f))
         assertEquals(10, PlaySettings.snapHoldTailShortenMs(5.1f))
+        assertEquals(50, PlaySettings.snapHoldTailShortenMs(46f))
         assertEquals(80, PlaySettings.snapHoldTailShortenMs(76f))
-        assertEquals(200, PlaySettings.snapHoldTailShortenMs(400f))
+        assertEquals(80, PlaySettings.snapHoldTailShortenMs(200f))
 
-        val customized = defaults.copy(holdTailJudgement = true, holdTailShortenMs = 120)
+        val customized = defaults.copy(holdTailJudgement = true, holdTailShortenMs = 60)
         val encoded = StoredSettings.JSON.encodeToString(StoredSettings.serializer(), StoredSettings().with(customized))
         val decoded = StoredSettings.JSON.decodeFromString(StoredSettings.serializer(), encoded).toPlaySettings()
         assertEquals(true, decoded.holdTailJudgement)
-        assertEquals(120, decoded.holdTailShortenMs)
+        assertEquals(60, decoded.holdTailShortenMs)
 
         // Older settings files without these keys take their defaults (tail judgement off, 0 ms shorten).
         val legacy = StoredSettings.JSON.decodeFromString(StoredSettings.serializer(), """{"scrollSpeed":25.0}""").toPlaySettings()
         assertEquals(false, legacy.holdTailJudgement)
         assertEquals(0, legacy.holdTailShortenMs)
 
-        // Out-of-range stored values are bounded to 0..200 ms.
+        // Out-of-range stored values are bounded to 0..80 ms.
         assertEquals(0, StoredSettings(holdTailShortenMs = -30).toPlaySettings().holdTailShortenMs)
-        assertEquals(200, StoredSettings(holdTailShortenMs = 999).toPlaySettings().holdTailShortenMs)
+        assertEquals(80, StoredSettings(holdTailShortenMs = 999).toPlaySettings().holdTailShortenMs)
     }
 }

@@ -124,7 +124,7 @@ The line, the tray and the touch zones are the same at every lean.
 7 dp corners, no glow. Holds have a lavender `#B5B3EF` head and a purple `#9562D7` body at 72 % of the note
 width, 60 % opaque, about 85 % while held; no separate tail cap block is drawn at the end of a hold, so the body ends
 cleanly at the tail time without overlapping an immediately following note. An optional visual setting (**Shorten hold
-tails**, 0 to 200 ms in 10 ms steps, 0 ms by default) pulls the drawn tail time back toward `startTimeMs` (`max(start,
+tails**, 0 to 80 ms in 10 ms steps, 0 ms by default) pulls the drawn tail time back toward `startTimeMs` (`max(start,
 end − shortenMs)`) without changing judgement windows. A held head stays on the line with a soft halo. While held, the body and
 halo breathe together in a smooth 500 ms cycle (two crests a second): body alpha 207–227 around 217, halo 78–102 around
 90, out of 255. The head stays solid, so the note's start and body end remain plain. The phase follows gameplay time, freezes on

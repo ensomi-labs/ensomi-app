@@ -11,7 +11,7 @@ release key made by hand and published as a GitHub release of `ensomi-labs/ensom
 that way, and 0.2.3 (code 8) and 0.3.0 (code 9) were built and signed by [Automation](#automation). The current version is
 `versionName` **0.3.1**, `versionCode` **10**, owned by `gradle/libs.versions.toml`, adding library song search and
 swipe-left/long-press removal with Undo, a gameplay setting for hold tail judgement (off by default) with 100 ms
-hold-body combo ticks, visual hold-tail shortening (`0–200 ms`), and capless hold-tail rendering. Swift's `v0.1.0` stays separate. The build produces an unsigned,
+hold-body combo ticks, visual hold-tail shortening (`0–80 ms`), and capless hold-tail rendering. Swift's `v0.1.0` stays separate. The build produces an unsigned,
 R8-optimized arm64-v8a APK, with JNA keep rules and the runtime AAR's UniFFI keep rules. The runtime is the local AAR
 whose SHA-256 is `45fa0fef0c362b36c3c5e5d5fc703e8d430eb233ffc788455f48c08a2831aa58`, pinned as `runtimeAarSha256` in
 `gradle/libs.versions.toml`.

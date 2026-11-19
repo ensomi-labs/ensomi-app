@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -45,6 +47,7 @@ import io.ensomi.android.diagnostics.DiagnosticsActivity
 import io.ensomi.android.keyboard.KeyboardScreen
 import io.ensomi.android.keyboard.LocalHardwareKeys
 import io.ensomi.android.library.LibraryScreen
+import io.ensomi.android.library.PendingSongRemoval
 import io.ensomi.android.model.Notice
 import io.ensomi.android.model.ready
 import io.ensomi.android.model.NoticeTextScreen
@@ -78,6 +81,30 @@ fun EnsomiApp(scenario: Scenario, graph: AppGraph) {
     val context = LocalContext.current
     val resources = LocalResources.current
     val songs by graph.songs.songs.collectAsStateWithLifecycle()
+    val pendingRemoval = remember(graph.songs) { PendingSongRemoval(graph.songs::remove) }
+    var pendingRemovedSongId by remember { mutableStateOf<String?>(null) }
+    var removalSnackbarJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    val visibleSongs = remember(songs, pendingRemovedSongId) {
+        if (pendingRemovedSongId == null) songs else songs.filter { it.id != pendingRemovedSongId }
+    }
+    fun removeSongWithUndo(song: Song) {
+        removalSnackbarJob?.cancel()
+        snackbar.currentSnackbarData?.dismiss()
+        pendingRemoval.stage(song.id)
+        pendingRemovedSongId = pendingRemoval.pendingSongId
+        removalSnackbarJob = scope.launch {
+            val result = snackbar.showSnackbar(
+                message = resources.getString(R.string.library_removed_snackbar, song.title),
+                actionLabel = resources.getString(R.string.library_undo),
+                duration = SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                if (pendingRemoval.undo(song.id)) pendingRemovedSongId = pendingRemoval.pendingSongId
+            } else {
+                if (pendingRemoval.confirm(song.id)) pendingRemovedSongId = pendingRemoval.pendingSongId
+            }
+        }
+    }
     val addSongs = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { documents ->
         // Cancelling the picker is not an error and says nothing.
         if (documents.isEmpty()) return@rememberLauncherForActivityResult
@@ -106,10 +133,15 @@ fun EnsomiApp(scenario: Scenario, graph: AppGraph) {
             if (!graph.songs.findAgain(id, document)) snackbar.showSnackbar(resources.getString(R.string.library_find_failed))
         }
     }
-    // A file can go while the app is in the background.
+    // A file can go while the app is in the background; any staged song removal commits before the app stops.
     LifecycleStartEffect(graph.songs) {
         graph.songs.refresh()
-        onStopOrDispose { }
+        onStopOrDispose {
+            removalSnackbarJob?.cancel()
+            snackbar.currentSnackbarData?.dismiss()
+            pendingRemoval.flush()
+            pendingRemovedSongId = pendingRemoval.pendingSongId
+        }
     }
     // A keyboard's layout can change while the app is in the background: its keys are resolved again.
     LifecycleStartEffect(graph.keyboards) {
@@ -163,7 +195,7 @@ fun EnsomiApp(scenario: Scenario, graph: AppGraph) {
             entryProvider = entryProvider {
                 entry<Library> {
                     LibraryScreen(
-                        songs = songs,
+                        songs = visibleSongs,
                         preparedSongs = preparedSongs,
                         model = model,
                         onAddSongs = { addSongs.launch(arrayOf(AUDIO)) },
@@ -172,7 +204,7 @@ fun EnsomiApp(scenario: Scenario, graph: AppGraph) {
                             findingSong = song.id
                             findAgain.launch(arrayOf(AUDIO))
                         },
-                        onRemoveSong = { graph.songs.remove(it.id) },
+                        onRemoveSong = ::removeSongWithUndo,
                         onOpenSettings = { backStack.add(Settings) },
                         onDownloadModel = graph.model::download,
                         onRetryModelOpen = graph.model::retryOpen,

@@ -14,6 +14,7 @@ import io.ensomi.runtime.Phase
 import io.ensomi.runtime.Ruleset
 import io.ensomi.runtime.Score
 import io.ensomi.runtime.VisibleObject
+import io.ensomi.runtime.VisibleState
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -197,6 +198,7 @@ class PlayController(
      * render thread.
      */
     private val onPress: ((JudgedPress) -> Unit)? = null,
+    private val ruleset: Ruleset = Ruleset(judge = judge, tailJudgement = false, holdTicks = true),
 ) : AutoCloseable {
     private val inputs = InputQueue(clock, taken = ::taken, deliver = ::deliver, becameLive = ::becameLive)
     private val visibleWindow = VisibleWindow()
@@ -215,7 +217,7 @@ class PlayController(
 
     private val runtimeChart = chart.toRuntime()
     private var closed = false
-    private var session = GameplaySession(runtimeChart, Ruleset(judge))
+    private var session = GameplaySession(runtimeChart, ruleset)
     private var feedback = GameplayFeedback()
 
     /**
@@ -292,6 +294,18 @@ class PlayController(
             val watermarkMs = inputs.inputClockMs - INPUT_ALLOWANCE_MS
             sessionClockMs = maxOf(sessionClockMs, watermarkMs)
             record(session.advance(watermarkMs), gameplayMs, source = null)
+            // Held long notes earn 100 ms body combo ticks without emitting events, and head-scored holds finish
+            // silently when watermarkMs reaches endTimeMs.
+            for (i in visible.indices) {
+                val obj = visible[i]
+                if (obj.state == VisibleState.HOLDING) {
+                    scoreChanged = true
+                    val endMs = obj.endTimeMs
+                    if (endMs != null && watermarkMs >= endMs) {
+                        visibleWindow.invalidate()
+                    }
+                }
+            }
         }
         wasPaused = paused
         // The score changes only when events are decided; each call through the bindings costs time.
@@ -517,7 +531,7 @@ class PlayController(
     private fun restart(nowNanos: Long) {
         session.close()
         feedback.close()
-        session = GameplaySession(runtimeChart, Ruleset(judge))
+        session = GameplaySession(runtimeChart, ruleset)
         feedback = GameplayFeedback()
         scriptIndex = 0
         anyJudgement = false

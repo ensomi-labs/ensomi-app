@@ -37,6 +37,8 @@ data class StoredSettings(
     /** Null only in a file from before the slots, until [migrated]. */
     val audioLatency: StoredAudioLatency? = null,
     val inputLatency: StoredInputLatency = StoredInputLatency(),
+    val holdTailJudgement: Boolean = false,
+    val holdTailShortenMs: Int = PlaySettings.DEFAULT_HOLD_TAIL_SHORTEN_MS,
     /** 0.1.x: the audio offset of every output that had one, by [OutputRoutes.key], in the order first set. */
     @EncodeDefault(EncodeDefault.Mode.NEVER) val audioOffsets: Map<String, Int>? = null,
     /** 0.1.x: the one visual offset. */
@@ -55,6 +57,8 @@ data class StoredSettings(
         keys = keys.toMap(),
         audioLatency = (audioLatency ?: StoredAudioLatency()).toLatency(),
         inputLatency = inputLatency.toLatency(),
+        holdTailJudgement = holdTailJudgement,
+        holdTailShortenMs = holdTailShortenMs.coerceIn(PlaySettings.HOLD_TAIL_SHORTEN_MS),
     )
 
     /** These settings changed to [settings]. */
@@ -70,6 +74,8 @@ data class StoredSettings(
         keys = StoredKeys.of(settings.keys),
         audioLatency = StoredAudioLatency.of(settings.audioLatency),
         inputLatency = StoredInputLatency.of(settings.inputLatency),
+        holdTailJudgement = settings.holdTailJudgement,
+        holdTailShortenMs = settings.holdTailShortenMs,
         audioOffsets = null,
         visualOffsetMs = null,
     )

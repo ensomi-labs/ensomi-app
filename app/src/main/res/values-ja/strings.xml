@@ -51,6 +51,12 @@
     <string name="library_file_not_found">ファイルが見つかりません：%1$s</string>
     <string name="library_find_again">探し直す</string>
     <string name="library_remove">削除</string>
+    <string name="library_remove_song">%1$s を削除</string>
+    <string name="library_removed_snackbar">「%1$s」をライブラリから削除しました</string>
+    <string name="library_undo">元に戻す</string>
+    <string name="library_search_hint">曲やアーティストを検索</string>
+    <string name="library_search_clear">検索をクリア</string>
+    <string name="library_search_empty">「%1$s」に一致する曲はありません。</string>
     <string name="library_unreadable_one">「%1$s」を音声として読み込めませんでした。</string>
     <plurals name="library_unreadable_many">
         <item quantity="other">%1$d 個のファイルを音声として読み込めませんでした。</item>
@@ -225,6 +231,11 @@
     <string name="settings_scroll_speed_help">ノーツが判定ラインに届くまで %1$s 秒です。</string>
     <string name="settings_judge">判定の厳しさ</string>
     <string name="settings_judge_help">判定の時間幅を A（最も広い）から E で選びます。標準は C です。</string>
+    <string name="settings_hold_tail_judgement">ロングノーツ終端判定</string>
+    <string name="settings_hold_tail_judgement_help">既定はオフです。始点を叩けば得点となり、途中で離してもコンボは切れません。オンにすると終端で離すタイミングも判定します。</string>
+    <string name="settings_hold_tail_shorten">ロングノーツ終端の短縮</string>
+    <string name="settings_hold_tail_shorten_value">%1$d ms</string>
+    <string name="settings_hold_tail_shorten_help">ロングノーツの終端を早めに描画して高密度の譜面を見やすくします。判定には影響しません。</string>
     <string name="settings_playfield">プレイエリア</string>
     <string name="settings_orientation">画面の向き</string>
     <string name="settings_orientation_landscape">横向き</string>

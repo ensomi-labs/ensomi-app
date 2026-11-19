@@ -1,8 +1,8 @@
 # Every version this project pins lives here.
 
 [versions]
-appVersionCode = "9"
-appVersionName = "0.3.0"
+appVersionCode = "10"
+appVersionName = "0.3.1"
 agp = "9.4.1"
 kotlin = "2.4.21"
 compileSdk = "37"
@@ -27,10 +27,10 @@ uiautomator = "2.4.0"
 # The runtime comes from a local AAR for now (`ensomi.runtime.aar` in local.properties), and only this one: the
 # build stops when the selected file's SHA-256 is another (app/build.gradle.kts). Change it on purpose, in one commit
 # with the documents that name it, after scripts/check-no-kleidiai.py passes on the new AAR's library (README.md).
-runtimeAarSha256 = "3823e19ba47247614c79084033665cdf02084fe5f1fe170ecbe8ed6e475e14b0"
-# Where CI fetches that same file (scripts/ci-setup.sh): the android-aar-c3705e2 pre-release of ensomi-labs/runtime
-# (merged into main with #12). Local builds select the file in local.properties.
-runtimeAarUrl = "https://github.com/ensomi-labs/runtime/releases/download/android-aar-c3705e2/ensomi-runtime-c3705e2.aar"
+runtimeAarSha256 = "45fa0fef0c362b36c3c5e5d5fc703e8d430eb233ffc788455f48c08a2831aa58"
+# Where CI fetches that same file (scripts/ci-setup.sh): pending prerelease upload for ensomi-runtime commit 1424a70
+# (branch agy/hold-tail-combo) once its PR merges. Local builds select the file in local.properties.
+runtimeAarUrl = "https://github.com/ensomi-labs/runtime/releases/download/android-aar-1424a70/ensomi-runtime-1424a70.aar"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }

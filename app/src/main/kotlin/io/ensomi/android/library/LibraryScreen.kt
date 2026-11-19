@@ -1,7 +1,8 @@
 package io.ensomi.android.library
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +16,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -24,20 +29,35 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.ensomi.android.R
 import io.ensomi.android.chart.ChartRequestRules
@@ -71,6 +91,9 @@ fun LibraryScreen(
     extraAction: @Composable () -> Unit = {},
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val filteredSongs = remember(songs, searchQuery) { SongSearch.filter(songs, searchQuery) }
+    val focusManager = LocalFocusManager.current
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
@@ -131,21 +154,52 @@ fun LibraryScreen(
                 if (songs.isEmpty()) {
                     item(key = "empty") { EmptySongs(onAddSongs, !model.ready) }
                 } else {
+                    item(key = "search") {
+                        SongSearchField(
+                            query = searchQuery,
+                            onQueryChange = { searchQuery = it },
+                            onClear = { searchQuery = "" },
+                            onSearch = { focusManager.clearFocus() },
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                        )
+                    }
                     item(key = "header") {
                         Text(
                             stringResource(R.string.library_songs),
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
-                                .padding(start = 16.dp, top = 12.dp, bottom = 4.dp)
+                                .padding(start = 16.dp, top = 8.dp, bottom = 4.dp)
                                 .semantics { heading() },
                         )
                     }
-                    items(songs, key = { it.id }) { song ->
-                        if (song.missing) {
-                            MissingSongRow(song, onFindAgain = { onFindAgain(song) }, onRemove = { onRemoveSong(song) })
-                        } else {
-                            SongRow(song, song.id in preparedSongs) { onOpenSong(song) }
+                    if (filteredSongs.isEmpty()) {
+                        item(key = "search_empty") {
+                            Text(
+                                stringResource(R.string.library_search_empty, searchQuery.trim()),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
+                            )
+                        }
+                    } else {
+                        items(filteredSongs, key = { it.id }) { song ->
+                            SwipeToRemoveSongBox(song = song, onRemove = { onRemoveSong(song) }) {
+                                if (song.missing) {
+                                    MissingSongRow(
+                                        song = song,
+                                        onFindAgain = { onFindAgain(song) },
+                                        onRemove = { onRemoveSong(song) },
+                                    )
+                                } else {
+                                    SongRow(
+                                        song = song,
+                                        prepared = song.id in preparedSongs,
+                                        onClick = { onOpenSong(song) },
+                                        onRemove = { onRemoveSong(song) },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -155,85 +209,211 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun SongRow(song: Song, prepared: Boolean, onClick: () -> Unit) {
-    val length = ChartRequestRules.formatDuration(song.durationMs)
-    ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
-        headlineContent = { Text(song.title) },
-        supportingContent = {
-            Text(if (song.artist != null) stringResource(R.string.library_song_detail, song.artist, length) else length)
+private fun SongSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClear: () -> Unit,
+    onSearch: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = modifier,
+        singleLine = true,
+        shape = CircleShape,
+        placeholder = { Text(stringResource(R.string.library_search_hint)) },
+        leadingIcon = {
+            Icon(painterResource(R.drawable.ic_search), contentDescription = null)
         },
-        leadingContent = {
-            Box(
-                Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_music_note),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(20.dp),
-                )
+        trailingIcon = if (query.isNotEmpty()) {
+            {
+                IconButton(onClick = onClear) {
+                    Icon(
+                        painterResource(R.drawable.ic_close),
+                        contentDescription = stringResource(R.string.library_search_clear),
+                    )
+                }
             }
+        } else {
+            null
         },
-        trailingContent = {
-            Column(horizontalAlignment = Alignment.End) {
-                if (prepared) Text(
-                    stringResource(R.string.library_prepared),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (song.chartCount > 0) Text(
-                    pluralStringResource(R.plurals.library_chart_count, song.chartCount, song.chartCount),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
     )
 }
 
-/** A song whose file has gone: it says so and offers to pick the file anew or to forget the song. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MissingSongRow(song: Song, onFindAgain: () -> Unit, onRemove: () -> Unit) {
-    Column {
-        ListItem(
-            headlineContent = { Text(song.title) },
-            supportingContent = {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun SwipeToRemoveSongBox(
+    song: Song,
+    onRemove: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val state = rememberSwipeToDismissBoxState()
+    SwipeToDismissBox(
+        state = state,
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = true,
+        onDismiss = { direction ->
+            if (direction == SwipeToDismissBoxValue.EndToStart) onRemove()
+        },
+        backgroundContent = {
+            val active = state.dismissDirection == SwipeToDismissBoxValue.EndToStart
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(if (active) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.surface)
+                    .padding(horizontal = 24.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                if (active) {
                     Icon(
-                        painterResource(R.drawable.ic_warning),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Text(
-                        stringResource(R.string.library_file_not_found, song.fileName),
-                        color = MaterialTheme.colorScheme.error,
+                        painterResource(R.drawable.ic_delete),
+                        contentDescription = stringResource(R.string.library_remove_song, song.title),
+                        tint = MaterialTheme.colorScheme.onError,
                     )
                 }
+            }
+        },
+    ) {
+        content()
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SongRow(song: Song, prepared: Boolean, onClick: () -> Unit, onRemove: () -> Unit) {
+    val length = ChartRequestRules.formatDuration(song.durationMs)
+    val haptics = LocalHapticFeedback.current
+    val removeLabel = stringResource(R.string.library_remove_song, song.title)
+    var menuExpanded by remember { mutableStateOf(false) }
+    Box {
+        ListItem(
+            modifier = Modifier
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        menuExpanded = true
+                    },
+                )
+                .semantics {
+                    customActions = listOf(CustomAccessibilityAction(removeLabel) { onRemove(); true })
+                },
+            headlineContent = { Text(song.title) },
+            supportingContent = {
+                Text(if (song.artist != null) stringResource(R.string.library_song_detail, song.artist, length) else length)
             },
             leadingContent = {
                 Box(
-                    Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape),
+                    Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         painterResource(R.drawable.ic_music_note),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.size(20.dp),
                     )
                 }
             },
+            trailingContent = {
+                Column(horizontalAlignment = Alignment.End) {
+                    if (prepared) Text(
+                        stringResource(R.string.library_prepared),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (song.chartCount > 0) Text(
+                        pluralStringResource(R.plurals.library_chart_count, song.chartCount, song.chartCount),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
         )
-        Row(
-            Modifier.padding(start = 72.dp, end = 16.dp, bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        SongContextMenu(expanded = menuExpanded, onDismiss = { menuExpanded = false }, onRemove = onRemove)
+    }
+}
+
+@Composable
+private fun SongContextMenu(expanded: Boolean, onDismiss: () -> Unit, onRemove: () -> Unit) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.library_remove), color = MaterialTheme.colorScheme.error) },
+            leadingIcon = {
+                Icon(
+                    painterResource(R.drawable.ic_delete),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            },
+            onClick = {
+                onDismiss()
+                onRemove()
+            },
+        )
+    }
+}
+
+/** A song whose file has gone: it says so and offers to pick the file anew or to forget the song. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MissingSongRow(song: Song, onFindAgain: () -> Unit, onRemove: () -> Unit) {
+    val haptics = LocalHapticFeedback.current
+    var menuExpanded by remember { mutableStateOf(false) }
+    Box {
+        Column(
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.surface)
+                .combinedClickable(
+                    onClick = {},
+                    onLongClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        menuExpanded = true
+                    },
+                ),
         ) {
-            OutlinedButton(onClick = onFindAgain) { Text(stringResource(R.string.library_find_again)) }
-            TextButton(onClick = onRemove) { Text(stringResource(R.string.library_remove)) }
+            ListItem(
+                headlineContent = { Text(song.title) },
+                supportingContent = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painterResource(R.drawable.ic_warning),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(
+                            stringResource(R.string.library_file_not_found, song.fileName),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                },
+                leadingContent = {
+                    Box(
+                        Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.ic_music_note),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                },
+            )
+            Row(
+                Modifier.padding(start = 72.dp, end = 16.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(onClick = onFindAgain) { Text(stringResource(R.string.library_find_again)) }
+                TextButton(onClick = onRemove) { Text(stringResource(R.string.library_remove)) }
+            }
         }
+        SongContextMenu(expanded = menuExpanded, onDismiss = { menuExpanded = false }, onRemove = onRemove)
     }
 }
 

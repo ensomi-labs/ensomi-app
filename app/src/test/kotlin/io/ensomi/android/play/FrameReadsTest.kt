@@ -218,5 +218,19 @@ class FrameReadsTest {
         assertTrue(out.headY < 0.0)
         assertEquals(out.headY, out.bodyTopY, 1e-9)
         assertEquals(0.0, out.bodyBottomY, 1e-9)
+
+        // Visual tail shortening pulls tailY earlier in time while clamping at startTimeMs so a short hold never inverts.
+        layout.hold(
+            startTimeMs = 1_100.0, endTimeMs = 1_400.0, holding = false, renderMs = 1_000.0,
+            scrollTimeMs = 500.0, fallLength = receptorY, out = out, shortenMs = 80.0,
+        )
+        assertEquals(runtimeY(1_100.0, 1_000.0, 500.0, receptorY), out.headY, 1e-9)
+        assertEquals(runtimeY(1_320.0, 1_000.0, 500.0, receptorY), out.tailY, 1e-9)
+
+        layout.hold(
+            startTimeMs = 1_100.0, endTimeMs = 1_150.0, holding = false, renderMs = 1_000.0,
+            scrollTimeMs = 500.0, fallLength = receptorY, out = out, shortenMs = 120.0,
+        )
+        assertEquals(out.headY, out.tailY, 1e-9)
     }
 }

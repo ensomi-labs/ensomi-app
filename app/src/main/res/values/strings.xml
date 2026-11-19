@@ -66,6 +66,12 @@
     <string name="library_file_not_found">File not found: %1$s</string>
     <string name="library_find_again">Find again</string>
     <string name="library_remove">Remove</string>
+    <string name="library_remove_song">Remove %1$s</string>
+    <string name="library_removed_snackbar">Removed “%1$s” from library</string>
+    <string name="library_undo">Undo</string>
+    <string name="library_search_hint">Search songs or artists</string>
+    <string name="library_search_clear">Clear search</string>
+    <string name="library_search_empty">No songs matching “%1$s”.</string>
     <string name="library_unreadable_one">“%1$s” could not be read as audio.</string>
     <plurals name="library_unreadable_many">
         <item quantity="one">%1$d file could not be read as audio.</item>
@@ -256,6 +262,11 @@
     <string name="settings_scroll_speed_help">Notes take %1$s s to fall to the line.</string>
     <string name="settings_judge">Judge difficulty</string>
     <string name="settings_judge_help">How wide the timing windows are, from A, the widest, to E. C is the default.</string>
+    <string name="settings_hold_tail_judgement">Hold tail judgement</string>
+    <string name="settings_hold_tail_judgement_help">Off by default: hitting the head scores the hold and releasing early never breaks combo. When on, release timing at the tail is judged too.</string>
+    <string name="settings_hold_tail_shorten">Shorten hold tails</string>
+    <string name="settings_hold_tail_shorten_value">%1$d ms</string>
+    <string name="settings_hold_tail_shorten_help">Draws hold tails earlier so dense patterns are easier to read. Does not change judgement.</string>
     <string name="settings_playfield">Playfield</string>
     <string name="settings_orientation">Orientation</string>
     <string name="settings_orientation_landscape">Landscape</string>

@@ -1,5 +1,5 @@
 ---
-commit: 0af740cc23e3295300ad3cdfa8ebe43468d38ce8
+commit: 881941931bb03b6f000b57e42760b270b9cd212b
 ---
 
 # Ensomi for Android: Listen & Play
@@ -48,7 +48,7 @@ The lookup is optional when the text names the song. Clipboard paste on the sess
 `app/src/recognition/` supplies Kotlin, resources and the manifest to debug, checks and release. Release keep rules in
 `app/src/release/keepRules` retain JNA; the runtime AAR supplies UniFFI keep rules including the sync bindings.
 The required AAR is the one pinned as `runtimeAarSha256` in `gradle/libs.versions.toml`, SHA-256
-`3823e19ba47247614c79084033665cdf02084fe5f1fe170ecbe8ed6e475e14b0`; the build refuses any other.
+`45fa0fef0c362b36c3c5e5d5fc703e8d430eb233ffc788455f48c08a2831aa58`; the build refuses any other.
 JVM tests in `app/src/testDebug/` cover prerequisites, share handoff and parsing, matching, waits, growth, refusal,
 chart/sync ordering, restoration and joining. Device tests in `app/src/androidTest/` exercise the real controller’s share routing, blank SEND guard, one-use guide baseline, same-file retry and dormant restoration; an opt-in decoder check uses generated headerless MP3 fixtures.
 

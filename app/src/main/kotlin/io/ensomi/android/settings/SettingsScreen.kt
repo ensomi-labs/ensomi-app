@@ -3,6 +3,7 @@ package io.ensomi.android.settings
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -28,6 +29,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -46,6 +48,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -182,6 +185,22 @@ fun SettingsScreen(
                         )
                     }
                 }
+                item {
+                    HoldTailJudgementSetting(
+                        checked = settings.holdTailJudgement,
+                        onCheckedChange = { enabled -> onChange { it.copy(holdTailJudgement = enabled) } },
+                    )
+                }
+                item {
+                    SliderSetting(
+                        title = stringResource(R.string.settings_hold_tail_shorten),
+                        valueText = stringResource(R.string.settings_hold_tail_shorten_value, settings.holdTailShortenMs),
+                        supporting = stringResource(R.string.settings_hold_tail_shorten_help),
+                        value = settings.holdTailShortenMs.toFloat(),
+                        range = PlaySettings.HOLD_TAIL_SHORTEN_MS.first.toFloat()..PlaySettings.HOLD_TAIL_SHORTEN_MS.last.toFloat(),
+                        steps = (PlaySettings.HOLD_TAIL_SHORTEN_MS.last - PlaySettings.HOLD_TAIL_SHORTEN_MS.first) / PlaySettings.HOLD_TAIL_SHORTEN_STEP_MS - 1,
+                    ) { value -> onChange { it.copy(holdTailShortenMs = PlaySettings.snapHoldTailShortenMs(value)) } }
+                }
 
                 // Keep PLAYFIELD_HEADER the index of this header, and the sections after it as firstIndex counts them.
                 item { Header(R.string.settings_playfield) }
@@ -316,7 +335,30 @@ fun SettingsScreen(
 }
 
 /** The index of the playfield section's header in the settings list. */
-private const val PLAYFIELD_HEADER = 3
+private const val PLAYFIELD_HEADER = 5
+
+@Composable
+private fun HoldTailJudgementSetting(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 56.dp)
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(stringResource(R.string.settings_hold_tail_judgement), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                stringResource(R.string.settings_hold_tail_judgement_help),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(checked = checked, onCheckedChange = null)
+    }
+}
 
 /**
  * The Keyboard row (keyboard.md, Settings › Keyboard): the lanes' keys, Pause's and who is connected, "Lanes: Z X . / ·

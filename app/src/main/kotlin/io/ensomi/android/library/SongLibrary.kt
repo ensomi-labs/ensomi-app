@@ -52,7 +52,7 @@ interface SongLibrary {
 
 /**
  * A library whose songs say whether they have a chart (the last chart made for each is kept, [chartIds]), and whose
- * [remove] forgets a song's chart with it.
+ * [remove] forgets a song's chart and decoded sound with it.
  */
 class ChartedSongLibrary(
     private val library: SongLibrary,
@@ -67,7 +67,63 @@ class ChartedSongLibrary(
     override fun song(id: String): Song? = songs.value.firstOrNull { it.id == id } ?: library.song(id)
 
     override fun remove(id: String) {
-        library.remove(id)
+        // Stop the work that reads the document, and forget the chart and sound, before its permission is given back.
         onRemove(id)
+        library.remove(id)
+    }
+}
+
+/** Filters songs in memory by title, artist and file name, matching every whitespace-separated word of a query. */
+object SongSearch {
+    fun filter(songs: List<Song>, query: String): List<Song> {
+        val terms = query.trim().split(WHITESPACE).filter { it.isNotEmpty() }
+        if (terms.isEmpty()) return songs
+        return songs.filter { song ->
+            terms.all { term ->
+                song.title.contains(term, ignoreCase = true) ||
+                    (song.artist?.contains(term, ignoreCase = true) == true) ||
+                    song.fileName.contains(term, ignoreCase = true)
+            }
+        }
+    }
+
+    private val WHITESPACE = Regex("\\s+")
+}
+
+/**
+ * Tracks a single song hidden from the visible library while its Undo snackbar is shown. Starting a second removal
+ * commits the earlier one first; Undo restores the song without touching its chart or document permission; [flush]
+ * commits any waiting removal when the app leaves the foreground.
+ */
+class PendingSongRemoval(private val commitRemoval: (String) -> Unit) {
+    var pendingSongId: String? = null
+        private set
+
+    fun stage(songId: String) {
+        val previous = pendingSongId
+        if (previous != null && previous != songId) {
+            pendingSongId = null
+            commitRemoval(previous)
+        }
+        pendingSongId = songId
+    }
+
+    fun undo(songId: String): Boolean {
+        if (pendingSongId != songId) return false
+        pendingSongId = null
+        return true
+    }
+
+    fun confirm(songId: String): Boolean {
+        if (pendingSongId != songId) return false
+        pendingSongId = null
+        commitRemoval(songId)
+        return true
+    }
+
+    fun flush() {
+        val current = pendingSongId ?: return
+        pendingSongId = null
+        commitRemoval(current)
     }
 }

@@ -120,11 +120,14 @@ little of them. Moving them off the lanes was not an option in landscape, where 
 screen and the HUD its top corners, and making them translucent would still tint the notes they cover.
 The line, the tray and the touch zones are the same at every lean.
 
-**Notes** follow the Swift play screen. Taps are rose `#EAA0B7`, 20 dp tall at the line, inset 5 dp from the lane edges,
-7 dp corners, no glow. Holds have lavender `#B5B3EF` heads and tails and a purple `#9562D7` body at 72 % of the note
-width, 60 % opaque, about 85 % while held; a held head stays on the line with a soft halo. While held, the body and
+**Notes** follow the Swift play screen, adapted for dense 4K readability. Taps are rose `#EAA0B7`, 20 dp tall at the line, inset 5 dp from the lane edges,
+7 dp corners, no glow. Holds have a lavender `#B5B3EF` head and a purple `#9562D7` body at 72 % of the note
+width, 60 % opaque, about 85 % while held; no separate tail cap block is drawn at the end of a hold, so the body ends
+cleanly at the tail time without overlapping an immediately following note. An optional visual setting (**Shorten hold
+tails**, 0 to 200 ms in 10 ms steps, 0 ms by default) pulls the drawn tail time back toward `startTimeMs` (`max(start,
+end − shortenMs)`) without changing judgement windows. A held head stays on the line with a soft halo. While held, the body and
 halo breathe together in a smooth 500 ms cycle (two crests a second): body alpha 207–227 around 217, halo 78–102 around
-90, out of 255. Heads and tails stay solid, so the end remains plain. The phase follows gameplay time, freezes on
+90, out of 255. The head stays solid, so the note's start and body end remain plain. The phase follows gameplay time, freezes on
 pause, and is steady at the original 217 and 90 with Remove animations. One sine per frame changes the existing
 paints; it adds no shapes, shaders, per-frame objects or runtime calls. A note the runtime resolves as hit
 disappears; one judged a miss while still on screen is greyed (`#8F7DAB` at half opacity). A note centred on the line
@@ -354,9 +357,13 @@ logs.
 
 The runtime does every rule; the app moves inputs and time and draws what it is told.
 
-- `GameplaySession(chart, Ruleset(judge))` judges: `input(InputEvent(lane, phase, chartMs))`, `advance(watermark)`,
-  `visibleObjects`, `score`, `isResolved`. Note lock, early presses, hold rules, tail windows, accuracy and the offset
-  suggestion are its own (the Swift architecture doc's judge table holds for both).
+- `GameplaySession(chart, settings.toRuleset())` (`Ruleset(judge, tailJudgement, holdTicks = true)`) judges:
+  `input(InputEvent(lane, phase, chartMs))`, `advance(watermark)`,
+  `visibleObjects`, `score`, `isResolved`. By default on Android `tailJudgement` is `false` (hitting a hold head scores
+  the object immediately on press and neither early release nor holding past the tail can break combo); turning **Hold
+  tail judgement** on judges tail release timing (`±1.5g`, early release Miss, overhold Miss). In both modes `holdTicks`
+  awards `+1` combo for each `100 ms` held inside `(start, end)` after pressing the head, while `TierCounts` and
+  `accuracy` stay one per object. Note lock, early presses, accuracy and the offset suggestion remain the runtime's own.
 - `GameplayFeedback` eases lane lights and chooses and animates the judgement word; the app records each batch of
   events at the chart time of the call that produced it, as the Swift app does.
 - The app maps tiers to the words it shows with the runtime's `tierJudgement`, and for results counts Perfect

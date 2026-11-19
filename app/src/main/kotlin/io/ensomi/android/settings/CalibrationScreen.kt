@@ -85,6 +85,7 @@ import io.ensomi.android.play.PlayTiming
 import io.ensomi.android.play.PlayfieldView
 import io.ensomi.android.play.SampleCharts
 import io.ensomi.android.play.rememberAudioFocus
+import io.ensomi.android.play.toRuleset
 import io.ensomi.android.play.toRuntime
 import io.ensomi.android.ui.DarkSystemBars
 import io.ensomi.android.ui.theme.Brand
@@ -439,6 +440,7 @@ private fun CalibrationField(
                                 PlayController(
                                     chart = SampleCharts.CALIBRATION,
                                     judge = settings.judge.toRuntime(),
+                                    ruleset = settings.toRuleset(),
                                     clock = player.clock,
                                     // The clicks play from the moment the screen opens: the field neither starts nor closes them.
                                     ownsClock = false,
@@ -463,6 +465,7 @@ private fun CalibrationField(
                         it.portraitFarScale = lean
                         it.landscapeWidth = settings.laneWidth(settings.orientation)
                         it.portraitWidth = settings.laneWidth(settings.orientation)
+                        it.holdTailShortenMs = settings.holdTailShortenMs
                         it.capLabels = connected.firstOrNull()?.laneLabels
                         it.keyboardsChanged(connected)
                         if (paused) it.pause()

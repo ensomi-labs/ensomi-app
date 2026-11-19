@@ -21,6 +21,9 @@ enum class PcmChannels(val count: Int) { MONO(1), STEREO(2) }
 /**
  * A song decoded to interleaved float PCM at the file's own rate, on the song's time: [leadFrames] of silence were put
  * first, or taken off when negative ([Mp3Lead]; AAC's priming is taken off too).
+ *
+ * [samples] may hold trailing spare capacity beyond [sampleCount] so [PcmBuilder] never has to allocate a second
+ * full-song array to trim it. Consumers must use [frames] / [sampleCount] rather than `samples.size`.
  */
 class DecodedSong(
     val samples: FloatArray,
@@ -31,9 +34,21 @@ class DecodedSong(
     val mime: String,
     val codec: String,
     val header: Mp3Header?,
+    val frameCount: Int = samples.size / channels,
 ) {
-    val frames: Int get() = samples.size / channels
-    val durationMs: Double get() = frames * 1000.0 / sampleRate
+    val frames: Int get() = frameCount
+    val sampleCount: Int get() = frameCount * channels
+    val durationMs: Double get() = frameCount * 1000.0 / sampleRate
+
+    /** Encodes the [sampleCount] valid float samples as little-endian bytes for runtime FFI without copying [samples]. */
+    fun toF32le(): ByteArray = samples.toF32le(sampleCount)
+}
+
+/** Encodes the first [count] float samples as little-endian IEEE 754 bytes for runtime FFI. */
+fun FloatArray.toF32le(count: Int = size): ByteArray {
+    val bytes = ByteArray(Math.multiplyExact(count, Float.SIZE_BYTES))
+    ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().put(this, 0, count)
+    return bytes
 }
 
 /** The file cannot be decoded; [missing] when it cannot even be opened, as for a file that has gone. */
@@ -181,7 +196,8 @@ object SongDecoder {
             }
         }
         if (sampleRate <= 0) throw DecodeException("The decoder gave no sample rate.")
-        return DecodedSong(out.build(), channels.count, sampleRate, -startTrim, mime, codec.name, header)
+        val built = out.build()
+        return DecodedSong(built.samples, channels.count, sampleRate, -startTrim, mime, codec.name, header, frameCount = built.frames)
     }
 
     /** Queue fewer codec transactions while keeping the extractor's complete frames in their original order. */
@@ -287,6 +303,11 @@ object SongDecoder {
     private const val MAX_IDLE_AFTER_INPUT = 500
 }
 
+/** Built PCM buffer returned directly by [PcmBuilder] without copying to trim trailing capacity. */
+internal class BuiltPcm(val samples: FloatArray, val frames: Int, val channels: Int) {
+    val sampleCount: Int get() = frames * channels
+}
+
 /**
  * Collects decoded buffers as float frames with [channels] channels: mono is the mean of the file's channels; stereo
  * is the first two, or the one channel twice.
@@ -359,7 +380,8 @@ internal class PcmBuilder(private val channels: Int, estimatedFrames: Int) {
         return skipFrames - skip
     }
 
-    fun build(): FloatArray = if (size == samples.size) samples else samples.copyOf(size)
+    /** Returns the backing buffer directly with its valid frame count, avoiding a 2× heap peak on trim. */
+    fun build(): BuiltPcm = BuiltPcm(samples, size / channels, channels)
 
     private fun read(buffer: ByteBuffer, encoding: Int): Float = when (encoding) {
         AudioFormat.ENCODING_PCM_FLOAT -> buffer.getFloat()

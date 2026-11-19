@@ -6,6 +6,8 @@ import io.ensomi.android.play.NoteSpec
 import io.ensomi.android.play.PlayChart
 import io.ensomi.android.play.PlayController
 import io.ensomi.android.play.PlayfieldGeometry
+import io.ensomi.android.play.HoldPlacement
+import io.ensomi.android.play.NoteLayout
 import io.ensomi.android.play.SampleCharts
 import io.ensomi.android.play.TapLine
 import io.ensomi.runtime.GameplayFeedback
@@ -141,12 +143,14 @@ class RuntimeCheck {
         PhoneCheck.report("runtime-call-cost", result + ("ok" to true))
     }
 
-    /** The playfield's line for taps ([TapLine]) against the runtime's own answer, at the speeds and lengths a game uses. */
+    /** The playfield's layout for taps and holds ([NoteLayout]) against the runtime's own `noteGeometry`. */
     @Test
     fun theTapLineIsTheRuntimesGeometry() {
+        val placement = HoldPlacement()
         for (scrollTimeMs in listOf(115.0, 459.0, 1_148.5)) {
             for (fallLength in listOf(300.0, 1_400.0, 3_500.0)) {
                 val line = TapLine(::noteYPosition)
+                val layout = NoteLayout(::noteYPosition)
                 for (state in listOf(VisibleState.WAITING, VisibleState.MISSED_BUT_VISIBLE)) {
                     for (renderMs in listOf(-1_865.25, 0.0, 12_345.678, 157_313.07)) {
                         for (ahead in listOf(-700.0, -1.5, 0.0, 33.3, scrollTimeMs, scrollTimeMs + 250.0)) {
@@ -154,6 +158,26 @@ class RuntimeCheck {
                             val geometry = noteGeometry(note, renderMs, scrollTimeMs, fallLength) as Geometry.Tap
                             val y = line.y(note.startTimeMs, renderMs, scrollTimeMs, fallLength)
                             assertEquals(geometry.y, y, 1e-6)
+                        }
+                    }
+                }
+                for (state in listOf(VisibleState.WAITING, VisibleState.HOLDING, VisibleState.OPEN_ENDED, VisibleState.MISSED_BUT_VISIBLE)) {
+                    for (renderMs in listOf(-500.0, 0.0, 12_345.678)) {
+                        for (ahead in listOf(-200.0, 0.0, 120.0, scrollTimeMs + 100.0)) {
+                            val durations = if (state == VisibleState.OPEN_ENDED) listOf<Double?>(null) else listOf<Double?>(0.0, 2.0, 350.0, null)
+                            for (duration in durations) {
+                                if (duration == null && state != VisibleState.HOLDING && state != VisibleState.OPEN_ENDED) continue
+                                val startMs = renderMs + ahead
+                                val endMs = duration?.let { startMs + it }
+                                val note = VisibleObject(0u, 0u, startMs, endMs, state)
+                                val geometry = noteGeometry(note, renderMs, scrollTimeMs, fallLength) as Geometry.Hold
+                                layout.hold(startMs, endMs, state == VisibleState.HOLDING, renderMs, scrollTimeMs, fallLength, placement)
+                                assertEquals(geometry.headY, placement.headY, 1e-6)
+                                assertEquals(geometry.bodyTopY, placement.bodyTopY, 1e-6)
+                                assertEquals(geometry.bodyBottomY, placement.bodyBottomY, 1e-6)
+                                assertEquals(geometry.tailY != null, placement.hasTail)
+                                geometry.tailY?.let { assertEquals(it, placement.tailY, 1e-6) }
+                            }
                         }
                     }
                 }

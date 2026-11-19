@@ -195,6 +195,7 @@
     <string name="play_failed_no_chart">这首歌还没有谱面，请先生成。</string>
     <string name="play_failed_chart">无法读取谱面，请重新生成。</string>
     <string name="play_failed_decode">无法解码歌曲，不能开始游玩。</string>
+    <string name="play_failed_memory">内存不足，无法加载这首歌开始游玩。</string>
     <string name="results_detail">%1$s 星 · 种子 %2$s</string>
     <string name="results_detail_asked">%1$s 星 · 目标 %2$s 星 · 种子 %3$s</string>
     <string name="results_title">成绩</string>

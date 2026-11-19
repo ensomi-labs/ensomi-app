@@ -47,7 +47,10 @@ build, security patch, fingerprint and primary ABI. `uncaught_exception/crash` h
 a suppressed message, up to five causes (class and suppressed message), and bounded class/method/line
 frames without source filenames. Dotted class names are preserved. `input_device/added` and `removed`, not durable, one
 per keyboard connected or removed, have `kind=keyboard`, `vendor` and `product` (hexadecimal), `external` and `in_game`
-(a play screen was open), never a name ([keyboard.md](keyboard.md#diagnostics)).
+(a play screen was open), never a name ([keyboard.md](keyboard.md#diagnostics)). `play_summary/end`, durable, one per
+ended play session, has `fps`, `refreshHz`, `missed`, `late`, `overran`, `drained`, `workP50Ms`, `workP99Ms`,
+`allocKbPerFrame`, `clockReads`, `clockStepsBack`, `clockFurthestMs`, `underruns` and canonical `routeType` (never a
+filename, song title or device product name).
 
 Event/phase names must be fixed technical literals. Context must contain technical stage facts,
 operation IDs, counts, outcomes or error classes; **never supply a song title, document name or

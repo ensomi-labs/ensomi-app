@@ -8,9 +8,9 @@
     <string name="recognition_allow">Allow the microphone and music files</string>
     <string name="recognition_capture_mic">Microphone</string>
     <string name="recognition_capture_replay">WAV replay</string>
-    <string name="recognition_held">Other MP3 files found</string>
+    <string name="recognition_held">Other audio files found</string>
     <string name="recognition_choose_file">Choose “Use this file” below if it is the song.</string>
-    <string name="recognition_failure_unreadable">The chosen file could not be decoded. Choose another complete MP3.</string>
+    <string name="recognition_failure_unreadable">The chosen file could not be decoded. Choose another complete audio file.</string>
     <string name="recognition_use_file">Use this file</string>
     <string name="recognition_failed_at">Stopped at: %1$s</string>
     <string name="recognition_retry_from">Try again from: %1$s</string>
@@ -38,13 +38,13 @@
     <string name="recognition_status_done">Done</string>
     <string name="recognition_status_failed">Failed</string>
 
-    <string name="recognition_ask_wait">Checking for the downloaded MP3. The session stops after fifteen seconds without a matching file or download progress. Finish downloading first, then share again.</string>
+    <string name="recognition_ask_wait">Checking for the downloaded song. The session stops after fifteen seconds without a matching file or download progress. Finish downloading first, then share again.</string>
     <string name="recognition_ask_return">Come back to Ensomi and stay on this screen</string>
     <string name="recognition_ask_silent">The microphone hears nothing. Is the music still playing?</string>
 
     <string name="recognition_failure_not_song">What was shared is not a song. Share the song itself.</string>
-    <string name="recognition_failure_no_file">This song is not on this phone yet. Download the MP3 in NetEase, let it finish, then share again. Only MP3 works.</string>
-    <string name="recognition_failure_protected">A .ncm file was found for this song: it is in a protected format that Ensomi cannot use. Try a song that downloads as an MP3.</string>
+    <string name="recognition_failure_no_file">This song is not on this phone yet. Download it in NetEase, let it finish, then share again. Protected files (.ncm) cannot be used.</string>
+    <string name="recognition_failure_protected">A .ncm file was found for this song: it is in a protected format that Ensomi cannot use. Try a song that downloads in a standard audio format (such as MP3 or FLAC).</string>
     <string name="recognition_failure_no_model">The chart model is not installed. Install it from the Library, then try again.</string>
     <string name="recognition_failure_chart">The chart could not be made.</string>
     <string name="recognition_failure_sync">Sync failed.</string>
@@ -57,7 +57,7 @@
     <string name="guide_microphone">Microphone</string>
     <string name="guide_mic_reason">Used on this device to line up with the music. Microphone audio is not saved or uploaded.</string>
     <string name="guide_music">Music access</string>
-    <string name="guide_music_reason">Finds the MP3 you downloaded so Ensomi can make its chart.</string>
+    <string name="guide_music_reason">Finds the audio file you downloaded so Ensomi can make its chart.</string>
     <string name="guide_allowed">Allowed</string>
     <string name="guide_allow">Allow</string>
     <string name="guide_settings">Open app settings if access is blocked</string>
@@ -69,7 +69,7 @@
     <string name="guide_open">Open NetEase Cloud Music</string>
     <string name="guide_step_recognise">2. Recognise the song</string>
     <string name="guide_recognise">In NetEase, use Recognize Music (听歌识曲) while the music keeps playing. If NetEase shows several results, pick the one you have already downloaded.</string>
-    <string name="guide_download">If Ensomi says this song is not on your phone, download it as MP3 in NetEase, let it finish, then share again. Only MP3 works; NetEase’s protected format (.ncm) cannot be used.</string>
+    <string name="guide_download">If Ensomi says this song is not on your phone, download it in NetEase, let it finish, then share again. Standard audio formats (such as MP3 or FLAC) work; NetEase’s protected format (.ncm) cannot be used.</string>
     <string name="guide_step_share">3. Share to Ensomi</string>
     <string name="guide_after_share">In NetEase, tap Share and choose Ensomi. Your share shows what to do next. Keep the music playing and stay in Ensomi while it lines up.</string>
     <string name="guide_no_host">NetEase Cloud Music is not installed. Install it to follow these steps.</string>
@@ -82,5 +82,5 @@
     <string name="recognition_leave_text">Leaving stops file checking, chart work and the microphone.</string>
     <string name="recognition_stay">Stay</string>
     <string name="recognition_library_wait">Waiting for the Library’s chart work to finish stopping…</string>
-    <string name="recognition_failure_memory">This song needs more memory than is available, so the session stopped. Try a shorter MP3.</string>
+    <string name="recognition_failure_memory">This song needs more memory than is available, so the session stopped. Try a shorter audio file.</string>
 </resources>

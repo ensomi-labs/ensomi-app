@@ -63,19 +63,26 @@ class GameLoader(
             Log.w(TAG, "The chart of ${song.id} could not be read: ${failure.message}")
             return GameLoad.Failed(R.string.play_failed_chart)
         }
-        val audio = cache?.get(song.id, uri) ?: try {
-            val started = System.nanoTime()
-            SongDecoder.decode(appContext, uri, PcmChannels.STEREO).also {
-                Log.i(TAG, "Decoded ${song.fileName} for play in ${(System.nanoTime() - started) / 1_000_000} ms")
-                cache?.put(song.id, uri, it)
+        val audio = cache?.get(song.id, uri) ?: run {
+            // Release any previously cached song's PCM before allocating a new decode buffer.
+            cache?.clear()
+            try {
+                val started = System.nanoTime()
+                SongDecoder.decode(appContext, uri, PcmChannels.STEREO).also {
+                    Log.i(TAG, "Decoded ${song.fileName} for play in ${(System.nanoTime() - started) / 1_000_000} ms")
+                    cache?.put(song.id, uri, it)
+                }
+            } catch (failure: OutOfMemoryError) {
+                Log.w(TAG, "Decoding ${song.fileName} for play ran out of memory", failure)
+                return GameLoad.Failed(R.string.play_failed_memory)
+            } catch (failure: DecodeException) {
+                if (failure.missing) songs.markMissing(song.id)
+                return GameLoad.Failed(if (failure.missing) R.string.play_failed_missing else R.string.play_failed_decode)
+            } catch (failure: IllegalStateException) {
+                // MediaCodec's own failures.
+                Log.w(TAG, "Decoding ${song.fileName} for play failed", failure)
+                return GameLoad.Failed(R.string.play_failed_decode)
             }
-        } catch (failure: DecodeException) {
-            if (failure.missing) songs.markMissing(song.id)
-            return GameLoad.Failed(if (failure.missing) R.string.play_failed_missing else R.string.play_failed_decode)
-        } catch (failure: IllegalStateException) {
-            // MediaCodec's own failures.
-            Log.w(TAG, "Decoding ${song.fileName} for play failed", failure)
-            return GameLoad.Failed(R.string.play_failed_decode)
         }
         val chart = PlayChart.of(song.title, beatmap.chart, ceil(audio.durationMs).toInt())
         return GameLoad.Ready(chart, audio, last.record)

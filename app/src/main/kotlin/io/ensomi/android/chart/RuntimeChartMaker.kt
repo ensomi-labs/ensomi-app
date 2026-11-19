@@ -37,7 +37,6 @@ import io.ensomi.runtime.RuntimeWorker
 import io.ensomi.runtime.ScheduleMode
 import io.ensomi.runtime.SectionRequest
 import io.ensomi.runtime.SectionTarget
-import io.ensomi.runtime.prepare
 import io.ensomi.runtime.starRating
 import java.io.File
 import java.io.IOException
@@ -576,7 +575,7 @@ class RuntimeChartMaker(
         val done = worker.withGenerator(appContext, directory, options()) {
             if (preparation.stopped.get()) return@withGenerator false
             val stages = guardInference("model_prepare") {
-                prepare(audio.samples, audio.sampleRate.toDouble(), preparation.cancellation)
+                prepareF32le(audio.toF32le(), audio.sampleRate.toDouble(), preparation.cancellation)
             }
             prepared.put(key, stages)
             if (!disk.write(key) { it.write(stages.bytes()) }) Log.w(TAG, "Preparation could not be stored")

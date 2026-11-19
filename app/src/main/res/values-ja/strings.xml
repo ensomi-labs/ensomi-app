@@ -195,6 +195,7 @@
     <string name="play_failed_no_chart">この曲にはまだ譜面がありません。先に生成してください。</string>
     <string name="play_failed_chart">譜面を読み込めませんでした。生成し直してください。</string>
     <string name="play_failed_decode">曲をデコードできないため、プレイできません。</string>
+    <string name="play_failed_memory">メモリ不足のため、この曲を読み込んでプレイできません。</string>
     <string name="results_detail">星 %1$s · シード %2$s</string>
     <string name="results_detail_asked">星 %1$s · 目標 %2$s · シード %3$s</string>
     <string name="results_title">リザルト</string>

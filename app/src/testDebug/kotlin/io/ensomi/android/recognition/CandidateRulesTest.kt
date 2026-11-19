@@ -159,10 +159,21 @@ class CandidateRulesTest {
     @Test
     fun namesAreSortedOut() {
         assertTrue(CandidateRules.isProtected("a.NCM"))
+        assertTrue(CandidateRules.isProtected("a.ncm"))
         assertFalse(CandidateRules.isProtected("a.mp3"))
-        assertTrue(CandidateRules.isAudio("a.MP3"))
-        assertFalse(CandidateRules.isAudio("a.flac"))
+        assertFalse(CandidateRules.isProtected("a.flac"))
+        for (ext in listOf("mp3", "MP3", "flac", "FLAC", "wav", "WAV", "ogg", "OGG", "m4a", "M4A", "aac", "AAC", "opus", "OPUS")) {
+            assertTrue("expected audio for .$ext", CandidateRules.isAudio("track.$ext"))
+            assertEquals("track.$ext", CandidateRules.audioDownloadName("track.$ext.tmp"))
+        }
         assertFalse(CandidateRules.isAudio("a.ncm"))
+        assertFalse(CandidateRules.isAudio("a.NCM"))
+        assertFalse(CandidateRules.isAudio("a.lrc"))
+        assertFalse(CandidateRules.isAudio("a.jpg"))
+        assertEquals(Verdict.PROBE, judge(file("周杰伦 - 晴天.flac")))
+        assertEquals(Verdict.PROBE, judge(file("周杰伦 - 晴天.FLAC")))
+        assertEquals(Verdict.PROTECTED, judge(file("周杰伦 - 晴天.ncm")))
+        assertEquals(Verdict.PROTECTED, judge(file("周杰伦 - 晴天.NCM")))
     }
 }
 

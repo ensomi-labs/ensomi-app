@@ -7,9 +7,9 @@
     <string name="recognition_allow">マイクと音楽へのアクセスを許可</string>
     <string name="recognition_capture_mic">マイク</string>
     <string name="recognition_capture_replay">WAV 再生</string>
-    <string name="recognition_held">見つかったほかの MP3 ファイル</string>
+    <string name="recognition_held">見つかったほかの音声ファイル</string>
     <string name="recognition_choose_file">下のファイルがこの曲なら「このファイルを使う」を選んでください。</string>
-    <string name="recognition_failure_unreadable">選んだファイルをデコードできませんでした。別の完全な MP3 ファイルを選んでください。</string>
+    <string name="recognition_failure_unreadable">選んだファイルをデコードできませんでした。別の完全な音声ファイルを選んでください。</string>
     <string name="recognition_use_file">このファイルを使う</string>
     <string name="recognition_failed_at">停止した段階：%1$s</string>
     <string name="recognition_retry_from">ここから再試行：%1$s</string>
@@ -34,12 +34,12 @@
     <string name="recognition_status_running">実行中</string>
     <string name="recognition_status_done">完了</string>
     <string name="recognition_status_failed">失敗</string>
-    <string name="recognition_ask_wait">ダウンロード済みの MP3 を探しています。一致するファイルもダウンロードの進行も 15 秒間見つからなければ、セッションを停止します。ダウンロードを完了してから共有し直してください。</string>
+    <string name="recognition_ask_wait">ダウンロード済みの曲を探しています。一致するファイルもダウンロードの進行も 15 秒間見つからなければ、セッションを停止します。ダウンロードを完了してから共有し直してください。</string>
     <string name="recognition_ask_return">Ensomi に戻り、この画面を開いたままにしてください</string>
     <string name="recognition_ask_silent">マイクに音が届いていません。音楽はまだ流れていますか？</string>
     <string name="recognition_failure_not_song">共有された内容は曲ではありません。曲そのものを共有してください。</string>
-    <string name="recognition_failure_no_file">この端末にはまだ曲がありません。NetEase Cloud Music で MP3 をダウンロードし、完了してから共有し直してください。MP3 のみ対応しています。</string>
-    <string name="recognition_failure_protected">この曲の .ncm ファイルが見つかりましたが、Ensomi で使えない保護形式です。MP3 でダウンロードできる曲をお試しください。</string>
+    <string name="recognition_failure_no_file">この端末にはまだ曲がありません。NetEase Cloud Music でダウンロードし、完了してから共有し直してください。保護形式（.ncm）は使えません。</string>
+    <string name="recognition_failure_protected">この曲の .ncm ファイルが見つかりましたが、Ensomi で使えない保護形式です。MP3 や FLAC など標準的な音声形式でダウンロードできる曲をお試しください。</string>
     <string name="recognition_failure_no_model">譜面モデルがインストールされていません。ライブラリでインストールしてから再試行してください。</string>
     <string name="recognition_failure_chart">譜面を生成できませんでした。</string>
     <string name="recognition_failure_sync">同期に失敗しました。</string>
@@ -52,7 +52,7 @@
     <string name="guide_microphone">マイク</string>
     <string name="guide_mic_reason">端末内で音楽と同期するために使用します。マイクの音声は保存もアップロードもしません。</string>
     <string name="guide_music">音楽へのアクセス</string>
-    <string name="guide_music_reason">ダウンロードした MP3 を探し、Ensomi で譜面を生成します。</string>
+    <string name="guide_music_reason">ダウンロードした音声ファイルを探し、Ensomi で譜面を生成します。</string>
     <string name="guide_allowed">許可済み</string>
     <string name="guide_allow">許可</string>
     <string name="guide_settings">許可できない場合はアプリの設定を開く</string>
@@ -64,7 +64,7 @@
     <string name="guide_open">NetEase Cloud Music を開く</string>
     <string name="guide_step_recognise">2. 曲を認識する</string>
     <string name="guide_recognise">音楽を流したまま、NetEase Cloud Music の「听歌识曲」（曲の認識）を使います。候補が複数表示されたら、ダウンロード済みの曲を選んでください。</string>
-    <string name="guide_download">端末に曲がないと表示されたら、NetEase Cloud Music で MP3 をダウンロードし、完了してから共有し直してください。MP3 のみ対応し、保護形式（.ncm）は使えません。</string>
+    <string name="guide_download">端末に曲がないと表示されたら、NetEase Cloud Music でダウンロードし、完了してから共有し直してください。MP3 や FLAC など標準的な音声形式に対応し、保護形式（.ncm）は使えません。</string>
     <string name="guide_step_share">3. Ensomi に共有する</string>
     <string name="guide_after_share">NetEase Cloud Music で「共有」をタップし、Ensomi を選びます。受信後に次の手順が表示されます。音楽を流したまま、Ensomi で同期を待ってください。</string>
     <string name="guide_no_host">NetEase Cloud Music がインストールされていません。インストールしてから手順を進めてください。</string>
@@ -77,5 +77,5 @@
     <string name="recognition_leave_text">離れるとファイル検索、譜面生成、マイクを停止します。</string>
     <string name="recognition_stay">この画面に留まる</string>
     <string name="recognition_library_wait">ライブラリの譜面処理が停止するのを待っています…</string>
-    <string name="recognition_failure_memory">曲に必要なメモリが不足したため、セッションを停止しました。より短い MP3 をお試しください。</string>
+    <string name="recognition_failure_memory">曲に必要なメモリが不足したため、セッションを停止しました。より短い音声ファイルをお試しください。</string>
 </resources>

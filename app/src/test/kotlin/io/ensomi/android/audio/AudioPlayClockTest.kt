@@ -450,4 +450,150 @@ class AudioPlayClockTest {
         assertEquals(heardAt, clock.songTimeMs(now)!!, 2.0)
         assertTrue("The underrun put the time heard back, and the game's time did not follow it back", clock.stepsBack >= 1)
     }
+
+    /**
+     * Simulates 60 s of steady play on a noisy deep-buffer / Bluetooth output: ±15 ms random jitter on every read plus
+     * 25 % backward timestamp steps of 15–35 ms (as seen on K90 Ultra). Verifies strict monotonicity, no steady-state
+     * scroll-rate spikes above 3.5 %, and zero drift divergence across 60 s.
+     */
+    @Test
+    fun steadyStateJitterAndBackwardStepsKeepRateSmoothWithoutDrift() {
+        val random = Random(42)
+        val output = object : PlayOutput {
+            var nowNanos = 0L
+            var reads = 0
+
+            override fun timestamp(): OutputTimestamp {
+                reads++
+                val trueMs = nowNanos / 1e6
+                val jitterMs = if (nowNanos < 2_000 * ms) {
+                    0.0
+                } else {
+                    val base = random.nextDouble(-15.0, 15.0)
+                    // 25 % of reads step backward by an extra 15..35 ms.
+                    if (reads % 4 == 0) base - random.nextDouble(15.0, 35.0) else base
+                }
+                return OutputTimestamp(frames(trueMs + jitterMs, leadIn = 96_000), nowNanos)
+            }
+
+            override fun play() = Unit
+
+            override fun pause() = Unit
+
+            override fun playFrom(frame: Long) = Unit
+        }
+        val clock = AudioPlayClock(output, rate, leadInFrames = 96_000)
+        val frameNanos = 8_333_333L
+        val aheadNanos = 3 * frameNanos
+        clock.start(0, -2_000.0)
+        var now = frameNanos
+        var lastNow = Double.NEGATIVE_INFINITY
+        var lastPresent = Double.NEGATIVE_INFINITY
+        var lastPresentNanos = 0L
+        var maxSteadyRateDeviation = 0.0
+        var earlyErrSum = 0.0
+        var earlyCount = 0
+        var lateErrSum = 0.0
+        var lateCount = 0
+        var maxAbsErr = 0.0
+        while (now <= 62_000 * ms) {
+            output.nowNanos = now
+            clock.update(now)
+            val atNow = clock.songTimeMs(now)
+            val atPresent = clock.songTimeMs(now + aheadNanos)
+            if (atNow != null && atPresent != null) {
+                assertTrue("now went back at $now: $atNow < $lastNow", atNow >= lastNow)
+                assertTrue("present went back at $now: $atPresent < $lastPresent", atPresent >= lastPresent)
+                if (now >= 2_500 * ms && lastPresent > Double.NEGATIVE_INFINITY) {
+                    val stepMs = atPresent - lastPresent
+                    val frameMs = (now + aheadNanos - lastPresentNanos) / 1e6
+                    val rateDev = kotlin.math.abs(stepMs / frameMs - 1.0)
+                    maxSteadyRateDeviation = maxOf(maxSteadyRateDeviation, rateDev)
+                    assertTrue(
+                        "steady-state rate spike ${rateDev * 100}% at $now exceeds 3.5%",
+                        rateDev <= 0.035,
+                    )
+                    val err = atNow - now / 1e6
+                    maxAbsErr = maxOf(maxAbsErr, kotlin.math.abs(err))
+                    if (now < 17_500 * ms) {
+                        earlyErrSum += err
+                        earlyCount++
+                    } else if (now >= 47_000 * ms) {
+                        lateErrSum += err
+                        lateCount++
+                    }
+                }
+                lastNow = atNow
+                lastPresent = atPresent
+                lastPresentNanos = now + aheadNanos
+            }
+            now += frameNanos
+        }
+        assertTrue("expected backward steps to be recorded: ${clock.stepsBack}", clock.stepsBack >= 5)
+        assertTrue("max steady rate deviation too high: $maxSteadyRateDeviation", maxSteadyRateDeviation <= 0.035)
+        assertTrue("error diverged over 60 s: maxAbsErr=$maxAbsErr ms", maxAbsErr <= 15.0)
+        val driftBetweenEarlyAndLate = kotlin.math.abs(lateErrSum / lateCount - earlyErrSum / earlyCount)
+        assertTrue("secular drift over 60 s: $driftBetweenEarlyAndLate ms", driftBetweenEarlyAndLate <= 5.0)
+    }
+
+    @Test
+    fun singleBackwardOutlierInSteadyStateDoesNotYankClock() {
+        var outlierMs = 0.0
+        val output = object : PlayOutput {
+            var nowNanos = 0L
+
+            override fun timestamp() = OutputTimestamp(frames(nowNanos / 1e6 + outlierMs), nowNanos)
+
+            override fun play() = Unit
+
+            override fun pause() = Unit
+
+            override fun playFrom(frame: Long) = Unit
+        }
+        val clock = AudioPlayClock(output, rate, leadInFrames = 0)
+        clock.start(0, 0.0)
+        var injected = false
+        runFrames(clock, 10 * ms, 6_000 * ms, before = { now ->
+            output.nowNanos = now
+            // Inject a single -30 ms backward spike at the first steady-state poll (~2.0 s).
+            if (!injected && now >= 2_000 * ms) {
+                outlierMs = -30.0
+                injected = true
+            } else if (now >= 2_050 * ms) {
+                outlierMs = 0.0
+            }
+        }) { now, songMs ->
+            if (now >= 1_500 * ms) {
+                assertEquals("single outlier yanked clock at $now", now / 1e6, songMs, 0.5)
+            }
+        }
+        assertTrue("expected backward step to be counted", clock.stepsBack >= 1)
+    }
+
+    @Test
+    fun sustainedLargeOffsetInSteadyStateTriggersRecoveryAndConverges() {
+        var shiftMs = 0.0
+        val output = object : PlayOutput {
+            var nowNanos = 0L
+
+            override fun timestamp() = OutputTimestamp(frames(nowNanos / 1e6 + shiftMs), nowNanos)
+
+            override fun play() = Unit
+
+            override fun pause() = Unit
+
+            override fun playFrom(frame: Long) = Unit
+        }
+        val clock = AudioPlayClock(output, rate, leadInFrames = 0)
+        clock.start(0, 0.0)
+        runFrames(clock, 10 * ms, 6_500 * ms, before = { now ->
+            output.nowNanos = now
+            shiftMs = if (now >= 3_000 * ms) -80.0 else 0.0
+        }) { now, songMs ->
+            if (now >= 5_500 * ms) {
+                assertEquals("failed to converge after sustained shift at $now", now / 1e6 - 80.0, songMs, 2.0)
+            }
+        }
+        assertTrue(clock.stepsBack >= 1)
+    }
 }

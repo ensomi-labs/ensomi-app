@@ -15,14 +15,14 @@ import android.util.Log
 import java.util.Locale
 import java.util.concurrent.locks.LockSupport
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.roundToLong
 
 /**
- * A game's sound: one `AudioTrack` (`ENCODING_PCM_FLOAT`, `MODE_STREAM`) fed by its own writer thread, first with
- * [leadInMs] of silence, then the song, then silence until the game closes it, so the output keeps reporting real
- * timestamps past the song's end. With [loopFromFrame] the song repeats from that frame instead of ending, as the
- * calibration's click track does. The music volume is the track's gain, which leaves frame positions alone.
+ * A game's sound: one `AudioTrack` (`ENCODING_PCM_FLOAT`, `MODE_STREAM`) fed by its own writer thread from an
+ * [AudioPcmSource], first with [leadInMs] of silence, then the song, then silence until the game closes it, so the
+ * output keeps reporting real timestamps past the song's end. With [loopFromFrame] the song repeats from that frame
+ * instead of ending, as the calibration's click track does. The music volume is the track's gain, which leaves frame
+ * positions alone.
  *
  * The writer fills the track's buffer ([QUEUED_MS] or more) before [play] and blocks while it is full, so at least
  * 200 ms stay queued; while the track does not play, it waits once the buffer is full. [playFrom] plays again from a
@@ -32,16 +32,25 @@ import kotlin.math.roundToLong
  */
 class GameAudio(
     context: Context,
-    private val song: DecodedSong,
+    private val source: AudioPcmSource,
     leadInMs: Double,
     volume: Float,
     private val onRoute: (AudioDeviceInfo?) -> Unit,
     /** Where the song starts again once it has played to its end; null to end it. */
     private val loopFromFrame: Int? = null,
 ) : PlayOutput, AutoCloseable {
-    val sampleRate: Int = song.sampleRate
+    constructor(
+        context: Context,
+        song: DecodedSong,
+        leadInMs: Double,
+        volume: Float,
+        onRoute: (AudioDeviceInfo?) -> Unit,
+        loopFromFrame: Int? = null,
+    ) : this(context, ArrayPcmSource(song), leadInMs, volume, onRoute, loopFromFrame)
+
+    val sampleRate: Int = source.sampleRate
     val leadInFrames: Long = (leadInMs * sampleRate / 1000).roundToLong()
-    private val channels = song.channels
+    private val channels = source.channels
     private val audioManager = context.getSystemService(AudioManager::class.java)
     private val track: AudioTrack
     private val writer: Thread
@@ -72,12 +81,16 @@ class GameAudio(
     /** The frame of the timeline the track's positions count from: 0, or the last restart's. Under [lock]. */
     private var baseFrame = 0L
 
-    private val loopFrom = loopFromFrame?.coerceIn(0, song.frames - 1)
-
-    /** The track's underruns when it was released. */
+    /** The track's underruns and last routed device type when it was released. */
     private var closedUnderruns = 0
+    private var closedRouteType: Int? = null
 
-    private val routing = AudioRouting.OnRoutingChangedListener { router -> if (running) onRoute(router.routedDevice) }
+    private val routing = AudioRouting.OnRoutingChangedListener { router ->
+        if (!running) return@OnRoutingChangedListener
+        val device = router.routedDevice
+        if (device != null) synchronized(lock) { closedRouteType = device.type }
+        onRoute(device)
+    }
 
     init {
         val format = AudioFormat.Builder()
@@ -98,7 +111,7 @@ class GameAudio(
         Log.i(
             TAG,
             "Output: $sampleRate Hz, $channels channels, buffer ${track.bufferSizeInFrames} of " +
-                "${track.bufferCapacityInFrames} frames, lead-in $leadInFrames frames, song ${song.frames} frames",
+                "${track.bufferCapacityInFrames} frames, lead-in $leadInFrames frames, song ${source.frames ?: "streaming"} frames",
         )
         writer = Thread(::write, "EnsomiAudioWriter").also { it.start() }
     }
@@ -110,6 +123,10 @@ class GameAudio(
     /** The device the track plays on now; null until it has started. */
     val routedDevice: AudioDeviceInfo?
         get() = synchronized(lock) { if (released) null else track.routedDevice }
+
+    /** The last observed `AudioDeviceInfo.TYPE_*` for diagnostics, preserved after [close]. */
+    val lastRouteType: Int?
+        get() = synchronized(lock) { if (released) closedRouteType else track.routedDevice?.type ?: closedRouteType }
 
     /**
      * On the timeline: none while the writer restarts the track, and none at the track's own position 0, which it
@@ -187,54 +204,47 @@ class GameAudio(
     private fun write() {
         Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
         val chunk = CHUNK_MS * sampleRate / 1000
-        val silence = FloatArray(chunk * channels)
-        var frame = 0L
+        val feeder = TimelineFeeder(source, leadInFrames, loopFromFrame, chunk)
         // The track took less than it was handed: it does not play, and is full.
         var full = false
         // Filled again after a restart, it plays once full.
         var refilling = false
         while (running) {
+            var seekTo: Long? = null
             val wait = synchronized(lock) {
                 val from = restartFrame
                 if (from != null && !released) {
                     track.flush()
                     // As far on as the time since it was asked: the music keeps step with the clock, which ran on.
                     val lateNanos = System.nanoTime() - restartAskedNanos
-                    frame = from + lateNanos * sampleRate / 1_000_000_000L
+                    val target = from + lateNanos * sampleRate / 1_000_000_000L
                     if (lateNanos > LATE_LOG_NANOS) {
                         val lateMs = String.format(Locale.ROOT, "%.1f", lateNanos / 1e6)
                         Log.i(TAG, "Output: flushed $lateMs ms after it was asked; plays as much further on")
                     }
-                    baseFrame = frame
+                    baseFrame = target
+                    seekTo = target
                     restartFrame = null
                     full = false
                     refilling = true
                 }
                 full && !playing && !refilling
             }
+            seekTo?.let { feeder.seekTimeline(it) }
             if (wait) {
                 LockSupport.park(this)
                 continue
             }
             // Full, though it is to play: it has not started yet. A moment later, rather than ask it again and again.
             if (full && !refilling) LockSupport.parkNanos(this, FULL_WAIT_NANOS)
-            val songFrame = songFrameAt(frame, leadInFrames, song.frames, loopFrom)
-            val count = when {
-                frame < leadInFrames -> min(chunk.toLong(), leadInFrames - frame).toInt()
-                songFrame < 0 -> chunk
-                else -> min(chunk.toLong(), song.frames - songFrame).toInt()
-            }
-            val written = if (songFrame < 0) {
-                track.write(silence, 0, count * channels, AudioTrack.WRITE_BLOCKING)
-            } else {
-                track.write(song.samples, songFrame.toInt() * channels, count * channels, AudioTrack.WRITE_BLOCKING)
+            val written = feeder.writeNext { buffer, offset, sampleCount ->
+                track.write(buffer, offset, sampleCount, AudioTrack.WRITE_BLOCKING)
             }
             if (written < 0) {
                 if (running) Log.w(TAG, "The output refused a write: $written")
                 return
             }
-            frame += written / channels
-            full = written < count * channels
+            full = feeder.lastWritePartial
             if (refilling && full) {
                 refilling = false
                 synchronized(lock) {
@@ -245,12 +255,13 @@ class GameAudio(
         }
     }
 
-    /** Stops the writer and releases the track; logs the game's underruns. Any thread. */
+    /** Stops the writer and releases the track and PCM source; logs the game's underruns. Any thread. */
     override fun close() {
         synchronized(lock) {
             if (released) return
             running = false
             closedUnderruns = track.underrunCount
+            closedRouteType = track.routedDevice?.type ?: closedRouteType
             Log.i(TAG, "Output closed: $closedUnderruns underruns, routed to ${track.routedDevice?.productName}")
             track.removeOnRoutingChangedListener(routing)
             // Flushing frees the buffer and stop() wakes a blocked write; a writer waiting on a full track is woken.
@@ -260,6 +271,7 @@ class GameAudio(
         }
         LockSupport.unpark(writer)
         writer.join(WRITER_JOIN_MS)
+        runCatching { source.close() }
         synchronized(lock) {
             released = true
             track.release()

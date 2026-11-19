@@ -406,7 +406,7 @@ class RecognitionController private constructor(context: Context) {
             val started = SystemClock.elapsedRealtimeNanos()
             try {
                 val song = kept ?: probe.decode(audio.file)
-                val opened = referenceWorker.run { RuntimeSync.port.open(song.samples, song.sampleRate) }
+                val opened = referenceWorker.run { RuntimeSync.port.open(song.samples, song.sampleCount, song.sampleRate) }
                 val seconds = (SystemClock.elapsedRealtimeNanos() - started) / 1e9
                 post {
                     if (generation != syncGeneration) {

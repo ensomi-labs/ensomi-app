@@ -66,30 +66,102 @@ class LaneAsking(lanes: Int = PlayfieldGeometry.LANES) {
     }
 }
 
-/** The runtime's `noteYPosition`, as [TapLine] takes it. */
+/** The runtime's `noteYPosition`, as [NoteLayout] and [TapLine] take it. */
 fun interface NoteY {
     fun at(objectMs: Double, renderMs: Double, scrollTimeMs: Double, receptorY: Double): Double
 }
 
 /**
- * Where a tap is drawn, without a call per note per frame. The runtime's rule moves every tap at one speed, a straight
- * line in time, so two of its answers fix the line for a scroll time and a fall length, and only a change of those asks
- * again. The rule stays the runtime's: `RuntimeCheck` holds the line to `noteGeometry`.
+ * Reusable hold coordinates in lane-local y (0 at the far end, `fallLength` at the receptor line), matching
+ * `ensomi_gameplay::layout::Geometry::Hold` without allocating per note per frame.
  */
-class TapLine(private val noteY: NoteY) {
+class HoldPlacement {
+    var bodyTopY: Double = 0.0
+    var bodyBottomY: Double = 0.0
+    var headY: Double = 0.0
+    var hasTail: Boolean = false
+    var tailY: Double = 0.0
+}
+
+/**
+ * Where taps and holds are drawn, without a runtime call per note per frame. Two answers from [noteY] fix the linear
+ * time-to-y mapping whenever scroll time or fall length changes, and holds follow `ensomi_gameplay::layout::geometry`
+ * directly in Kotlin with zero per-note allocations. Judgement remains in `GameplaySession`; `RuntimeCheck` holds this
+ * layout to `noteGeometry`.
+ */
+class NoteLayout(private val noteY: NoteY) {
     private var scrollTimeMs = Double.NaN
     private var fallLength = Double.NaN
     private var lineY = 0.0
     private var perMs = 0.0
 
-    /** A tap at [timeMs], drawn at [renderMs], on lanes [fallLength] long. */
+    private fun calibrate(scrollTimeMs: Double, fallLength: Double) {
+        if (scrollTimeMs == this.scrollTimeMs && fallLength == this.fallLength) return
+        this.scrollTimeMs = scrollTimeMs
+        this.fallLength = fallLength
+        val span = maxOf(scrollTimeMs, 1.0)
+        lineY = noteY.at(0.0, 0.0, scrollTimeMs, fallLength)
+        perMs = (noteY.at(span, 0.0, scrollTimeMs, fallLength) - lineY) / span
+    }
+
+    /** A tap (or raw timestamp) at [timeMs], drawn at [renderMs], on lanes [fallLength] long. */
     fun y(timeMs: Double, renderMs: Double, scrollTimeMs: Double, fallLength: Double): Double {
-        if (scrollTimeMs != this.scrollTimeMs || fallLength != this.fallLength) {
-            this.scrollTimeMs = scrollTimeMs
-            this.fallLength = fallLength
-            lineY = noteY.at(0.0, 0.0, scrollTimeMs, fallLength)
-            perMs = (noteY.at(scrollTimeMs, 0.0, scrollTimeMs, fallLength) - lineY) / scrollTimeMs
-        }
+        calibrate(scrollTimeMs, fallLength)
         return lineY + (timeMs - renderMs) * perMs
     }
+
+    /**
+     * Fills [out] with hold coordinates matching `ensomi_gameplay::layout::geometry`.
+     * When [holding] is true (`VisibleState.HOLDING`), head and tail y are clamped to `min(rawY, receptorY)`.
+     * When [endTimeMs] is null (`VisibleState.OPEN_ENDED` or an open-ended hold being held), [HoldPlacement.hasTail]
+     * is false and the body extends from the far end (`0.0`) to `headY`, at least [MINIMUM_HOLD_BODY_HEIGHT] tall.
+     */
+    fun hold(
+        startTimeMs: Double,
+        endTimeMs: Double?,
+        holding: Boolean,
+        renderMs: Double,
+        scrollTimeMs: Double,
+        fallLength: Double,
+        out: HoldPlacement,
+    ) {
+        calibrate(scrollTimeMs, fallLength)
+        val rawHead = lineY + (startTimeMs - renderMs) * perMs
+        val headY = if (holding) minOf(rawHead, lineY) else rawHead
+        val rawTopY: Double
+        val rawBottomY: Double
+        if (endTimeMs != null) {
+            val rawTail = lineY + (endTimeMs - renderMs) * perMs
+            val tailY = if (holding) minOf(rawTail, lineY) else rawTail
+            out.hasTail = true
+            out.tailY = tailY
+            rawTopY = minOf(headY, tailY)
+            rawBottomY = maxOf(headY, tailY)
+        } else {
+            out.hasTail = false
+            out.tailY = 0.0
+            rawTopY = minOf(0.0, headY)
+            rawBottomY = maxOf(0.0, headY)
+        }
+        val bodyHeight = maxOf(rawBottomY - rawTopY, MINIMUM_HOLD_BODY_HEIGHT)
+        out.bodyTopY = rawBottomY - bodyHeight
+        out.bodyBottomY = rawBottomY
+        out.headY = headY
+    }
+
+    companion object {
+        /** Matches `ensomi_gameplay::layout::MINIMUM_HOLD_BODY_HEIGHT`. */
+        const val MINIMUM_HOLD_BODY_HEIGHT = 12.0
+    }
+}
+
+/**
+ * Where a tap is drawn, without a call per note per frame. Thin wrapper over [NoteLayout] kept for existing checks.
+ */
+class TapLine(noteY: NoteY) {
+    private val layout = NoteLayout(noteY)
+
+    /** A tap at [timeMs], drawn at [renderMs], on lanes [fallLength] long. */
+    fun y(timeMs: Double, renderMs: Double, scrollTimeMs: Double, fallLength: Double): Double =
+        layout.y(timeMs, renderMs, scrollTimeMs, fallLength)
 }

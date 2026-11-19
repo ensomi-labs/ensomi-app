@@ -24,7 +24,13 @@ class PlayAudioCache {
     @Synchronized
     fun drop(songId: String) {
         if (this.songId != songId) return
-        this.songId = null
+        clear()
+    }
+
+    /** Lets go of whichever song is cached, e.g. before decoding a new song so the old PCM can be collected. */
+    @Synchronized
+    fun clear() {
+        songId = null
         uri = null
         audio = null
     }

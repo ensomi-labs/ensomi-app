@@ -62,7 +62,7 @@ object OutputRoutes {
         OutputKind.OTHER -> null
     }
 
-    private fun typeName(type: Int): String = TYPE_NAMES[type] ?: "type-$type"
+    fun typeName(type: Int): String = TYPE_NAMES[type] ?: "type-$type"
 
     private val TYPE_NAMES = mapOf(
         AudioDeviceInfo.TYPE_BUILTIN_SPEAKER to "speaker",

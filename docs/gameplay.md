@@ -205,16 +205,14 @@ osu!'s gameplay clock follows its track (below), so that it never steps.
 - After a start or a resume, a pair counts only if it was presented after it and its frame is past the one play starts
   from (the lead-in's first, or the one a resume plays from). The game's song time starts on the first pair after the
   start.
-- **Steering.** Each frame the game's rate is 1 plus the difference from the time heard × ln 2 / 80 ms, so the
-  difference halves every 80 ms: osu!'s gameplay clock, an `InterpolatingFramedClock` over its track with a drift
-  recovery half-life of 80 ms (`ppy/osu@77df204:osu.Game/Beatmaps/FramedBeatmapClock.cs:78-81`;
-  `ppy/osu-framework@0d5edae:osu.Framework/Timing/InterpolatingFramedClock.cs:126-145`). Past 33.3 ms (two 60 Hz frames)
-  osu! jumps to its track instead (`InterpolatingFramedClock.cs:22`, `:137-144`); here the rate stays at what the
-  half-life gives there, 1 ± 0.29, until the difference is back under it, and it changes by at most 0.004 a
-  millisecond. So a timestamp late, early or stepped (a deep-buffer output's 40 ms period, an underrun) bends the
-  chart's speed for a moment and never moves it at once. The line turns at the latest time it was asked for (frames ask
-  for their presentation time, a little ahead), so nothing shown changes or runs back, as osu! keeps its time from going
-  back (`InterpolatingFramedClock.cs:156-159`). The runtime's session never moves back either.
+- **Steering.** Raw timestamp offsets are filtered through a 5-sample sliding median and, in steady state, exponentially
+  smoothed with bounded per-read step so single-sample outliers and backward steps on deep-buffer or Bluetooth outputs do
+  not yank the reference line (raw steps are still counted for diagnostics). Each frame the game's rate is 1 plus the
+  difference from the time heard × ln 2 / 80 ms, clamped to ±3 % in steady state (`STEADY_MAX_SLEW`) and ±12 % during
+  warm-up after start/resume/route change or after a confirmed sustained offset of 50 ms or more (`RECOVERY_MAX_SLEW`),
+  with bounded rate-of-change per millisecond. The line turns at the latest time it was asked for (frames ask for their
+  presentation time, a little ahead), so nothing shown changes or runs back, as osu! keeps its time from going back
+  (`InterpolatingFramedClock.cs:156-159`). The runtime's session never moves back either.
 - The timestamp is a presented frame, so the output latency the device reports is already out of song time. What it
   does not report stays in the audio latency. There is no runtime API for true end-to-end audio latency, and the CDD
   bounds the reported value only loosely (stack report §2.4), so the latency slots stay necessary.
@@ -399,9 +397,12 @@ The play renderer draws and judges a note on each click; presses by touch or key
   which marshals structures by reflection and allocates a few structures per call, so a frame asks only what can have
   changed (`FrameReads.kt`): the visible objects after an input or an event and every 100 ms of render time, with a
   range that reaches that much further than a frame needs; a lane's light only while it is lit and after its input; the
-  batches after an event; the judgement word while one shows; the score after an event; the tier words once. Taps are
-  placed on a line in time, fixed by two answers from `noteYPosition` for a scroll time and a fall length, so only holds
-  call `noteGeometry` each frame; `RuntimeCheck` holds the line to the runtime's answer. If this stays above about 1 ms
+  batches after an event; the judgement word while one shows; the score after an event; the tier words once. Both taps
+  and holds are placed linearly in Kotlin (`NoteLayout`, calibrated by two answers from `noteYPosition` whenever scroll
+  time or fall length changes) with zero runtime calls or heap allocations per note per frame; `RuntimeCheck` holds both
+  taps and holds to `noteGeometry`. Dynamic refresh intervals (`RefreshIntervalTracker`) combine `DisplayManager`
+  callbacks with smoothed `Choreographer` vsync deltas so `QueueDrain` tracks 60↔90↔120↔144/165 Hz transitions
+  immediately. If this stays above about 1 ms
   in a release build, the fix is one runtime call per frame that returns the visible notes with their positions, lane
   brightness, the recent batches, the presentation and the score: a runtime change, listed in plan.md and not made.
 - The renderer allocates nothing per frame; the bindings return new lists when they are called, so what the process

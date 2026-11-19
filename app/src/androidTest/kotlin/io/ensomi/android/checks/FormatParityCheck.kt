@@ -22,9 +22,9 @@ class FormatParityCheck {
         for (file in files) for (channels in PcmChannels.entries) {
             val a = ReferenceDecoder.decode(PhoneCheck.context, Uri.fromFile(file), channels)
             val b = SongDecoder.decode(PhoneCheck.context, Uri.fromFile(file), channels)
-            val ah = pcmHash(a.samples); val bh = pcmHash(b.samples)
+            val ah = pcmHash(a.samples, a.sampleCount); val bh = pcmHash(b.samples, b.sampleCount)
             rows += mapOf("file" to file.name, "channels" to channels.count, "codec" to b.codec,
-                "samplesA" to a.samples.size, "samplesB" to b.samples.size, "pcmA" to ah, "pcmB" to bh)
+                "samplesA" to a.sampleCount, "samplesB" to b.sampleCount, "pcmA" to ah, "pcmB" to bh)
             assertEquals(file.name, a.sampleRate, b.sampleRate)
             assertEquals(file.name, a.leadFrames, b.leadFrames)
             assertEquals(file.name, ah, bh)

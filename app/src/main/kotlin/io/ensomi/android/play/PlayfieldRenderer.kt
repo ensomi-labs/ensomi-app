@@ -12,11 +12,9 @@ import android.graphics.Typeface
 import androidx.core.graphics.withClip
 import androidx.core.graphics.withSave
 import androidx.core.graphics.withTranslation
-import io.ensomi.runtime.Geometry
 import io.ensomi.runtime.Judgement
 import io.ensomi.runtime.Tier
 import io.ensomi.runtime.VisibleState
-import io.ensomi.runtime.noteGeometry
 import io.ensomi.runtime.noteYPosition
 import io.ensomi.runtime.tierJudgement
 
@@ -106,7 +104,8 @@ class PlayfieldRenderer(private val words: PlayfieldWords) {
     private val diagonal = Path()
     private var diagonalWidth = 0f
     private var diagonalHeight = 0f
-    private val tapLine = TapLine(::noteYPosition)
+    private val noteLayout = NoteLayout(::noteYPosition)
+    private val holdPlacement = HoldPlacement()
     private var comboShown = -1
     private var comboText = ""
     private val bold = Typeface.create(Typeface.DEFAULT, 700, false)
@@ -261,8 +260,8 @@ class PlayfieldRenderer(private val words: PlayfieldWords) {
     /**
      * Lane space. Notes hit are gone; a miss still on screen is greyed. A hold being held keeps its head on the line
      * and glows. Each note is cut to the lanes, from the far end to just under the top edge of its key cap, so a note
-     * centred on the line is drawn whole and then slips under the cap. A tap's place comes from [tapLine]: a call to
-     * the runtime per note per frame was most of the frame's drawing. A hold's shape is the runtime's to say.
+     * centred on the line is drawn whole and then slips under the cap. Both taps and holds are placed by [noteLayout],
+     * calibrated from `noteYPosition`, so drawing makes zero runtime FFI calls and zero allocations per note per frame.
      */
     private fun drawNotes(canvas: Canvas, frame: PlayFrame, g: PlayfieldGeometry) {
         val inset = g.dp(5f)
@@ -274,7 +273,9 @@ class PlayfieldRenderer(private val words: PlayfieldWords) {
         val pulse = HeldNoteLight.pulse(frame.gameplayMs, reduceMotion)
         val heldBodyAlpha = HeldNoteLight.bodyAlpha(pulse)
         val heldHaloAlpha = HeldNoteLight.haloAlpha(pulse)
-        for (obj in frame.visible) {
+        val visible = frame.visible
+        for (i in visible.indices) {
+            val obj = visible[i]
             if (obj.state == VisibleState.RESOLVED) continue
             val lane = obj.lane.toInt()
             val noteLeft = g.laneLeft(lane) + inset
@@ -282,53 +283,49 @@ class PlayfieldRenderer(private val words: PlayfieldWords) {
             val missed = obj.state == VisibleState.MISSED_BUT_VISIBLE
             val held = obj.state == VisibleState.HOLDING
             if (obj.endTimeMs == null && !held && obj.state != VisibleState.OPEN_ENDED) {
-                val y = top + tapLine.y(obj.startTimeMs, frame.renderMs, frame.scrollTimeMs, fallLength).toFloat()
+                val y = top + noteLayout.y(obj.startTimeMs, frame.renderMs, frame.scrollTimeMs, fallLength).toFloat()
                 val half = noteHeight / 2 * g.keepShape(y)
                 fill.color = if (missed) PlayPalette.MISSED_NOTE else PlayPalette.TAP
                 fill.alpha = if (missed) 128 else 255
                 drawCut(canvas, noteLeft, y - half, noteLeft + noteWidth, y + half, corner, top, bottom, fill)
                 continue
             }
-            when (val geometry = noteGeometry(obj, frame.renderMs, frame.scrollTimeMs, fallLength)) {
-                is Geometry.Tap -> Unit
-                is Geometry.Hold -> {
-                    val bodyWidth = noteWidth * 0.72f
-                    val bodyLeft = noteLeft + (noteWidth - bodyWidth) / 2
-                    fill.color = if (missed) PlayPalette.MISSED_NOTE else PlayPalette.HOLD_BODY
-                    fill.alpha = when {
-                        missed -> 64
-                        held -> heldBodyAlpha
-                        else -> 153
-                    }
-                    val bodyTop = top + geometry.bodyTopY.toFloat()
-                    val bodyBottom = top + geometry.bodyBottomY.toFloat()
-                    drawCut(canvas, bodyLeft, bodyTop, bodyLeft + bodyWidth, bodyBottom, g.dp(6f), top, bottom, fill)
-                    val capColor = if (missed) PlayPalette.MISSED_NOTE else PlayPalette.HOLD
-                    val capAlpha = if (missed) 128 else 255
-                    geometry.tailY?.let { tail ->
-                        val y = top + tail.toFloat()
-                        val half = g.dp(4f) * g.keepShape(y)
-                        fill.color = capColor
-                        fill.alpha = capAlpha
-                        drawCut(canvas, bodyLeft, y - half, bodyLeft + bodyWidth, y + half, g.dp(4f), top, bottom, fill)
-                    }
-                    val headY = top + geometry.headY.toFloat()
-                    val headHalf = noteHeight / 2 * g.keepShape(headY)
-                    if (held) {
-                        // The Swift head's soft glow, breathing gently with the held body on the game's clock.
-                        additive.shader = null
-                        additive.color = PlayPalette.HOLD
-                        additive.alpha = heldHaloAlpha
-                        drawCut(
-                            canvas, noteLeft - g.dp(8f), headY - noteHeight, noteLeft + noteWidth + g.dp(8f), headY + noteHeight,
-                            noteHeight, top, bottom, additive,
-                        )
-                    }
-                    fill.color = capColor
-                    fill.alpha = capAlpha
-                    drawCut(canvas, noteLeft, headY - headHalf, noteLeft + noteWidth, headY + headHalf, corner, top, bottom, fill)
-                }
+            noteLayout.hold(obj.startTimeMs, obj.endTimeMs, held, frame.renderMs, frame.scrollTimeMs, fallLength, holdPlacement)
+            val bodyWidth = noteWidth * 0.72f
+            val bodyLeft = noteLeft + (noteWidth - bodyWidth) / 2
+            fill.color = if (missed) PlayPalette.MISSED_NOTE else PlayPalette.HOLD_BODY
+            fill.alpha = when {
+                missed -> 64
+                held -> heldBodyAlpha
+                else -> 153
             }
+            val bodyTop = top + holdPlacement.bodyTopY.toFloat()
+            val bodyBottom = top + holdPlacement.bodyBottomY.toFloat()
+            drawCut(canvas, bodyLeft, bodyTop, bodyLeft + bodyWidth, bodyBottom, g.dp(6f), top, bottom, fill)
+            val capColor = if (missed) PlayPalette.MISSED_NOTE else PlayPalette.HOLD
+            val capAlpha = if (missed) 128 else 255
+            if (holdPlacement.hasTail) {
+                val y = top + holdPlacement.tailY.toFloat()
+                val half = g.dp(4f) * g.keepShape(y)
+                fill.color = capColor
+                fill.alpha = capAlpha
+                drawCut(canvas, bodyLeft, y - half, bodyLeft + bodyWidth, y + half, g.dp(4f), top, bottom, fill)
+            }
+            val headY = top + holdPlacement.headY.toFloat()
+            val headHalf = noteHeight / 2 * g.keepShape(headY)
+            if (held) {
+                // The Swift head's soft glow, breathing gently with the held body on the game's clock.
+                additive.shader = null
+                additive.color = PlayPalette.HOLD
+                additive.alpha = heldHaloAlpha
+                drawCut(
+                    canvas, noteLeft - g.dp(8f), headY - noteHeight, noteLeft + noteWidth + g.dp(8f), headY + noteHeight,
+                    noteHeight, top, bottom, additive,
+                )
+            }
+            fill.color = capColor
+            fill.alpha = capAlpha
+            drawCut(canvas, noteLeft, headY - headHalf, noteLeft + noteWidth, headY + headHalf, corner, top, bottom, fill)
         }
         fill.alpha = 255
     }
@@ -377,10 +374,14 @@ class PlayfieldRenderer(private val words: PlayfieldWords) {
      * the flare is not drawn and the light only fades.
      */
     private fun drawHitFeedback(canvas: Canvas, frame: PlayFrame, g: PlayfieldGeometry) {
-        for (batch in frame.batches) {
+        val batches = frame.batches
+        for (bi in batches.indices) {
+            val batch = batches[bi]
             val age = frame.gameplayMs - batch.chartTimeMs
             if (age < 0) continue
-            for (event in batch.events) {
+            val events = batch.events
+            for (ei in events.indices) {
+                val event = events[ei]
                 val laneX = g.laneLeft(event.lane.toInt())
                 val judgement = judgementOf.getValue(event.tier)
                 val color = PlayPalette.judgement(judgement)

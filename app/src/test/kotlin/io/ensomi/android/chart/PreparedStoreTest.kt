@@ -86,4 +86,34 @@ class PreparedStoreTest {
         assertFalse(store.put("a", "too large"))
         assertEquals("old", store.get("a"))
     }
+
+    @Test fun pathReadAndWritePreserveAtomicityEvictionAndCleanup() {
+        val store = PreparedStore(root, limitBytes = 8)
+        assertTrue(store.writePath("a") { path -> File(path).writeText("1234") })
+        assertEquals("1234", store.readPath("a") { path -> File(path).readText() })
+
+        // Failed writePath leaves existing file intact and deletes temporary.
+        assertFalse(store.writePath("a") { path ->
+            File(path).writeText("part")
+            throw IOException("native write failed")
+        })
+        assertEquals("1234", store.readPath("a") { path -> File(path).readText() })
+        assertEquals(1, root.listFiles()!!.size)
+
+        // Oversized writePath is rejected without disturbing previous file.
+        assertFalse(store.writePath("a") { path -> File(path).writeText("0123456789") })
+        assertEquals("1234", store.readPath("a") { path -> File(path).readText() })
+
+        // LRU eviction applies equally to writePath/readPath.
+        assertTrue(store.writePath("b") { path -> File(path).writeText("5678") })
+        assertEquals("1234", store.readPath("a") { path -> File(path).readText() })
+        assertTrue(store.writePath("c") { path -> File(path).writeText("9999") })
+        assertEquals("1234", store.readPath("a") { path -> File(path).readText() })
+        assertNull(store.readPath("b") { path -> File(path).readText() })
+        assertEquals("9999", store.readPath("c") { path -> File(path).readText() })
+
+        // Runtime refusal deletes corrupt entry.
+        assertNull(store.readPath<String>("c") { throw IllegalStateException("bad magic") })
+        assertFalse(store.contains("c"))
+    }
 }

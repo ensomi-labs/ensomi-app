@@ -6,8 +6,10 @@ import android.graphics.Canvas
 import android.graphics.HardwareRenderer
 import android.graphics.Rect
 import android.graphics.RenderNode
+import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.Debug
+import android.os.Handler
 import android.os.Looper
 import android.os.Process
 import android.os.Trace
@@ -194,6 +196,27 @@ class PlayfieldView @JvmOverloads constructor(
     /** Whether keys `adb shell input` injected came. */
     private var injected = false
 
+    /** Called off the main thread when this playfield's controller closes, with session-wide frame pacing metrics. */
+    var onSessionSummary: ((PlayFrameSummary) -> Unit)? = null
+
+    private val sessionStats = PlaySessionStats()
+    private val displayManager = context.getSystemService(DisplayManager::class.java)
+
+    /** Latest refresh rate reported by Android's `DisplayManager`, read on the render thread without locking. */
+    @Volatile
+    private var displayRefreshHz: Float = 60f
+
+    private val displayListener = object : DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) = Unit
+
+        override fun onDisplayRemoved(displayId: Int) = Unit
+
+        override fun onDisplayChanged(displayId: Int) {
+            val current = display ?: return
+            if (current.displayId == displayId) displayRefreshHz = current.refreshRate
+        }
+    }
+
     private val renderer = PlayfieldRenderer(playfieldWords(context))
 
     @Volatile
@@ -359,7 +382,14 @@ class PlayfieldView @JvmOverloads constructor(
         return listOf(Rect(0, top, laneEnd, bottom), Rect(laneStart, top, g.width.toInt(), bottom))
     }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        display?.refreshRate?.let { displayRefreshHz = it }
+        displayManager?.registerDisplayListener(displayListener, Handler(Looper.getMainLooper()))
+    }
+
     override fun surfaceCreated(holder: SurfaceHolder) {
+        display?.refreshRate?.let { displayRefreshHz = it }
         requestHighestFrameRate(holder.surface)
         val factory = controllerFactory ?: return
         renderThread = RenderThread(holder) { factory(mutableHud) { sequence.incrementAndGet() } }.also { it.start() }
@@ -375,6 +405,7 @@ class PlayfieldView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        displayManager?.unregisterDisplayListener(displayListener)
         renderThread?.quitAndJoin()
         renderThread = null
         // No finger, key or lane let go during a pause outlives this game: Restart and Quit make a new playfield.
@@ -386,8 +417,11 @@ class PlayfieldView @JvmOverloads constructor(
         val touchFile = touchLogFile
         val keyFile = keyLogFile
         val mostHeld = keyLanes?.mostLaneKeysHeld ?: 0
+        val summaryCallback = onSessionSummary
+        val summary = sessionStats.snapshot()
         Thread({
             closing.close()
+            if (summary != null) summaryCallback?.invoke(summary)
             if (logFile != null) {
                 Log.i(TAG, "Frames: ${frameLog.summary()}")
                 runCatching { logFile.writeText(frameLog.csv()) }
@@ -499,7 +533,8 @@ class PlayfieldView @JvmOverloads constructor(
             Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_DISPLAY)
             val target = SurfaceCanvas(surfaceHolder.surface)
             val choreographer = Choreographer.getInstance()
-            val stats = FrameStats { display?.refreshRate ?: 60f }
+            val intervalTracker = RefreshIntervalTracker(displayRefreshHz)
+            val stats = FrameStats(sessionStats) { intervalTracker.refreshHz }
             val log = frameLog.takeIf { frameLogFile != null }
             val callback = object : Choreographer.VsyncCallback {
                 override fun onVsync(data: Choreographer.FrameData) {
@@ -508,17 +543,23 @@ class PlayfieldView @JvmOverloads constructor(
                     // even well before its own deadline, loses it and the picture holds for a refresh. Asked for here,
                     // the next frame runs as soon as this one ends, for its own vsync's presentation time.
                     choreographer.postVsyncCallback(this)
+                    intervalTracker.onDisplayRefreshRate(displayRefreshHz)
+                    val intervalNanos = intervalTracker.onVsync(data.frameTimeNanos)
                     if (drain.takeSkip()) {
                         drained = true
                         stats.drained()
                         return
                     }
                     val timeline = data.preferredFrameTimeline
-                    drawFrame(playController, target, timeline.expectedPresentationTimeNanos, timeline.deadlineNanos, data.frameTimeNanos, stats, log)
+                    drawFrame(
+                        playController, target, timeline.expectedPresentationTimeNanos, timeline.deadlineNanos,
+                        data.frameTimeNanos, intervalNanos, stats, log,
+                    )
                 }
             }
             choreographer.postVsyncCallback(callback)
             Looper.loop()
+            stats.flush()
             target.close()
         }
 
@@ -532,6 +573,7 @@ class PlayfieldView @JvmOverloads constructor(
             presentNanos: Long,
             deadlineNanos: Long,
             vsyncNanos: Long,
+            intervalNanos: Long,
             stats: FrameStats,
             log: FrameLog?,
         ) {
@@ -563,8 +605,8 @@ class PlayfieldView @JvmOverloads constructor(
                     Trace.endSection()
                 }
                 val done = System.nanoTime()
-                drain.posted(done - recordDone, stats.intervalNanos)
-                stats.record(vsyncNanos, runtimeDone - start, done - runtimeDone, done, late = done > deadlineNanos)
+                drain.posted(done - recordDone, intervalNanos)
+                stats.record(vsyncNanos, runtimeDone - start, done - runtimeDone, done, intervalNanos, late = done > deadlineNanos)
                 log?.record(
                     vsyncNanos, presentNanos, runtimeDone - start, done - runtimeDone, deadlineNanos, done,
                     start, recordDone - runtimeDone, done - recordDone,
@@ -644,10 +686,10 @@ private class SurfaceCanvas(surface: Surface) : AutoCloseable {
  * frame's work at the median and the 99th percentile (gameplay.md's target is 3 ms at p99), what the process
  * allocated per frame, and the vsyncs that drew nothing to drain the queue ([QueueDrain]). It allocates nothing per frame.
  */
-private class FrameStats(private val refreshRateHz: () -> Float) {
-    /** The display's refresh interval, as of the last window. */
-    var intervalNanos = (1e9 / refreshRateHz()).toLong()
-        private set
+private class FrameStats(
+    private val session: PlaySessionStats,
+    private val refreshRateHz: () -> Float,
+) {
     private var windowStartNanos = 0L
     private var frames = 0
     private var missed = 0
@@ -667,13 +709,22 @@ private class FrameStats(private val refreshRateHz: () -> Float) {
         drained++
     }
 
-    fun record(vsyncNanos: Long, runtimeNanos: Long, drawNanos: Long, doneNanos: Long, late: Boolean) {
+    fun record(
+        vsyncNanos: Long,
+        runtimeNanos: Long,
+        drawNanos: Long,
+        doneNanos: Long,
+        intervalNanos: Long,
+        late: Boolean,
+    ) {
         if (windowStartNanos == 0L) windowStartNanos = vsyncNanos
         if (lastVsyncNanos != 0L && vsyncNanos - lastVsyncNanos > intervalNanos * 3 / 2) missed++
         lastVsyncNanos = vsyncNanos
         if (doneNanos - vsyncNanos > intervalNanos) overran++
         if (late) this.late++
-        if (frames < MAX_FRAMES) work[frames] = runtimeNanos + drawNanos
+        val totalWorkNanos = runtimeNanos + drawNanos
+        session.recordWork(totalWorkNanos)
+        if (frames < MAX_FRAMES) work[frames] = totalWorkNanos
         frames++
         runtimeSumNanos += runtimeNanos
         runtimeMaxNanos = maxOf(runtimeMaxNanos, runtimeNanos)
@@ -685,6 +736,7 @@ private class FrameStats(private val refreshRateHz: () -> Float) {
             Arrays.sort(work, 0, counted)
             val refresh = refreshRateHz()
             val allocated = allocatedEver()
+            val allocatedDelta = allocated - allocatedBytes
             Log.i(
                 "EnsomiPlayfield",
                 String.format(
@@ -694,11 +746,11 @@ private class FrameStats(private val refreshRateHz: () -> Float) {
                     frames * 1e9 / elapsed, frames, refresh, missed, this.late,
                     runtimeSumNanos / 1e6 / frames, runtimeMaxNanos / 1e6, drawSumNanos / 1e6 / frames, drawMaxNanos / 1e6,
                     work[(counted - 1) / 2] / 1e6, work[((counted - 1) * 99) / 100] / 1e6,
-                    overran, drained, (allocated - allocatedBytes) / 1024.0 / frames,
+                    overran, drained, allocatedDelta / 1024.0 / frames,
                 ),
             )
+            session.recordWindow(frames, elapsed, refresh, missed, this.late, overran, drained, allocatedDelta)
             allocatedBytes = allocated
-            intervalNanos = (1e9 / refresh).toLong()
             windowStartNanos = vsyncNanos
             frames = 0
             missed = 0
@@ -710,6 +762,20 @@ private class FrameStats(private val refreshRateHz: () -> Float) {
             drawSumNanos = 0
             drawMaxNanos = 0
         }
+    }
+
+    /** Flushes any trailing partial window into [session] when the render thread stops. */
+    fun flush() {
+        if (frames == 0 && drained == 0) return
+        val elapsed = if (windowStartNanos != 0L && lastVsyncNanos > windowStartNanos) lastVsyncNanos - windowStartNanos else 0L
+        val allocated = allocatedEver()
+        session.recordWindow(frames, elapsed, refreshRateHz(), missed, this.late, overran, drained, allocated - allocatedBytes)
+        allocatedBytes = allocated
+        frames = 0
+        missed = 0
+        overran = 0
+        drained = 0
+        this.late = 0
     }
 
     /** The bytes this process has allocated so far, every thread's; its reading allocates, so it is read per window. */

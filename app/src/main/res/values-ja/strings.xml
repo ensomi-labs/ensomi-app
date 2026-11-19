@@ -195,6 +195,7 @@
     <string name="play_failed_no_chart">この曲にはまだ譜面がありません。先に生成してください。</string>
     <string name="play_failed_chart">譜面を読み込めませんでした。生成し直してください。</string>
     <string name="play_failed_decode">曲をデコードできないため、プレイできません。</string>
+    <string name="play_failed_memory">メモリ不足のため、この曲を読み込んでプレイできません。</string>
     <string name="results_detail">星 %1$s · シード %2$s</string>
     <string name="results_detail_asked">星 %1$s · 目標 %2$s · シード %3$s</string>
     <string name="results_title">リザルト</string>
@@ -357,8 +358,10 @@
     <string name="notices_intro">譜面モデルとその実行ソフトウェアには、以下のライセンスが適用されます。</string>
     <string name="notices_from_model">譜面モデルに同梱</string>
     <string name="notices_from_runtime">ONNX Runtime に同梱</string>
+    <string name="notices_from_symphonia">Symphonia に同梱</string>
     <string name="notices_onnxruntime_license">ONNX Runtime のライセンス</string>
     <string name="notices_onnxruntime_third_party">ONNX Runtime のサードパーティ表記</string>
+    <string name="notices_symphonia_license">Symphonia のライセンス</string>
     <string name="notices_licence_of">%1$s のライセンス</string>
     <string name="notices_unavailable">この文書は譜面モデルに同梱されています。モデルをダウンロードすると読めます。</string>
     <string name="output_speaker">本体スピーカー</string>

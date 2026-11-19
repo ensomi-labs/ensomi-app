@@ -22,8 +22,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import io.ensomi.android.audio.AudioPlayClock
-import io.ensomi.android.audio.DecodedSong
 import io.ensomi.android.audio.GameAudio
+import io.ensomi.android.audio.PlayAudio
+import io.ensomi.android.diagnostics.Journal
 import io.ensomi.android.keyboard.GameScreens
 import io.ensomi.android.keyboard.HardwareKeyHandler
 import io.ensomi.android.keyboard.KeepInputMethodAway
@@ -104,6 +105,7 @@ import io.ensomi.android.settings.JudgeDifficulty
 import io.ensomi.android.settings.PlayOrientation
 import io.ensomi.android.settings.localizedName
 import io.ensomi.android.settings.OutputRoute
+import io.ensomi.android.settings.OutputRoutes
 import androidx.compose.ui.platform.LocalResources
 import io.ensomi.android.settings.PlaySettings
 import io.ensomi.android.settings.latencySlotLabel
@@ -125,7 +127,7 @@ private enum class PlayPhase { PLAYING, PAUSED, COUNTDOWN }
  */
 class SongGame(
     val chart: PlayChart,
-    val audio: DecodedSong,
+    val audio: PlayAudio,
     val outputs: PlayOutputs,
     /** Debug launches: the autoplay plays the game. */
     val autoplay: Boolean = false,
@@ -160,6 +162,10 @@ private class RunningGame {
 
     /** The output the sound plays on, by `AudioDeviceInfo.id`, once the track has said. */
     var deviceId: Int? = null
+
+    /** Canonical output route type (e.g. `speaker`, `bluetooth-a2dp`), never a product name. */
+    @Volatile
+    var routeType: String = "none"
 }
 
 /**
@@ -288,6 +294,7 @@ fun PlayScreen(
             val id = device.id
             if (previous == id) return
             running.deviceId = id
+            running.routeType = OutputRoutes.typeName(device.type)
             outputs.playingOn(device)
             Log.i(TAG, "Sound plays on ${device.type}/${device.productName} (id $id)")
             if (previous == null) return
@@ -349,7 +356,7 @@ fun PlayScreen(
                 )
             }
             // The track reports its route on the main thread.
-            val audio = GameAudio(context, game.audio, PlayController.LEAD_IN_MS, settings.musicVolume, ::routed)
+            val audio = GameAudio(context, game.audio.open(), PlayController.LEAD_IN_MS, settings.musicVolume, ::routed)
             val clock = AudioPlayClock(audio, audio.sampleRate, audio.leadInFrames) { Log.i(TAG, it) }
             running.audio = audio
             running.clock = clock
@@ -395,6 +402,22 @@ fun PlayScreen(
                             // Held at the start of the lead-in until the window has focus (above). The music in the
                             // room has no lead-in and does not wait: an ambient game's clock runs from its first frame.
                             if (ambient == null) this.pause()
+                            onSessionSummary = { summary ->
+                                val audio = running.audio
+                                val routeType = running.routeType.takeIf { it != "none" }
+                                    ?: audio?.lastRouteType?.let(OutputRoutes::typeName)
+                                    ?: if (ambient != null) "ambient" else "none"
+                                Journal.record(
+                                    event = "play_summary",
+                                    phase = "end",
+                                    detail = summary.toJournalDetail(
+                                        clock = running.clock,
+                                        underruns = audio?.underruns ?: 0,
+                                        routeType = routeType,
+                                    ),
+                                    durable = true,
+                                )
+                            }
                             controllerFactory = ::controller
                             view = this
                         }

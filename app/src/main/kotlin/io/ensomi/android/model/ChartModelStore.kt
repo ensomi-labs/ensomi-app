@@ -74,6 +74,12 @@ data class Notice(val path: String, val asset: Boolean)
 /** ONNX Runtime's licence and third-party notices, which the runtime's AAR carries. */
 val ONNX_RUNTIME_NOTICES: List<Notice> = io.ensomi.runtime.onnxRuntimeLicenseAssets.map { Notice(it, asset = true) }
 
+/** Symphonia's licence notice (native audio decoding), which the runtime's AAR carries. */
+val SYMPHONIA_NOTICES: List<Notice> = io.ensomi.runtime.symphoniaLicenseAssets.map { Notice(it, asset = true) }
+
+/** All bundled third-party notices shipped inside the runtime AAR. */
+val RUNTIME_NOTICES: List<Notice> = ONNX_RUNTIME_NOTICES + SYMPHONIA_NOTICES
+
 /**
  * The Ensomi R2 model in app storage: download from Hugging Face at the pinned tag, or install from the package's files
  * the player picked; check the manifest against the pinned SHA-256 and the runtime's `checkPackage` and each file by

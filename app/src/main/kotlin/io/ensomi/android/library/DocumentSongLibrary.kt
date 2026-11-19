@@ -11,10 +11,15 @@ import android.provider.OpenableColumns
 import android.util.AtomicFile
 import android.util.Log
 import androidx.core.net.toUri
+import io.ensomi.android.audio.fileExtensionHint
+import io.ensomi.runtime.AudioException
+import io.ensomi.runtime.AudioInfo
+import io.ensomi.runtime.probeAudioFd
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.util.UUID
+import kotlin.math.roundToLong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -157,26 +162,41 @@ class DocumentSongLibrary(context: Context, private val scope: CoroutineScope) :
     /** The song in [uri]'s document, or null when it cannot be read as audio. */
     private fun readSong(uri: Uri, id: String): StoredSong? {
         val name = displayName(uri) ?: return null
-        var title: String? = null
-        var artist: String? = null
-        var durationMs = 0L
-        try {
-            MediaMetadataRetriever().use { retriever ->
-                retriever.setDataSource(appContext, uri)
-                if (retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_AUDIO) == null) return null
-                title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-                artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-                    ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
-                durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0
+        val probed = probeNative(uri, fileExtensionHint(name))
+        var title: String? = probed?.title
+        var artist: String? = probed?.artist
+        var durationMs = probed?.durationMs?.takeIf { it > 0.0 }?.roundToLong() ?: 0L
+        // Fall back to Android's MediaMetadataRetriever when the native prober does not support the codec (e.g. Opus/HE-AAC)
+        // or could not determine duration from headers alone.
+        if (probed == null || durationMs <= 0L) {
+            try {
+                MediaMetadataRetriever().use { retriever ->
+                    retriever.setDataSource(appContext, uri)
+                    if (probed == null && retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_AUDIO) == null) {
+                        return null
+                    }
+                    if (title.isNullOrBlank()) title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+                    if (artist.isNullOrBlank()) {
+                        artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                            ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
+                    }
+                    if (durationMs <= 0L) {
+                        durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+                    }
+                }
+            } catch (e: RuntimeException) {
+                if (probed == null) {
+                    Log.w(TAG, "Not readable as audio: $name", e)
+                    return null
+                }
+            } catch (e: IOException) {
+                if (probed == null) {
+                    Log.w(TAG, "Not readable as audio: $name", e)
+                    return null
+                }
             }
-        } catch (e: RuntimeException) {
-            Log.w(TAG, "Not readable as audio: $name", e)
-            return null
-        } catch (e: IOException) {
-            Log.w(TAG, "Not readable as audio: $name", e)
-            return null
         }
-        if (durationMs <= 0) durationMs = extractorDurationMs(uri) ?: return null
+        if (durationMs <= 0L) durationMs = extractorDurationMs(uri) ?: return null
         return StoredSong(
             id = id,
             uri = uri.toString(),
@@ -186,6 +206,25 @@ class DocumentSongLibrary(context: Context, private val scope: CoroutineScope) :
             durationMs = durationMs,
             addedAtMs = System.currentTimeMillis(),
         )
+    }
+
+    /** Probes audio headers natively via `ensomi-audio` (`probeAudioFd`); Rust owns and closes the detached FD. */
+    private fun probeNative(uri: Uri, hintExt: String?): AudioInfo? {
+        val pfd = try {
+            resolver.openFileDescriptor(uri, "r")
+        } catch (_: FileNotFoundException) {
+            return null
+        } catch (_: SecurityException) {
+            return null
+        } catch (_: IOException) {
+            return null
+        } ?: return null
+        return try {
+            probeAudioFd(pfd.detachFd(), hintExt)
+        } catch (e: AudioException) {
+            Log.d(TAG, "Native probe fell back (${e.javaClass.simpleName}): ${e.message}")
+            null
+        }
     }
 
     /** The length the container gives, for a file whose tags have none. */

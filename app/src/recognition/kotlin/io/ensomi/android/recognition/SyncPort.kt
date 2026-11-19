@@ -1,10 +1,10 @@
 package io.ensomi.android.recognition
 
+import io.ensomi.android.audio.toF32le
 import io.ensomi.runtime.SyncException
 import io.ensomi.runtime.SyncReference
 import io.ensomi.runtime.SyncSession
 import io.ensomi.runtime.SyncSnapshot
-import io.ensomi.runtime.fromPcm
 import io.ensomi.runtime.push
 import io.ensomi.runtime.SyncState as RuntimeSyncState
 
@@ -48,7 +48,7 @@ interface AmbientAligner : AutoCloseable {
 
 /** Builds an aligner from a song decoded to mono PCM on the song's time, which reference times are then on. */
 fun interface SyncPort {
-    fun open(reference: FloatArray, sampleRate: Int): AmbientAligner
+    fun open(reference: FloatArray, sampleCount: Int, sampleRate: Int): AmbientAligner
 }
 
 /**
@@ -57,7 +57,13 @@ fun interface SyncPort {
  * Swift app adds at this point because its alignment reads the file as AVFoundation decodes it.
  */
 object RuntimeSync {
-    val port = SyncPort { reference, sampleRate -> RuntimeAligner(SyncReference.fromPcm(reference, sampleRate.toDouble())) }
+    val port = SyncPort { reference, sampleCount, sampleRate ->
+        RuntimeAligner(SyncReference.fromPcmF32le(reference.toF32le(sampleCount), sampleRate.toDouble()))
+    }
+
+    /** Decodes directly in native Rust memory from a detached POSIX FD (Rust takes ownership and closes it). */
+    fun openFd(fd: Int, hintExt: String?): AmbientAligner =
+        RuntimeAligner(SyncReference.fromFd(fd, hintExt))
 }
 
 private class RuntimeAligner(private val reference: SyncReference) : AmbientAligner {

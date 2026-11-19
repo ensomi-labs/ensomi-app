@@ -9,6 +9,8 @@ import io.ensomi.android.audio.DecodedSong
 import io.ensomi.android.audio.DecodeException
 import io.ensomi.android.audio.PcmChannels
 import io.ensomi.android.audio.SongDecoder
+import io.ensomi.android.audio.fileExtensionHint
+import io.ensomi.android.audio.openDetachedReadFd
 import io.ensomi.android.library.Song
 import io.ensomi.android.library.SongLibrary
 import io.ensomi.android.model.ChartModelStore
@@ -37,7 +39,6 @@ import io.ensomi.runtime.RuntimeWorker
 import io.ensomi.runtime.ScheduleMode
 import io.ensomi.runtime.SectionRequest
 import io.ensomi.runtime.SectionTarget
-import io.ensomi.runtime.prepare
 import io.ensomi.runtime.starRating
 import java.io.File
 import java.io.IOException
@@ -553,33 +554,61 @@ class RuntimeChartMaker(
             readyKeys.update { it + (song.id to key) }
             return key
         }
-        disk.read(key, ::Prepared)?.let { stages ->
+        disk.readPath(key, Prepared::fromPath)?.let { stages ->
             prepared.put(key, stages)
             readyKeys.update { it + (song.id to key) }
             Log.i(TAG, "Stored preparation hit for ${song.id}")
             return key
         }
         readyKeys.update { it - song.id }
-        preparation.report(MakePhase.LOADING)
         val started = System.nanoTime()
-        val audio = input?.audio ?: try {
-            SongDecoder.decode(appContext, uri, PcmChannels.MONO) { preparation.stopped.get() }
-        } catch (failure: OutOfMemoryError) {
-            throw DecodeException(appContext.getString(R.string.chart_decode_memory), cause = failure)
+        val providedAudio = input?.audio
+        if (providedAudio != null) {
+            preparation.report(MakePhase.TIMING)
+        } else {
+            preparation.report(MakePhase.LOADING)
         }
-        if (preparation.stopped.get()) return null
-        val decoded = System.nanoTime()
-        preparation.report(MakePhase.TIMING)
         PeakMemory.reset()
         var audioDone = 0L
         var audioPeak = "unknown"
+        var preparedSongMs = providedAudio?.durationMs ?: 0.0
+        var preparedMode = if (providedAudio != null) "pcm" else "native_fd"
         val done = worker.withGenerator(appContext, directory, options()) {
             if (preparation.stopped.get()) return@withGenerator false
-            val stages = guardInference("model_prepare") {
-                prepare(audio.samples, audio.sampleRate.toDouble(), preparation.cancellation)
+            val stages = if (providedAudio != null) {
+                guardInference("model_prepare") {
+                    prepareF32le(providedAudio.toF32le(), providedAudio.sampleRate.toDouble(), preparation.cancellation)
+                }
+            } else {
+                preparation.report(MakePhase.TIMING)
+                val hintExt = fileExtensionHint(song.fileName)
+                val fd = openDetachedReadFd(appContext, uri)
+                try {
+                    guardInference("model_prepare") {
+                        prepareFromFd(fd, hintExt, preparation.cancellation)
+                    }
+                } catch (failure: GeneratorException.Generation) {
+                    if (!failure.message.contains("audio unsupported:")) throw failure
+                    Log.i(TAG, "Native decoder unsupported for ${song.fileName}, falling back to MediaCodec")
+                    preparedMode = "mediacodec_fallback"
+                    preparation.report(MakePhase.LOADING)
+                    val fallback = try {
+                        SongDecoder.decode(appContext, uri, PcmChannels.MONO) { preparation.stopped.get() }
+                    } catch (oom: OutOfMemoryError) {
+                        throw DecodeException(appContext.getString(R.string.chart_decode_memory), cause = oom)
+                    }
+                    if (preparation.stopped.get()) return@withGenerator false
+                    preparation.report(MakePhase.TIMING)
+                    guardInference("model_prepare") {
+                        prepareF32le(fallback.toF32le(), fallback.sampleRate.toDouble(), preparation.cancellation)
+                    }
+                }
             }
+            preparedSongMs = stages.songMs()
             prepared.put(key, stages)
-            if (!disk.write(key) { it.write(stages.bytes()) }) Log.w(TAG, "Preparation could not be stored")
+            if (!disk.writePath(key) { tmpPath -> stages.saveToPath(tmpPath) }) {
+                Log.w(TAG, "Preparation could not be stored")
+            }
             readyKeys.update { it + (song.id to key) }
             audioDone = System.nanoTime()
             audioPeak = PeakMemory.describe()
@@ -594,9 +623,9 @@ class RuntimeChartMaker(
             TAG,
             String.format(
                 Locale.ROOT,
-                "Prepared %s (%.1f s at %d Hz): decoded in %.1f s, audio stages in %.1f s, peak RSS %s, lowMemory %s",
-                song.fileName, audio.durationMs / 1000, audio.sampleRate, (decoded - started) / 1e9,
-                (audioDone - decoded) / 1e9, audioPeak, lowMemory,
+                "Prepared %s (%.1f s, %s): total %.1f s, peak RSS %s, lowMemory %s",
+                song.fileName, preparedSongMs / 1000.0, preparedMode, (audioDone - started) / 1e9,
+                audioPeak, lowMemory,
             ),
         )
         return key

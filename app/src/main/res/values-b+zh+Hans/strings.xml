@@ -195,6 +195,7 @@
     <string name="play_failed_no_chart">这首歌还没有谱面，请先生成。</string>
     <string name="play_failed_chart">无法读取谱面，请重新生成。</string>
     <string name="play_failed_decode">无法解码歌曲，不能开始游玩。</string>
+    <string name="play_failed_memory">内存不足，无法加载这首歌开始游玩。</string>
     <string name="results_detail">%1$s 星 · 种子 %2$s</string>
     <string name="results_detail_asked">%1$s 星 · 目标 %2$s 星 · 种子 %3$s</string>
     <string name="results_title">成绩</string>
@@ -357,8 +358,10 @@
     <string name="notices_intro">谱面模型及运行它的软件使用以下许可。</string>
     <string name="notices_from_model">随谱面模型提供</string>
     <string name="notices_from_runtime">随 ONNX Runtime 提供</string>
+    <string name="notices_from_symphonia">随 Symphonia 提供</string>
     <string name="notices_onnxruntime_license">ONNX Runtime 许可</string>
     <string name="notices_onnxruntime_third_party">ONNX Runtime 第三方声明</string>
+    <string name="notices_symphonia_license">Symphonia 许可</string>
     <string name="notices_licence_of">%1$s 许可</string>
     <string name="notices_unavailable">此声明随谱面模型提供。下载模型后即可阅读。</string>
     <string name="output_speaker">手机扬声器</string>

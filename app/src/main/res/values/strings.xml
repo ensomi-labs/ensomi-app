@@ -222,6 +222,7 @@
     <string name="play_failed_no_chart">This song has no chart yet. Make one first.</string>
     <string name="play_failed_chart">The chart could not be read. Make it again.</string>
     <string name="play_failed_decode">The song could not be decoded for play.</string>
+    <string name="play_failed_memory">Not enough memory to load this song for play.</string>
     <string name="results_detail">%1$s stars · seed %2$s</string>
     <string name="results_detail_asked">%1$s stars · asked %2$s · seed %3$s</string>
 
@@ -404,8 +405,10 @@
     <string name="notices_intro">The chart model and the software that runs it come with these licences.</string>
     <string name="notices_from_model">With the chart model</string>
     <string name="notices_from_runtime">With ONNX Runtime</string>
+    <string name="notices_from_symphonia">With Symphonia</string>
     <string name="notices_onnxruntime_license">ONNX Runtime licence</string>
     <string name="notices_onnxruntime_third_party">ONNX Runtime third-party notices</string>
+    <string name="notices_symphonia_license">Symphonia licence</string>
     <string name="notices_licence_of">%1$s licence</string>
     <string name="notices_unavailable">This notice comes with the chart model. Download the model to read it.</string>
     <string name="output_speaker">Phone speaker</string>

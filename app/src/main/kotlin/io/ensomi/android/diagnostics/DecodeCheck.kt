@@ -63,10 +63,19 @@ object DecodeCheck {
 
     /** The first frame at half the peak, or null for silence. */
     private fun firstOnset(song: DecodedSong): Int? {
-        val peak = song.samples.maxOfOrNull { abs(it) } ?: return null
+        val count = song.sampleCount
+        if (count <= 0) return null
+        var peak = 0f
+        for (i in 0 until count) {
+            val a = abs(song.samples[i])
+            if (a > peak) peak = a
+        }
         if (peak <= 0f) return null
-        val index = song.samples.indexOfFirst { abs(it) >= peak / 2 }
-        return if (index < 0) null else index / song.channels
+        val threshold = peak / 2
+        for (i in 0 until count) {
+            if (abs(song.samples[i]) >= threshold) return i / song.channels
+        }
+        return null
     }
 
     /** Whether the stereo decode, mixed down, has the mono decode's frames: the same start and length. */

@@ -23,7 +23,7 @@ import io.ensomi.android.model.ChartModelStore
 import io.ensomi.android.model.ModelSource
 import io.ensomi.android.model.ModelState
 import io.ensomi.android.model.Notice
-import io.ensomi.android.model.ONNX_RUNTIME_NOTICES
+import io.ensomi.android.model.RUNTIME_NOTICES
 import io.ensomi.android.play.FakePlayClock
 import io.ensomi.android.play.InputSource
 import io.ensomi.android.play.MethodMeans
@@ -144,7 +144,7 @@ class FakeChartModelStore(initial: ModelState) : ChartModelStore {
     private val mutableState = MutableStateFlow(initial)
     override val state: StateFlow<ModelState> = mutableState.asStateFlow()
     override val directory: File? = null
-    override val notices: List<Notice> = ONNX_RUNTIME_NOTICES
+    override val notices: List<Notice> = RUNTIME_NOTICES
 
     override fun download() = Unit
 

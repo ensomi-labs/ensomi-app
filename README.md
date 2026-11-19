@@ -37,13 +37,13 @@ storage and memory. This is an early demo; performance and audio timing vary by 
 - Android SDK platform 37, build-tools 37.0.0, NDK 30.0.16248370, platform-tools and the emulator.
 - A device or emulator with an arm64-v8a CPU and Android 13 (API 33) or later. The app is built for
   arm64-v8a only.
-- The runtime AAR whose SHA-256 is `dc19a320bb244c3454aee5f5d87a791955b468909a673c14636e543e7ff45ef4`, pinned as `runtimeAarSha256`
+- The runtime AAR whose SHA-256 is `3823e19ba47247614c79084033665cdf02084fe5f1fe170ecbe8ed6e475e14b0`, pinned as `runtimeAarSha256`
   in `gradle/libs.versions.toml`; the build refuses any other. It is built with `scripts/build-android.sh` (see the
-  runtime's `android/README.md`) from ensomi-runtime commit `8646b44` (branch `agy/audio-codec`, adding `ensomi-audio`
-  with `symphonia`, streaming `AudioDecoder`, `probeAudioFd`, `prepareFromFd`, `Prepared.saveToPath`/`fromPath`, and
-  `SyncReference.fromFd`, built without KleidiAI and passing `scripts/check-no-kleidiai.py`). The `runtimeAarUrl`
-  prerelease asset for `8646b44` is pending upload once the runtime PR merges; local builds point `ensomi.runtime.aar`
-  in `local.properties` at the verified AAR.
+  runtime's `android/README.md`) from ensomi-runtime `main` commit `c3705e2` (PR #12, adding `ensomi-audio` with
+  `symphonia`, streaming `AudioDecoder`, `probeAudioFd`, `prepareFromFd`, `Prepared.saveToPath`/`fromPath`, and
+  `SyncReference.fromFd`, built without KleidiAI and passing `scripts/check-no-kleidiai.py`). CI fetches it from
+  `runtimeAarUrl` (`android-aar-c3705e2`); local builds point `ensomi.runtime.aar` in `local.properties` at the
+  verified AAR.
 - `python3` on the PATH, for the binary check below. Its `llvm-objdump` and `llvm-readelf` come from the pinned NDK,
   under the SDK that `local.properties` names.
 

@@ -8,14 +8,16 @@ commit: 774482f80cddbc5b80fedf5e31bc3de57e064172
 
 The Android play demo is built on the owner's Mac from a committed tree, then signed by the owner with one
 release key made by hand and published as a GitHub release of `ensomi-labs/ensomi-app`; 0.2.2 (code 7) was the last built
-that way. The current version is `versionName` **0.2.3**, `versionCode` **8**, owned by `gradle/libs.versions.toml`, the
-first meant to be built and signed by [Automation](#automation); its app is 0.2.2's. Swift's `v0.1.0` stays separate. The build produces an unsigned,
+that way, and 0.2.3 (code 8) was the first built and signed by [Automation](#automation). The current version is
+`versionName` **0.3.0**, `versionCode` **9**, owned by `gradle/libs.versions.toml`, adding native Symphonia audio
+decoding (`ensomi-audio`), streaming playback, zero-JVM-heap FD/path chart preparation, zero-FFI hold layout,
+outlier-filtered audio clock steering, dynamic refresh-rate tracking, and `play_summary` diagnostics telemetry. Swift's `v0.1.0` stays separate. The build produces an unsigned,
 R8-optimized arm64-v8a APK, with JNA keep rules and the runtime AAR's UniFFI keep rules. The runtime is the local AAR
-whose SHA-256 is `dc19a320bb244c3454aee5f5d87a791955b468909a673c14636e543e7ff45ef4`, pinned as `runtimeAarSha256` in
+whose SHA-256 is `3823e19ba47247614c79084033665cdf02084fe5f1fe170ecbe8ed6e475e14b0`, pinned as `runtimeAarSha256` in
 `gradle/libs.versions.toml`.
-It is built from runtime commit `8646b44` (branch `agy/audio-codec`, adding `ensomi-audio`/`symphonia` streaming and
-FD-based decode/prepare/sync bindings on top of the KleidiAI-free Android build; CI prerelease asset upload for
-`8646b44` is pending once the runtime PR merges). Keep the exact unstripped
+It is built from runtime `main` commit `c3705e2` (PR #12, adding `ensomi-audio`/`symphonia` streaming and FD-based
+decode/prepare/sync bindings on top of the KleidiAI-free Android build, published as pre-release `android-aar-c3705e2`).
+Keep the exact unstripped
 `libensomi_runtime_ffi.so` per release alongside the AAR, its SHA-256 and R8 mapping for symbolizing
 reported offsets; rebuilding later is not a substitute for retaining that binary. Diagnostics
 `runtime.identity` is the SHA-256 of the AAR Gradle actually links.

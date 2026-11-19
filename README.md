@@ -37,15 +37,13 @@ storage and memory. This is an early demo; performance and audio timing vary by 
 - Android SDK platform 37, build-tools 37.0.0, NDK 30.0.16248370, platform-tools and the emulator.
 - A device or emulator with an arm64-v8a CPU and Android 13 (API 33) or later. The app is built for
   arm64-v8a only.
-- The runtime AAR whose SHA-256 is `606034d0be3123d0238843e263a6aac97e22362076cf0c422add69075e03cb1a`, pinned as `runtimeAarSha256`
+- The runtime AAR whose SHA-256 is `dc19a320bb244c3454aee5f5d87a791955b468909a673c14636e543e7ff45ef4`, pinned as `runtimeAarSha256`
   in `gradle/libs.versions.toml`; the build refuses any other. It is built with `scripts/build-android.sh` (see the
-  runtime's `android/README.md`) from ensomi-runtime commit `ecc4c36`, the head of the branch `claude/android-library`,
-  merged since as [ensomi-labs/runtime#11](https://github.com/ensomi-labs/runtime/pull/11); the commit
-  is in the runtime's `main`. The branch is the earlier Android branch at `d090374`, whose ONNX Runtime is built
-  without KleidiAI, with `main` merged in (the finite-star change and `starRating`) and one commit that adds the binary
-  check to `scripts/build-android.sh`. On the owner's Mac the AAR is
-  `~/ensomi/ensomi-runtime/artifacts/android-library-0.2.2/ensomi-runtime-ecc4c36.aar`, with the unstripped library,
-  `SHA256SUMS` and a `README.txt` beside it.
+  runtime's `android/README.md`) from ensomi-runtime commit `8646b44` (branch `agy/audio-codec`, adding `ensomi-audio`
+  with `symphonia`, streaming `AudioDecoder`, `probeAudioFd`, `prepareFromFd`, `Prepared.saveToPath`/`fromPath`, and
+  `SyncReference.fromFd`, built without KleidiAI and passing `scripts/check-no-kleidiai.py`). The `runtimeAarUrl`
+  prerelease asset for `8646b44` is pending upload once the runtime PR merges; local builds point `ensomi.runtime.aar`
+  in `local.properties` at the verified AAR.
 - `python3` on the PATH, for the binary check below. Its `llvm-objdump` and `llvm-readelf` come from the pinned NDK,
   under the SDK that `local.properties` names.
 

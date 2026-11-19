@@ -37,6 +37,21 @@ class PreparedStore(private val root: File, private val limitBytes: Long = 512L 
         }
     }
 
+    /** Path-based read (e.g. `Prepared.fromPath`) that avoids materializing a multi-megabyte ByteArray on the JVM heap. */
+    @Synchronized
+    fun <T> readPath(key: String, decode: (String) -> T): T? {
+        val file = file(key)
+        if (!file.isFile) return null
+        return try {
+            check(file.length() in 1..limitBytes)
+            decode(file.path).also { touch(file) }
+        } catch (_: Exception) {
+            file.delete()
+            publish()
+            null
+        }
+    }
+
     /** A failed or interrupted replacement leaves the previous complete file intact. Cache failures are misses. */
     @Synchronized
     fun write(key: String, writeBytes: (OutputStream) -> Unit): Boolean {
@@ -49,6 +64,26 @@ class PreparedStore(private val root: File, private val limitBytes: Long = 512L 
                 output.fd.sync()
             }
             check(temporary.length() in 1..limitBytes)
+            Files.move(temporary.toPath(), file.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
+            touch(file)
+            trim()
+            true
+        } catch (_: Exception) {
+            false
+        } finally {
+            temporary.delete()
+        }
+    }
+
+    /** Path-based atomic write (e.g. `Prepared.saveToPath`) keeping serialization off the JVM heap. */
+    @Synchronized
+    fun writePath(key: String, writeToPath: (String) -> Unit): Boolean {
+        val file = file(key)
+        val temporary = File(root, "${file.name}.tmp")
+        return try {
+            check(root.isDirectory || root.mkdirs())
+            writeToPath(temporary.path)
+            check(temporary.isFile && temporary.length() in 1..limitBytes)
             Files.move(temporary.toPath(), file.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
             touch(file)
             trim()

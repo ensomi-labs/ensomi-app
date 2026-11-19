@@ -358,8 +358,10 @@
     <string name="notices_intro">谱面模型及运行它的软件使用以下许可。</string>
     <string name="notices_from_model">随谱面模型提供</string>
     <string name="notices_from_runtime">随 ONNX Runtime 提供</string>
+    <string name="notices_from_symphonia">随 Symphonia 提供</string>
     <string name="notices_onnxruntime_license">ONNX Runtime 许可</string>
     <string name="notices_onnxruntime_third_party">ONNX Runtime 第三方声明</string>
+    <string name="notices_symphonia_license">Symphonia 许可</string>
     <string name="notices_licence_of">%1$s 许可</string>
     <string name="notices_unavailable">此声明随谱面模型提供。下载模型后即可阅读。</string>
     <string name="output_speaker">手机扬声器</string>

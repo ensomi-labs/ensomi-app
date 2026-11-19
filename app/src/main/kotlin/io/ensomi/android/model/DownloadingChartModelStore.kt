@@ -95,7 +95,7 @@ class DownloadingChartModelStore(
         }
 
     override val notices: List<Notice>
-        get() = installed?.pkg?.notices.orEmpty().map { Notice(it, asset = false) } + ONNX_RUNTIME_NOTICES
+        get() = installed?.pkg?.notices.orEmpty().map { Notice(it, asset = false) } + RUNTIME_NOTICES
 
     init {
         scope.launch {

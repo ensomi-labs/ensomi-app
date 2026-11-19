@@ -10,6 +10,8 @@ import io.ensomi.android.audio.DecodeException
 import io.ensomi.android.audio.DecodedSong
 import io.ensomi.android.audio.PcmChannels
 import io.ensomi.android.audio.SongDecoder
+import io.ensomi.android.audio.fileExtensionHint
+import io.ensomi.android.audio.openDetachedReadFd
 import io.ensomi.android.chart.ChartRequest
 import io.ensomi.android.chart.MakeState
 import io.ensomi.android.chart.RuntimeChartMaker
@@ -18,6 +20,9 @@ import io.ensomi.android.library.AddResult
 import io.ensomi.android.library.Song
 import io.ensomi.android.library.SongLibrary
 import io.ensomi.android.play.PlayChart
+import io.ensomi.runtime.AudioChannels
+import io.ensomi.runtime.AudioDecoder
+import io.ensomi.runtime.AudioException
 import io.ensomi.runtime.OsuException
 import io.ensomi.runtime.parseOsu
 import java.io.File
@@ -27,6 +32,7 @@ import java.security.MessageDigest
 import java.util.Locale
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.ceil
+import kotlin.math.roundToLong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -48,12 +54,18 @@ fun FileFacts.readUri(): Uri = uri?.toUri() ?: Uri.fromFile(File(path))
 class AudioProbe(context: Context) {
     private val appContext = context.applicationContext
 
-    /** Blocking. The song comes back when it decoded. */
+    /**
+     * Blocking. Streams through the file natively via [AudioDecoder.openFd] (zero full-song JVM heap) to verify
+     * completeness and measure decoded duration; falls back to [SongDecoder] only for formats the native decoder
+     * does not support (e.g. Opus/HE-AAC).
+     */
     fun probe(file: FileFacts, isCancelled: () -> Boolean = { false }): Pair<ProbeFacts, DecodedSong?> {
         require(!CandidateRules.isProtected(file.name)) { "Protected files are never read" }
         val uri = file.readUri()
         val started = System.nanoTime()
         return try {
+            val nativeFacts = probeNativeStream(file, uri, started, isCancelled)
+            if (nativeFacts != null) return nativeFacts to null
             val song = SongDecoder.decode(appContext, uri, PcmChannels.MONO, isCancelled)
             val hash = sha256(uri, isCancelled)
             val disk = File(file.path)
@@ -71,6 +83,10 @@ class AudioProbe(context: Context) {
             ) to song
         } catch (failure: CancellationException) {
             throw failure
+        } catch (_: AudioException.Cancelled) {
+            throw CancellationException("Probing stopped.")
+        } catch (failure: AudioException) {
+            failed(file, started, failure)
         } catch (failure: DecodeException) {
             failed(file, started, failure)
         } catch (failure: IOException) {
@@ -81,6 +97,56 @@ class AudioProbe(context: Context) {
             // MediaCodec's own failures.
             failed(file, started, failure)
         }
+    }
+
+    /**
+     * Verifies completeness by streaming mono PCM chunks natively to EOF without retaining full-song PCM on the JVM
+     * heap. Returns null when the native decoder reports [AudioException.Unsupported] so the caller falls back.
+     */
+    private fun probeNativeStream(
+        file: FileFacts,
+        uri: Uri,
+        started: Long,
+        isCancelled: () -> Boolean,
+    ): ProbeFacts? {
+        val fd = openDetachedReadFd(appContext, uri)
+        val decoder = try {
+            AudioDecoder.openFd(fd, fileExtensionHint(file.name), AudioChannels.MONO)
+        } catch (_: AudioException.Unsupported) {
+            return null
+        }
+        val info = decoder.use { stream ->
+            val meta = stream.info()
+            var totalFrames = 0L
+            while (true) {
+                if (isCancelled()) throw CancellationException("Probing stopped.")
+                val bytes = stream.readF32le(PROBE_CHUNK_FRAMES)
+                if (bytes.isEmpty()) break
+                totalFrames += bytes.size / Float.SIZE_BYTES
+            }
+            meta to totalFrames
+        }
+        val (meta, totalFrames) = info
+        val sampleRate = meta.sampleRate.toInt()
+        if (sampleRate <= 0) throw DecodeException("The decoder gave no sample rate.")
+        val hash = sha256(uri, isCancelled)
+        val disk = File(file.path)
+        return ProbeFacts(
+            decoded = true,
+            decodedMs = totalFrames * 1000.0 / sampleRate,
+            declaredMs = meta.durationMs?.takeIf { it > 0.0 }?.roundToLong() ?: declaredMs(uri),
+            sampleRate = sampleRate,
+            mime = "audio/${meta.codec}",
+            codec = "ensomi-audio/${meta.codec}",
+            tookMs = (System.nanoTime() - started) / 1_000_000,
+            sha256 = hash,
+            sizeBytes = disk.length().takeIf { it > 0 } ?: file.sizeBytes,
+            modifiedWallMs = disk.lastModified().takeIf { it > 0 } ?: file.modifiedWallMs,
+        )
+    }
+
+    companion object {
+        private const val PROBE_CHUNK_FRAMES = 16_384u
     }
 
     /** The song decoded again, when the process has lost it. Blocking. */

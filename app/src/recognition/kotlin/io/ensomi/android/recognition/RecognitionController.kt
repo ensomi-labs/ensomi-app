@@ -10,6 +10,9 @@ import android.widget.Toast
 import io.ensomi.android.R
 import io.ensomi.android.AppStores
 import io.ensomi.android.audio.DecodedSong
+import io.ensomi.android.audio.fileExtensionHint
+import io.ensomi.android.audio.openDetachedReadFd
+import io.ensomi.runtime.SyncException
 import io.ensomi.android.model.ModelState
 import io.ensomi.android.model.ready
 import io.ensomi.android.model.awaitModelReady
@@ -405,8 +408,20 @@ class RecognitionController private constructor(context: Context) {
         scope.launch {
             val started = SystemClock.elapsedRealtimeNanos()
             try {
-                val song = kept ?: probe.decode(audio.file)
-                val opened = referenceWorker.run { RuntimeSync.port.open(song.samples, song.sampleCount, song.sampleRate) }
+                val opened = if (kept != null) {
+                    referenceWorker.run { RuntimeSync.port.open(kept.samples, kept.sampleCount, kept.sampleRate) }
+                } else {
+                    val uri = audio.file.readUri()
+                    val hintExt = fileExtensionHint(audio.file.name)
+                    try {
+                        val fd = openDetachedReadFd(appContext, uri)
+                        referenceWorker.run { RuntimeSync.openFd(fd, hintExt) }
+                    } catch (refused: SyncException.Refused) {
+                        if (!refused.detail.contains("audio unsupported:")) throw refused
+                        val song = probe.decode(audio.file)
+                        referenceWorker.run { RuntimeSync.port.open(song.samples, song.sampleCount, song.sampleRate) }
+                    }
+                }
                 val seconds = (SystemClock.elapsedRealtimeNanos() - started) / 1e9
                 post {
                     if (generation != syncGeneration) {

@@ -22,8 +22,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import io.ensomi.android.audio.AudioPlayClock
-import io.ensomi.android.audio.DecodedSong
 import io.ensomi.android.audio.GameAudio
+import io.ensomi.android.audio.PlayAudio
 import io.ensomi.android.diagnostics.Journal
 import io.ensomi.android.keyboard.GameScreens
 import io.ensomi.android.keyboard.HardwareKeyHandler
@@ -127,7 +127,7 @@ private enum class PlayPhase { PLAYING, PAUSED, COUNTDOWN }
  */
 class SongGame(
     val chart: PlayChart,
-    val audio: DecodedSong,
+    val audio: PlayAudio,
     val outputs: PlayOutputs,
     /** Debug launches: the autoplay plays the game. */
     val autoplay: Boolean = false,
@@ -356,7 +356,7 @@ fun PlayScreen(
                 )
             }
             // The track reports its route on the main thread.
-            val audio = GameAudio(context, game.audio, PlayController.LEAD_IN_MS, settings.musicVolume, ::routed)
+            val audio = GameAudio(context, game.audio.open(), PlayController.LEAD_IN_MS, settings.musicVolume, ::routed)
             val clock = AudioPlayClock(audio, audio.sampleRate, audio.leadInFrames) { Log.i(TAG, it) }
             running.audio = audio
             running.clock = clock

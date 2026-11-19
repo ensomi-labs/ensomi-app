@@ -60,6 +60,10 @@ object RuntimeSync {
     val port = SyncPort { reference, sampleCount, sampleRate ->
         RuntimeAligner(SyncReference.fromPcmF32le(reference.toF32le(sampleCount), sampleRate.toDouble()))
     }
+
+    /** Decodes directly in native Rust memory from a detached POSIX FD (Rust takes ownership and closes it). */
+    fun openFd(fd: Int, hintExt: String?): AmbientAligner =
+        RuntimeAligner(SyncReference.fromFd(fd, hintExt))
 }
 
 private class RuntimeAligner(private val reference: SyncReference) : AmbientAligner {

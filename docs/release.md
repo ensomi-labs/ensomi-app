@@ -11,19 +11,11 @@ release key made by hand and published as a GitHub release of `ensomi-labs/ensom
 that way. The current version is `versionName` **0.2.3**, `versionCode` **8**, owned by `gradle/libs.versions.toml`, the
 first meant to be built and signed by [Automation](#automation); its app is 0.2.2's. Swift's `v0.1.0` stays separate. The build produces an unsigned,
 R8-optimized arm64-v8a APK, with JNA keep rules and the runtime AAR's UniFFI keep rules. The runtime is the local AAR
-whose SHA-256 is `606034d0be3123d0238843e263a6aac97e22362076cf0c422add69075e03cb1a`, pinned as `runtimeAarSha256` in
+whose SHA-256 is `dc19a320bb244c3454aee5f5d87a791955b468909a673c14636e543e7ff45ef4`, pinned as `runtimeAarSha256` in
 `gradle/libs.versions.toml`.
-It is built from runtime commit `ecc4c36` (`ecc4c36f81bff4d411db0e3458bffe2707d6b27f`), the head of the runtime's
-Android library branch `claude/android-library`, merged since as ensomi-labs/runtime#11; the commit is in the
-runtime's `main`. The branch is the earlier Android branch at `d090374`, whose ONNX Runtime is built without
-KleidiAI, with `main` merged in (ensomi-labs/runtime#10, the finite-star change and `starRating`) and one commit that
-adds the binary check to `scripts/build-android.sh`. The runtime
-library carries GNU build ID `65c20bc72e996aace854881fbbccd5af7a7526d7`, read from the AAR's
-`jni/arm64-v8a/libensomi_runtime_ffi.so`; that library's SHA-256 is
-`de9dcaa4ff32f030cf50410f7fee3c9155f3baa4e4d7da372f8db17b31e7413b` and the unstripped library's is
-`16457d6684f893e54c442d3fee74bdc542c7f3bd77f69f60b42ca0e4ff273f8e`. On the owner's Mac the AAR is
-`~/ensomi/ensomi-runtime/artifacts/android-library-0.2.2/ensomi-runtime-ecc4c36.aar`, with the unstripped library,
-`SHA256SUMS` and a `README.txt` beside it. Keep the exact unstripped
+It is built from runtime commit `8646b44` (branch `agy/audio-codec`, adding `ensomi-audio`/`symphonia` streaming and
+FD-based decode/prepare/sync bindings on top of the KleidiAI-free Android build; CI prerelease asset upload for
+`8646b44` is pending once the runtime PR merges). Keep the exact unstripped
 `libensomi_runtime_ffi.so` per release alongside the AAR, its SHA-256 and R8 mapping for symbolizing
 reported offsets; rebuilding later is not a substitute for retaining that binary. Diagnostics
 `runtime.identity` is the SHA-256 of the AAR Gradle actually links.

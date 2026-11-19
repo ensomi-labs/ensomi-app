@@ -405,8 +405,10 @@
     <string name="notices_intro">The chart model and the software that runs it come with these licences.</string>
     <string name="notices_from_model">With the chart model</string>
     <string name="notices_from_runtime">With ONNX Runtime</string>
+    <string name="notices_from_symphonia">With Symphonia</string>
     <string name="notices_onnxruntime_license">ONNX Runtime licence</string>
     <string name="notices_onnxruntime_third_party">ONNX Runtime third-party notices</string>
+    <string name="notices_symphonia_license">Symphonia licence</string>
     <string name="notices_licence_of">%1$s licence</string>
     <string name="notices_unavailable">This notice comes with the chart model. Download the model to read it.</string>
     <string name="output_speaker">Phone speaker</string>

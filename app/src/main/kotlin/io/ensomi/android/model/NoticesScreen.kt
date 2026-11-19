@@ -55,7 +55,7 @@ fun NoticesScreen(notices: List<Notice>, onOpen: (Notice) -> Unit, onBack: () ->
                 ListItem(
                     modifier = Modifier.clickable { onOpen(notice) },
                     headlineContent = { Text(noticeTitle(notice)) },
-                    supportingContent = { Text(stringResource(if (notice.asset) R.string.notices_from_runtime else R.string.notices_from_model)) },
+                    supportingContent = { Text(noticeSource(notice)) },
                     leadingContent = { Icon(painterResource(R.drawable.ic_description), contentDescription = null) },
                     trailingContent = { Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null) },
                 )
@@ -125,11 +125,13 @@ private fun NoticeScaffold(title: String, onBack: () -> Unit, content: @Composab
     }
 }
 
-/** "BeatThis licence" for the model's `BeatThis-LICENSE.txt`; ONNX Runtime's by their asset names. */
+/** "BeatThis licence" for the model's `BeatThis-LICENSE.txt`; ONNX Runtime and Symphonia by their asset paths. */
 @Composable
 fun noticeTitle(notice: Notice): String {
     val name = notice.path.substringAfterLast('/')
     return when {
+        notice.asset && notice.path.contains("/symphonia/") && name == "LICENSE" ->
+            stringResource(R.string.notices_symphonia_license)
         notice.asset && name == "LICENSE" -> stringResource(R.string.notices_onnxruntime_license)
         notice.asset && name.startsWith("ThirdPartyNotices") -> stringResource(R.string.notices_onnxruntime_third_party)
         else -> {
@@ -138,6 +140,13 @@ fun noticeTitle(notice: Notice): String {
             if (owner != stem) stringResource(R.string.notices_licence_of, owner) else stem
         }
     }
+}
+
+@Composable
+private fun noticeSource(notice: Notice): String = when {
+    !notice.asset -> stringResource(R.string.notices_from_model)
+    notice.path.contains("/symphonia/") -> stringResource(R.string.notices_from_symphonia)
+    else -> stringResource(R.string.notices_from_runtime)
 }
 
 private fun readNotice(context: Context, notice: Notice, modelDirectory: File?): String? = try {

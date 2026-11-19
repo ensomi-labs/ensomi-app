@@ -15,9 +15,9 @@ hold-body combo ticks, visual hold-tail shortening (`0–80 ms`), and capless ho
 R8-optimized arm64-v8a APK, with JNA keep rules and the runtime AAR's UniFFI keep rules. The runtime is the local AAR
 whose SHA-256 is `45fa0fef0c362b36c3c5e5d5fc703e8d430eb233ffc788455f48c08a2831aa58`, pinned as `runtimeAarSha256` in
 `gradle/libs.versions.toml`.
-It is built from runtime commit `1424a70` (branch `agy/hold-tail-combo`, adding optional `tailJudgement` and 100 ms
-`holdTicks` body combo to `Ruleset` on top of the `c3705e2` `ensomi-audio`/`symphonia` KleidiAI-free Android build; the
-`android-aar-1424a70` pre-release asset is pending upload once its PR merges).
+It is built from runtime `main` commit `5299536` (PR #13, adding optional `tailJudgement` and 100 ms
+`holdTicks` body combo to `Ruleset` on top of the `c3705e2` `ensomi-audio`/`symphonia` KleidiAI-free Android build,
+published as pre-release `android-aar-5299536`).
 Keep the exact unstripped
 `libensomi_runtime_ffi.so` per release alongside the AAR, its SHA-256 and R8 mapping for symbolizing
 reported offsets; rebuilding later is not a substitute for retaining that binary. Diagnostics

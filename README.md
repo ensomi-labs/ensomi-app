@@ -39,11 +39,10 @@ storage and memory. This is an early demo; performance and audio timing vary by 
   arm64-v8a only.
 - The runtime AAR whose SHA-256 is `45fa0fef0c362b36c3c5e5d5fc703e8d430eb233ffc788455f48c08a2831aa58`, pinned as `runtimeAarSha256`
   in `gradle/libs.versions.toml`; the build refuses any other. It is built with `scripts/build-android.sh` (see the
-  runtime's `android/README.md`) from ensomi-runtime commit `1424a70` (branch `agy/hold-tail-combo`, adding optional
+  runtime's `android/README.md`) from ensomi-runtime `main` commit `5299536` (PR #13, adding optional
   `tailJudgement` and 100 ms `holdTicks` body combo to `Ruleset` on top of `ensomi-audio`/`symphonia`, built without
-  KleidiAI and passing `scripts/check-no-kleidiai.py`). The `runtimeAarUrl` prerelease asset (`android-aar-1424a70`) is
-  pending upload once the runtime PR merges; local builds point `ensomi.runtime.aar` in `local.properties` at the
-  verified AAR.
+  KleidiAI and passing `scripts/check-no-kleidiai.py`). CI fetches it from `runtimeAarUrl` (`android-aar-5299536`);
+  local builds point `ensomi.runtime.aar` in `local.properties` at the verified AAR.
 - `python3` on the PATH, for the binary check below. Its `llvm-objdump` and `llvm-readelf` come from the pinned NDK,
   under the SDK that `local.properties` names.
 

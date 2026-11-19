@@ -132,6 +132,9 @@ class PlayfieldRenderer(private val words: PlayfieldWords) {
 
     var reduceMotion = false
 
+    @Volatile
+    var holdTailShortenMs: Double = 0.0
+
     /** The runtime's word for each tier (`tierJudgement`), asked once rather than per event and frame. */
     private val judgementOf: Map<Tier, Judgement> by lazy { Tier.entries.associateWith { tierJudgement(it) } }
 
@@ -290,7 +293,10 @@ class PlayfieldRenderer(private val words: PlayfieldWords) {
                 drawCut(canvas, noteLeft, y - half, noteLeft + noteWidth, y + half, corner, top, bottom, fill)
                 continue
             }
-            noteLayout.hold(obj.startTimeMs, obj.endTimeMs, held, frame.renderMs, frame.scrollTimeMs, fallLength, holdPlacement)
+            noteLayout.hold(
+                obj.startTimeMs, obj.endTimeMs, held, frame.renderMs, frame.scrollTimeMs, fallLength, holdPlacement,
+                shortenMs = holdTailShortenMs,
+            )
             val bodyWidth = noteWidth * 0.72f
             val bodyLeft = noteLeft + (noteWidth - bodyWidth) / 2
             fill.color = if (missed) PlayPalette.MISSED_NOTE else PlayPalette.HOLD_BODY
@@ -299,18 +305,13 @@ class PlayfieldRenderer(private val words: PlayfieldWords) {
                 held -> heldBodyAlpha
                 else -> 153
             }
-            val bodyTop = top + holdPlacement.bodyTopY.toFloat()
-            val bodyBottom = top + holdPlacement.bodyBottomY.toFloat()
+            // A closed hold's tail is simply the top end of its body, with no separate tail cap block that could
+            // overlap an immediately following note; an open-ended hold uses the layout's far-end span.
+            val bodyTop = top + (if (holdPlacement.hasTail) minOf(holdPlacement.headY, holdPlacement.tailY) else holdPlacement.bodyTopY).toFloat()
+            val bodyBottom = top + (if (holdPlacement.hasTail) maxOf(holdPlacement.headY, holdPlacement.tailY) else holdPlacement.bodyBottomY).toFloat()
             drawCut(canvas, bodyLeft, bodyTop, bodyLeft + bodyWidth, bodyBottom, g.dp(6f), top, bottom, fill)
             val capColor = if (missed) PlayPalette.MISSED_NOTE else PlayPalette.HOLD
             val capAlpha = if (missed) 128 else 255
-            if (holdPlacement.hasTail) {
-                val y = top + holdPlacement.tailY.toFloat()
-                val half = g.dp(4f) * g.keepShape(y)
-                fill.color = capColor
-                fill.alpha = capAlpha
-                drawCut(canvas, bodyLeft, y - half, bodyLeft + bodyWidth, y + half, g.dp(4f), top, bottom, fill)
-            }
             val headY = top + holdPlacement.headY.toFloat()
             val headHalf = noteHeight / 2 * g.keepShape(headY)
             if (held) {

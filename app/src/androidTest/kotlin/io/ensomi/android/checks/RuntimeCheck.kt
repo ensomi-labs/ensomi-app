@@ -185,6 +185,34 @@ class RuntimeCheck {
         }
     }
 
+    @Test
+    fun holdTailJudgementAndBodyTicksWorkThroughBindings() = runBlocking {
+        RuntimeWorker().use { worker ->
+            worker.run {
+                val chart = PlayChart(
+                    "hold-options",
+                    durationMs = 3_000,
+                    notes = listOf(
+                        io.ensomi.android.play.NoteSpec(lane = 0, startMs = 1_000, endMs = 1_500),
+                        io.ensomi.android.play.NoteSpec(lane = 0, startMs = 1_500),
+                    ),
+                ).toRuntime()
+                GameplaySession(chart, Ruleset(Judge.C, tailJudgement = false, holdTicks = true)).use { session ->
+                    val hit = session.input(io.ensomi.runtime.InputEvent(0u, io.ensomi.runtime.Phase.PRESS, 1_000.0))
+                    assertEquals(1, hit.size)
+                    // Early release at 1250 ms earns 1100 and 1200 ticks (+2 -> 3 combo) without breaking combo.
+                    assertTrue(session.input(io.ensomi.runtime.InputEvent(0u, io.ensomi.runtime.Phase.RELEASE, 1_250.0)).isEmpty())
+                    assertEquals(3u, session.score().combo)
+                    // Following tap at 1500 ms hits cleanly at 1490 ms -> 4 combo.
+                    assertEquals(1, session.input(io.ensomi.runtime.InputEvent(0u, io.ensomi.runtime.Phase.PRESS, 1_490.0)).size)
+                    session.advance(3_000.0)
+                    assertEquals(4u, session.score().combo)
+                    assertEquals(1.0, session.score().accuracy, 1e-9)
+                }
+            }
+        }
+    }
+
     /**
      * What each runtime path costs the first time a process takes it, in the order a game first takes them: a game's
      * rare long frames come early and do not come back. Run on its own, so that nothing has warmed the paths:

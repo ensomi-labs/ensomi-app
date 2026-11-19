@@ -33,6 +33,7 @@ import io.ensomi.android.play.PlayTiming
 import io.ensomi.android.play.PlayfieldView
 import io.ensomi.android.play.PlayfieldGeometry
 import io.ensomi.android.play.SampleCharts
+import io.ensomi.android.play.toRuleset
 import io.ensomi.android.play.toRuntime
 import kotlin.math.max
 import kotlin.math.min
@@ -67,8 +68,8 @@ fun PlayfieldPreview(settings: PlaySettings, modifier: Modifier = Modifier) {
                 .padding(1.dp)
                 .semantics { contentDescription = description },
         ) {
-            // A new surface when the window or chosen orientation changes its buffer size.
-            key(size) {
+            // A new surface when the window, chosen orientation or tail-judgement rule changes.
+            key(size, settings.holdTailJudgement) {
                 AndroidView(
                     modifier = Modifier.fillMaxSize(),
                     factory = { context ->
@@ -79,6 +80,7 @@ fun PlayfieldPreview(settings: PlaySettings, modifier: Modifier = Modifier) {
                                 PlayController(
                                     chart = SampleCharts.PREVIEW,
                                     judge = settings.judge.toRuntime(),
+                                    ruleset = settings.toRuleset(),
                                     clock = FakePlayClock(),
                                     // No sound and no touches: no latency slot applies.
                                     timing = PlayTiming.preview(settings.scrollTimeMs),
@@ -97,6 +99,7 @@ fun PlayfieldPreview(settings: PlaySettings, modifier: Modifier = Modifier) {
                         it.landscapeWidth = settings.landscapeWidth
                         it.portraitWidth = settings.portraitWidth
                         it.scrollTimeMs = settings.scrollTimeMs
+                        it.holdTailShortenMs = settings.holdTailShortenMs
                         it.reduceMotion = reduceMotion
                     },
                 )

@@ -330,6 +330,7 @@ fun PlayScreen(
                 return PlayController(
                     chart = ambient.chart,
                     judge = settings.judge.toRuntime(),
+                    ruleset = settings.toRuleset(),
                     clock = ambient.clock,
                     timing = PlayTiming.ambient(settings, ambient.offsetMs),
                     clockLog = clockLog,
@@ -345,6 +346,7 @@ fun PlayScreen(
                 return PlayController(
                     chart = SampleCharts.PREVIEW,
                     judge = settings.judge.toRuntime(),
+                    ruleset = settings.toRuleset(),
                     clock = FakePlayClock(),
                     timing = PlayTiming.sample(settings),
                     inputLog = inputLog,
@@ -365,6 +367,7 @@ fun PlayScreen(
             return PlayController(
                 chart = game.chart,
                 judge = settings.judge.toRuntime(),
+                ruleset = settings.toRuleset(),
                 clock = clock,
                 timing = PlayTiming.game(settings),
                 clockLog = clockLog,
@@ -428,6 +431,7 @@ fun PlayScreen(
                         it.portraitFarScale = PlaySettings.farScale(settings.portraitLean)
                         it.landscapeWidth = settings.landscapeWidth
                         it.portraitWidth = settings.portraitWidth
+                        it.holdTailShortenMs = settings.holdTailShortenMs
                         it.reduceMotion = reduceMotion
                         it.excludeBackGesture = phase == PlayPhase.PLAYING && !tooSmall
                         it.capLabels = capLabels
@@ -1009,6 +1013,12 @@ fun JudgeDifficulty.toRuntime(): Judge = when (this) {
     JudgeDifficulty.D -> Judge.D
     JudgeDifficulty.E -> Judge.E
 }
+
+fun PlaySettings.toRuleset(): io.ensomi.runtime.Ruleset = io.ensomi.runtime.Ruleset(
+    judge = judge.toRuntime(),
+    tailJudgement = holdTailJudgement,
+    holdTicks = true,
+)
 
 private const val COUNT_IN_BEAT_MS = 500L
 

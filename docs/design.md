@@ -1,5 +1,5 @@
 ---
-commit: 0af740cc23e3295300ad3cdfa8ebe43468d38ce8
+commit: 881941931bb03b6f000b57e42760b270b9cd212b
 ---
 
 # Ensomi for Android: UI and UX design, drop-in play
@@ -107,9 +107,18 @@ are kept for it), and an extended floating action button, **Add songs**. Tapping
 - **First run.** Until the model is installed, a card at the top of the list carries it (below). Under it, an empty
   state card says how songs get in and has its own Add songs button. The first screen therefore reads as two steps,
   get the model and add songs, and both can happen at once.
+- **Searching and removing songs.** When the library has songs, an outlined search field at the top of the list filters
+  by title, artist and file name (folding case, width and whitespace tokens), with a clear button and an empty-results
+  card when nothing matches. Any song row can be removed either by swiping left (end-to-start, revealing a red trash
+  container) or by long-pressing the row to open a context menu with **Remove**
+  (TalkBack also exposes Remove as a custom accessibility action on the row). Removal hides the song immediately
+  without a confirmation dialog and shows a bottom snackbar with **Undo**; once the snackbar finishes without Undo (or
+  is replaced by another removal or the screen stops), the app cancels any active chart work for that song, deletes its
+  saved chart and cached audio, forgets the entry from `library.json`, and releases its persistable document URI
+  permission while leaving the audio file on the device untouched.
 - **A song whose file has gone** (moved, deleted, its permission revoked) stays in the list with "File not found"
-  and its file name, and offers Find again (pick it anew; the song and its charts stay) and Remove. Removing a song
-  forgets it and gives its permission back; the file stays where it is. The library looks again at each start and
+  and its file name, and offers Find again (pick it anew; the song and its charts stay) and Remove (which goes through
+  the same Undo snackbar). The library looks again at each start and
   each return to the app, by asking the provider for the document's name (a cloud file is not fetched), and a song
   whose file fails to open is marked the same way.
 - The songs are listed by title as the phone's language sorts it; a song without a title tag shows its file name.
@@ -379,7 +388,11 @@ under the status bar.
 A Material list in sections:
 
 - **Gameplay**: scroll speed (a slider from 1.0× to 40.0× in 0.5 steps, with the fall time in seconds: "Notes take
-  0.46 s to fall to the line."), judge difficulty (segmented A to E, C by default).
+  0.46 s to fall to the line."), judge difficulty (segmented A to E, C by default), **Hold tail judgement** (a switch,
+  off by default: when off, hitting a hold head scores the note immediately and releasing early cannot break combo;
+  when on, releasing too early or holding past the tail misses; holding a long note body adds +1 combo every 100 ms in
+  both modes), and **Shorten hold tails** (a visual-only slider from 0 ms to 80 ms in 10 ms steps, 0 ms by default,
+  pulling drawn hold ends back toward their heads for dense-4K readability without changing judgement timing).
 - **Playfield**: orientation (segmented Landscape and Portrait, Landscape by default); **Lane lean** for the
   orientation chosen (a slider from Flat to 55° in whole degrees; 40° in landscape, 47° on a phone-sized window, and
   Flat in portrait by default: each orientation keeps its own); **Lane width** as a share of the screen at the line,
@@ -444,8 +457,8 @@ plum neutrals (`#130E1A` ground and `#2A2036` containers on dark), assigned to M
 
 **Game presentation** (Play, Pause, Results, Calibration) is always dark plum, whatever the system theme, with light
 system bar icons. Its palette is the Swift play screen's, which comes from the brand: ground `#130E1A` with the
-diagonal division `#1A1322`, alternating lanes `#1D1627` and `#191220`, rose taps `#EAA0B7`, lavender hold heads and
-tails `#B5B3EF`, purple hold bodies `#9562D7`, coral line and progress `#FF879F`, tiers Perfect `#F6F1FB`, Good
+diagonal division `#1A1322`, alternating lanes `#1D1627` and `#191220`, rose taps `#EAA0B7`, lavender hold heads
+`#B5B3EF`, purple hold bodies `#9562D7` (ending cleanly at the tail time with no separate tail cap block), coral line and progress `#FF879F`, tiers Perfect `#F6F1FB`, Good
 `#F3C47E`, Miss `#FF9AA5`. Notes are coloured by kind, not by lane. Panels use the brand's card shape: round corners
 with a tighter one at the bottom left.
 
@@ -461,7 +474,7 @@ plum 11.8, Miss on plum 9.4, dark ink on coral 6.7 to 8.4; in light chrome, text
 - **Game**: motion marks what acted, as on the Swift play screen. A hit lights the line in its lane and a flare rises
   for 200 ms; a miss tints the lane above the line for 360 ms; the judgement word pulses and drifts as the runtime's
   `judgementPresentation` says; lane lights ease as `laneBrightness` says. A held long note's purple body and head
-  halo breathe softly twice a second on gameplay time; pause freezes the phase. The head and tail stay solid, and the
+  halo breathe softly twice a second on gameplay time; pause freezes the phase. The head stays solid, and the
   pulse adds no moving edge to read as the note's end. The count-in after a pause steps once per beat.
 - **Reduced motion.** With "Remove animations" on, `ValueAnimator.areAnimatorsEnabled()` is false
   ([ValueAnimator](https://developer.android.com/reference/android/animation/ValueAnimator#areAnimatorsEnabled())).

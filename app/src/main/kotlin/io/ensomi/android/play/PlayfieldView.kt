@@ -147,6 +147,13 @@ class PlayfieldView @JvmOverloads constructor(
             renderer.reduceMotion = value
         }
 
+    /** Visual trim taken off hold tails in milliseconds, without affecting judgement. */
+    var holdTailShortenMs: Int = 0
+        set(value) {
+            field = value
+            renderer.holdTailShortenMs = value.coerceAtLeast(0).toDouble()
+        }
+
     /** Debug builds: where every frame's times go, as CSV, when the playfield closes ([FrameLog]); null for none. */
     var frameLogFile: File? = null
     private val frameLog = FrameLog()

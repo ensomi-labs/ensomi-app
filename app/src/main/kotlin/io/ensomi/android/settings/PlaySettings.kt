@@ -38,6 +38,10 @@ data class PlaySettings(
     val audioLatency: AudioLatency = AudioLatency(),
     /** The input latency slots and the one each input method uses. */
     val inputLatency: InputLatency = InputLatency(),
+    /** Whether releasing a held long note is judged; off by default, so hitting the head scores it without tail break. */
+    val holdTailJudgement: Boolean = false,
+    /** Visual trim taken off each hold's tail in milliseconds (0 to 80 ms), without changing gameplay judgement. */
+    val holdTailShortenMs: Int = DEFAULT_HOLD_TAIL_SHORTEN_MS,
 ) {
     /** The active audio slot's value: the audio latency a game starts with. */
     val audioLatencyMs: Int get() = audioLatency.activeMs
@@ -86,6 +90,10 @@ data class PlaySettings(
         /** Degrees: 0 is flat; 55 is the most Malody allows in its key mode. */
         val LEANS = 0..55
 
+        const val DEFAULT_HOLD_TAIL_SHORTEN_MS = 0
+        val HOLD_TAIL_SHORTEN_MS = 0..80
+        const val HOLD_TAIL_SHORTEN_STEP_MS = 10
+
         /**
          * Where the eye is in the lean's picture, in screen heights of the lanes in front of the screen. The eye is
          * level with the lanes' far end, so the far end stays at the top whatever the lean.
@@ -104,6 +112,11 @@ data class PlaySettings(
 
         /** A slider's value to the nearest whole degree. */
         fun snapLean(value: Float): Int = value.roundToInt().coerceIn(LEANS.first, LEANS.last)
+
+        /** A slider's value snapped to [HOLD_TAIL_SHORTEN_STEP_MS] steps within [HOLD_TAIL_SHORTEN_MS]. */
+        fun snapHoldTailShortenMs(value: Float): Int =
+            ((value / HOLD_TAIL_SHORTEN_STEP_MS).roundToInt() * HOLD_TAIL_SHORTEN_STEP_MS)
+                .coerceIn(HOLD_TAIL_SHORTEN_MS.first, HOLD_TAIL_SHORTEN_MS.last)
 
         /** The scale the Swift app uses, so a speed means the same on every client. */
         fun scrollTimeMs(speed: Double): Double = 11_485.0 / speed

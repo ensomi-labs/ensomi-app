@@ -1,5 +1,5 @@
 ---
-commit: 774482f80cddbc5b80fedf5e31bc3de57e064172
+commit: 881941931bb03b6f000b57e42760b270b9cd212b
 ---
 
 # Android CI and release
@@ -8,15 +8,16 @@ commit: 774482f80cddbc5b80fedf5e31bc3de57e064172
 
 The Android play demo is built on the owner's Mac from a committed tree, then signed by the owner with one
 release key made by hand and published as a GitHub release of `ensomi-labs/ensomi-app`; 0.2.2 (code 7) was the last built
-that way, and 0.2.3 (code 8) was the first built and signed by [Automation](#automation). The current version is
-`versionName` **0.3.0**, `versionCode` **9**, owned by `gradle/libs.versions.toml`, adding native Symphonia audio
-decoding (`ensomi-audio`), streaming playback, zero-JVM-heap FD/path chart preparation, zero-FFI hold layout,
-outlier-filtered audio clock steering, dynamic refresh-rate tracking, and `play_summary` diagnostics telemetry. Swift's `v0.1.0` stays separate. The build produces an unsigned,
+that way, and 0.2.3 (code 8) and 0.3.0 (code 9) were built and signed by [Automation](#automation). The current version is
+`versionName` **0.3.1**, `versionCode` **10**, owned by `gradle/libs.versions.toml`, adding library song search and
+swipe-left/long-press removal with Undo, a gameplay setting for hold tail judgement (off by default) with 100 ms
+hold-body combo ticks, visual hold-tail shortening (`0–80 ms`), and capless hold-tail rendering. Swift's `v0.1.0` stays separate. The build produces an unsigned,
 R8-optimized arm64-v8a APK, with JNA keep rules and the runtime AAR's UniFFI keep rules. The runtime is the local AAR
-whose SHA-256 is `3823e19ba47247614c79084033665cdf02084fe5f1fe170ecbe8ed6e475e14b0`, pinned as `runtimeAarSha256` in
+whose SHA-256 is `45fa0fef0c362b36c3c5e5d5fc703e8d430eb233ffc788455f48c08a2831aa58`, pinned as `runtimeAarSha256` in
 `gradle/libs.versions.toml`.
-It is built from runtime `main` commit `c3705e2` (PR #12, adding `ensomi-audio`/`symphonia` streaming and FD-based
-decode/prepare/sync bindings on top of the KleidiAI-free Android build, published as pre-release `android-aar-c3705e2`).
+It is built from runtime `main` commit `5299536` (PR #13, adding optional `tailJudgement` and 100 ms
+`holdTicks` body combo to `Ruleset` on top of the `c3705e2` `ensomi-audio`/`symphonia` KleidiAI-free Android build,
+published as pre-release `android-aar-5299536`).
 Keep the exact unstripped
 `libensomi_runtime_ffi.so` per release alongside the AAR, its SHA-256 and R8 mapping for symbolizing
 reported offsets; rebuilding later is not a substitute for retaining that binary. Diagnostics

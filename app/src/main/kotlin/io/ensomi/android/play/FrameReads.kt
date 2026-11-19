@@ -124,6 +124,7 @@ class NoteLayout(private val noteY: NoteY) {
         scrollTimeMs: Double,
         fallLength: Double,
         out: HoldPlacement,
+        shortenMs: Double = 0.0,
     ) {
         calibrate(scrollTimeMs, fallLength)
         val rawHead = lineY + (startTimeMs - renderMs) * perMs
@@ -131,7 +132,8 @@ class NoteLayout(private val noteY: NoteY) {
         val rawTopY: Double
         val rawBottomY: Double
         if (endTimeMs != null) {
-            val rawTail = lineY + (endTimeMs - renderMs) * perMs
+            val visualEndMs = if (shortenMs > 0.0) maxOf(startTimeMs, endTimeMs - shortenMs) else endTimeMs
+            val rawTail = lineY + (visualEndMs - renderMs) * perMs
             val tailY = if (holding) minOf(rawTail, lineY) else rawTail
             out.hasTail = true
             out.tailY = tailY
